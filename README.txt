@@ -13,7 +13,7 @@
 -- density split statistics (cf. Gruen&Friedrich++2018, Friedrich&Gruen++2018)
 
 <---> Installation & running:
-- The notebook "comput_PDF_and_CGF.ipynb" containts examples on how to run CosMomentum.
+- The notebook "compute_PDF_and_CGF.ipynb" containts examples on how to run CosMomentum.
 - This includes a command that compiles the code.
 - You may have to edit "cpp_code/Makefile" as suitable for your machine.
 

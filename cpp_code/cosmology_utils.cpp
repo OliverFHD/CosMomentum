@@ -26,12 +26,7 @@ struct cosmological_model{
   
   double n_s;
   double sigma_8;
-  double S3_enhance;
   
-  double c_EFT;
-  double n_EFT;
-  double c_EFT_2nd;
-  double n_EFT_2nd;
 };
 
 

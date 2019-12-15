@@ -14,11 +14,13 @@ enum SHOT_NOISE_MODUS {BA0A1, BR, INVALID_SHOT_NOISE};
 enum PDF_MODUS {BERNARDEAU, LOGNORMAL, LOGNORMAL_FIX_D0, GAUSSIAN, INVALID_PDF}; 
 enum BINNING {LIN, LOG};
 enum ON_OFF {ON, OFF};
+enum INITIALISATION {INITIALISED, UNINITIALISED};
 
 const char *SHOT_NOISE_types[] = {"BA0A1", "BR", "INVALID_SHOTNOISE"};
 const char *PDF_types[] = {"BERNARDEAU", "LOGNORMAL", "LOGNORMAL_FIX_D0", "GAUSSIAN", "INVALID_PDF"};
 const char *BINNING_types[] = {"LIN", "LOG"};
 const char *ON_OFF_types[] = {"ON", "OFF"};
+const char *INITIALISATION_types[] = {"INITIALISED", "UNINITIALISED"};
   
 
 /***** General constants *****/

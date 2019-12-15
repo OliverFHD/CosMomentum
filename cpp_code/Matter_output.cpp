@@ -85,36 +85,6 @@ double Matter::transfer_function_at(double k){
   return interpolate_neville_aitken(log(k), &this->log_wave_numbers, &this->transfer_function, constants::order_of_interpolation);
 }
 
-void Matter::return_delta_NL_of_delta_L(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values){
-  (*delta_L_values) = this->delta_values;
-  (*delta_NL_values) = this->delta_values;
-  for(int i = 0; i < this->delta_values.size(); i++){
-    (*delta_NL_values)[i] = interpolate_neville_aitken(eta, &this->eta_NL, &this->cylindrical_collapse_evolution_of_delta[i], constants::order_of_interpolation);
-  }
-}
-
-void Matter::return_delta_NL_of_delta_L_and_dF_ddelta(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values){
-  (*delta_L_values) = this->delta_values;
-  (*delta_NL_values) = this->delta_values;
-  (*delta_NL_prime_values) = this->delta_values;
-  for(int i = 0; i < this->delta_values.size(); i++){
-    (*delta_NL_values)[i] = interpolate_neville_aitken(eta, &this->eta_NL, &this->cylindrical_collapse_evolution_of_delta[i], constants::order_of_interpolation);
-    (*delta_NL_prime_values)[i] = interpolate_neville_aitken(eta, &this->eta_NL, &this->cylindrical_collapse_evolution_of_delta_ddelta[i], constants::order_of_interpolation);
-  }
-}
-
-
-void Matter::return_delta_NL_of_delta_L_and_dF_ddelta(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values, vector<double> *delta_NL_prime_prime_values){
-  (*delta_L_values) = this->delta_values;
-  (*delta_NL_values) = this->delta_values;
-  (*delta_NL_prime_values) = this->delta_values;
-  (*delta_NL_prime_prime_values) = this->delta_values;
-  for(int i = 0; i < this->delta_values.size(); i++){
-    (*delta_NL_values)[i]             = interpolate_neville_aitken(eta, &this->eta_NL, &this->cylindrical_collapse_evolution_of_delta[i], constants::order_of_interpolation);
-    (*delta_NL_prime_values)[i]       = interpolate_neville_aitken(eta, &this->eta_NL, &this->cylindrical_collapse_evolution_of_delta_ddelta[i], constants::order_of_interpolation);
-    (*delta_NL_prime_prime_values)[i] = interpolate_neville_aitken(eta, &this->eta_NL, &this->cylindrical_collapse_evolution_of_delta_ddelta2[i], constants::order_of_interpolation);
-  }
-}
 
 void Matter::return_delta_NL_of_delta_L_and_dF_ddelta_3D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values){
   (*delta_L_values) = this->delta_values_for_spherical_collapse;
@@ -181,55 +151,6 @@ vector<vector<double> > Matter::return_power_spectra(double eta, double R){
   return power_spectra;
   
 }
-
-
-void Matter::return_3rd_moments_and_derivatives(double R, vector<double> *skewnesses, vector<double> *dskewnesses_dR){
-  
-  double f_NL_local = 1.0;
-  double f_NL_equilateral = 1.0;
-  double f_NL_orthoginal = 1.0;
-  double prefactor = -3.0*this->cosmology.Omega_m/pow(constants::pi2, 4);
-  double skew_1, skew_2, skew_3;
-  double dskew_1, dskew_2, dskew_3;
-  
-  cout << "0\n";
-  skew_1 = skewness_of_matter_within_R(R, 1.0, 1.0, 0.0);
-  cout << "1\n";
-  skew_2 = skewness_of_matter_within_R(R, 2.0/3.0, 2.0/3.0, 2.0/3.0);
-  cout << "2\n";
-  skew_3 = skewness_of_matter_within_R(R, 1.0, 1.0/3.0, 2.0/3.0);
-  cout << "3\n";
-  
-  dskew_1 = dskewness_of_matter_within_R_dR(R, 1.0, 1.0, 0.0);
-  cout << "4\n";
-  dskew_2 = dskewness_of_matter_within_R_dR(R, 2.0/3.0, 2.0/3.0, 2.0/3.0);
-  cout << "5\n";
-  dskew_3 = dskewness_of_matter_within_R_dR(R, 1.0, 1.0/3.0, 2.0/3.0);
-  cout << "6\n";
-    
-  (*skewnesses)[0] = 6.0*f_NL_local*prefactor*skew_1;
-  (*dskewnesses_dR)[0] = 6.0*f_NL_local*prefactor*dskew_1;
-  
-  
-  (*skewnesses)[1] = -18.0*f_NL_equilateral*prefactor*skew_1;
-  (*skewnesses)[1] += -12.0*f_NL_equilateral*prefactor*skew_2;
-  (*skewnesses)[1] +=  36.0*f_NL_equilateral*prefactor*skew_3;
-  
-  (*dskewnesses_dR)[1] = -18.0*f_NL_equilateral*prefactor*dskew_1;
-  (*dskewnesses_dR)[1] += -12.0*f_NL_equilateral*prefactor*dskew_2;
-  (*dskewnesses_dR)[1] +=  36.0*f_NL_equilateral*prefactor*dskew_3;
-  
-  
-  (*skewnesses)[2] = -54.0*f_NL_orthoginal*prefactor*skew_1;
-  (*skewnesses)[2] += -48.0*f_NL_orthoginal*prefactor*skew_2;
-  (*skewnesses)[2] +=  108.0*f_NL_orthoginal*prefactor*skew_3;
-  
-  (*dskewnesses_dR)[2] = -54.0*f_NL_orthoginal*prefactor*dskew_1;
-  (*dskewnesses_dR)[2] += -48.0*f_NL_orthoginal*prefactor*dskew_2;
-  (*dskewnesses_dR)[2] +=  108.0*f_NL_orthoginal*prefactor*dskew_3;
-  
-}
-
 
 void Matter::return_2rd_moment_and_derivative(double R, double *variance, double *dvariance_dR){
   

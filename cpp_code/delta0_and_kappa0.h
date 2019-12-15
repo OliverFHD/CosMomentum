@@ -33,7 +33,6 @@ extern "C" double get_delta0_from_4pt(double y_start, double twoPt, double fourP
   while(step < 1000){
     
     step ++;
-    //cout << step << '\t' << y << '\t' << f << '\t' << f_prime << '\n';
     f = f_4pt_of_y(y, twoPt, fourPt);
     f_prime = f_4pt_of_y_prime(y, twoPt, fourPt);
     y = y - f/f_prime;
@@ -215,9 +214,6 @@ double dg_given_dm_equals_0_deriv(double r, double bias, double variance, double
   double rho = log(1.0+r*variance/delta_m0/delta_m0)/var_Gauss;
   
   double dg_given_nm = exp(0.5*var_Gauss*rho*(1.0 - rho));
-  //cout << rho << '\nt';
-  //cout << dg_given_nm << '\t';
-  //cout << rho*dg_given_nm << '\n';
   return bias*rho*dg_given_nm;
     
 }

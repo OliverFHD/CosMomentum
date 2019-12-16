@@ -17,7 +17,7 @@
 - This includes a command that compiles the code.
 - You may have to edit "cpp_code/Makefile" as suitable for your machine.
 
-<---> Differences wrt. Friedrich et al. (2019):
+<---> Differences wrt. Friedrich et al. (2019, arXiv:1912.06621):
 - This code uses the Eisenstein&Hu transfer function (incl. baryon wiggles).
 - However, there is also an alternative constructor of the class Matter, that allows to read in a transfer function from a text file.
 
@@ -31,4 +31,4 @@
 
 <---> Acknowledgement
 - Please feel free to use the code for your science and publications.
-- Please cite Friedrich et al. (2019) if you do so.
+- Please cite Friedrich et al. (2019, arXiv:1912.06621) if you do so.

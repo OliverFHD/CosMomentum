@@ -542,6 +542,7 @@ vector<vector<double> > Matter::compute_phi_of_lambda_3D(double z, double R, dou
   double RL, log_RL;
   
   this->current_P_NL = this->P_NL(eta);
+  this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
   double D = interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
   double D_sq = pow(D,2);
   double var_NL_R = variance_of_matter_within_R_NL(R)*var_NL_rescale;
@@ -634,10 +635,7 @@ vector<vector<double> > Matter::compute_phi_of_lambda_3D(double z, double R, dou
     phi_values_Gauss[d] *= D_sq*var_L_R/var_NL_R;
     lambda_values[d] *= D_sq*var_L_R/var_NL_R;
     lambda_values_Gauss[d] *= D_sq*var_L_R/var_NL_R;
-    
-    //phi_values[d] += 0.5*lambda_values[d]*lambda_values[d]*(var_NL_R-D_sq*var_L_R);
-    //phi_values_Gauss[d] += 0.5*lambda_values_Gauss[d]*lambda_values_Gauss[d]*(var_NL_R-D_sq*var_L_R);
-    
+        
     data[0][d] = delta_L_values[d];
     data[1][d] = delta_NL_values[d];
     data[2][d] = lambda_values[d];

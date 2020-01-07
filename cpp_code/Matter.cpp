@@ -468,8 +468,6 @@ void Matter::set_spherical_collapse_evolution_of_delta(double z_min, double z_ma
   this->spherical_collapse_evolution_of_delta.resize(n, vector<double>(n_time, 0.0));
   this->spherical_collapse_evolution_of_delta_ddelta.resize(n, vector<double>(n_time, 0.0));
   this->spherical_collapse_evolution_of_delta_ddelta2.resize(n, vector<double>(n_time, 0.0));
-  this->F_prime_of_eta_for_spherical_collapse.resize(n_time, 0.0);
-  this->F_prime_prime_of_eta_for_spherical_collapse.resize(n_time, 0.0);
   
   integration_parameters params;
   params.n_s = this->cosmology.n_s;
@@ -482,7 +480,6 @@ void Matter::set_spherical_collapse_evolution_of_delta(double z_min, double z_ma
   
   
   gsl_odeiv2_system sys = {F_dF_ddF_spherical_wrt_delta_gsl, F_dF_ddF_spherical_wrt_delta_jac, 6, (void *) pointer_to_params};
-  gsl_odeiv2_system sys_of_derivatives = {dF_spherical_ddelta_at_average_density_gsl, dF_spherical_ddelta_at_average_density_jac, 4, (void *) pointer_to_params};
   for(int i = 0; i < n; i++){
     
     delta += ddelta;
@@ -509,25 +506,6 @@ void Matter::set_spherical_collapse_evolution_of_delta(double z_min, double z_ma
     gsl_odeiv2_driver_free(d);
     
   }
-  
-  double eta_0 = this->universe->eta_at_a(1.0);
-  double y[4] = {D, D*H_initial, 0.0, 0.0};
-  double eta = eta_min;
-  eta_i = std::max(this->universe->eta_at_a(0.00025), this->eta_Newton[0]);
-  gsl_odeiv2_driver * d = gsl_odeiv2_driver_alloc_y_new (&sys_of_derivatives, gsl_odeiv2_step_rkf45, 1e-6, 1e-6, 0.0);
-  
-  for (int j = 0; j < n_time; j++){
-    int status = gsl_odeiv2_driver_apply(d, &eta_i, eta, y);
-    if (status != GSL_SUCCESS){
-      printf ("error, return value=%d\n", status);
-      break;
-    }
-    this->F_prime_of_eta_for_spherical_collapse[j] = y[0];
-    this->F_prime_prime_of_eta_for_spherical_collapse[j] = y[2];
-    eta += deta;
-    
-  }
-  gsl_odeiv2_driver_free(d);
   
 
   
@@ -651,7 +629,6 @@ vector<vector<double> > Matter::compute_phi_of_lambda_3D(double z, double R, dou
   return data;
   
 }
-
 
 
 

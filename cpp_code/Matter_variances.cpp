@@ -158,9 +158,9 @@ void Matter::set_sphere_skewnesses(int PNG_modus){
  * 1.6 set_sphere_skewnesses_from_eps3_powerlaw_approximation
  * Description:
  * - this function sets the skewnesses of the linear density field by approximating
- *   eps(R) = skew(R)/sigma(R)^2
+ *   eps3(R) = skew(R)/sigma(R)^3
  *   as a power law in R, i.e.
- *   eps(R) = A_eps3*(R/R_0)^n_eps3
+ *   eps3(R) = A_eps3*(R/R_0)^n_eps3
  *
  * Arguments:
  * - int PNG_modus: 1 == local, 2 == equilateral, 3 == orthogonal

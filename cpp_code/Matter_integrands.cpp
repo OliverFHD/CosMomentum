@@ -441,77 +441,6 @@ int growth_factor_to_second_order_gsl_jac(double e, const double D[], double *df
  */
 
 
-int dF_spherical_ddelta_at_average_density_gsl(double e, const double y[], double dfde[], void *params){
-
-  integration_parameters *integration_params = (integration_parameters *) params;
-  Universe* pointer_to_Universe = integration_params->pointer_to_Universe;
-  
-  double dF_ddelta = y[0];
-  double dF_ddelta_prime = y[1];
-  double d2F_ddelta2 = y[2];
-  double d2F_ddelta2_prime = y[3];
-  double a = pointer_to_Universe->a_at_eta(e);
-  double hubble = pointer_to_Universe->H_at_eta(e);
-  double Omega_m = integration_params->Omega_m;
-
-  //dfde[0] = F_prime;
-  //dfde[1] = 1.5*Omega_m/a*F*(1.0+F) + 4.0/3.0*pow(F_prime, 2)/(1+F) - hubble*F_prime;
-  //dfde[2] = dF_ddelta_prime;
-  //dfde[3] = 1.5*Omega_m/a*(dF_ddelta*(1.0+2.0*F)) + 8.0/3.0*F_prime*dF_ddelta_prime/(1+F) - 4.0/3.0*pow(F_prime, 2)/pow(1+F, 2)*dF_ddelta - hubble*dF_ddelta_prime;
-  
-  dfde[0] = dF_ddelta_prime;
-  dfde[1] = 1.5*Omega_m/a*dF_ddelta - hubble*dF_ddelta_prime;
-  dfde[2] = d2F_ddelta2_prime;
-  dfde[3] = 1.5*Omega_m/a*(d2F_ddelta2 + 2.0*pow(dF_ddelta, 2)) + 8.0/3.0*pow(dF_ddelta_prime, 2) - hubble*d2F_ddelta2_prime;
-  return GSL_SUCCESS;
-}
-
-int dF_spherical_ddelta_at_average_density_jac(double e, const double y[], double *dfdy, double dfde[], void *params){
-
-  integration_parameters *integration_params = (integration_parameters *) params;
-  Universe* pointer_to_Universe = integration_params->pointer_to_Universe;
-
-  double dF_ddelta = y[0];
-  double dF_ddelta_prime = y[1];
-  double d2F_ddelta2 = y[2];
-  double d2F_ddelta2_prime = y[3];
-  double a = pointer_to_Universe->a_at_eta(e);
-  double hubble = pointer_to_Universe->H_at_eta(e);
-  double Omega_m = integration_params->Omega_m;
-
-  gsl_matrix_view dfdy_mat = gsl_matrix_view_array (dfdy, 4, 4);
-  gsl_matrix * m = &dfdy_mat.matrix; 
-  
-  //dfde[0] = dF_ddelta_prime;
-  //dfde[1] = 1.5*Omega_m/a*dF_ddelta - hubble*dF_ddelta_prime;
-  //dfde[2] = d2F_ddelta2_prime;
-  //dfde[3] = 1.5*Omega_m/a*(d2F_ddelta2 + 2.0*pow(dF_ddelta, 2)) + 8.0/3.0*pow(dF_ddelta_prime, 2) - hubble*d2F_ddelta2_prime;
-  
-  gsl_matrix_set (m, 0, 0, 0.0);
-  gsl_matrix_set (m, 0, 1, 1.0);
-  gsl_matrix_set (m, 0, 2, 0.0);
-  gsl_matrix_set (m, 0, 3, 0.0);
-
-  gsl_matrix_set (m, 1, 0, 1.5*Omega_m/a);
-  gsl_matrix_set (m, 1, 1, -hubble);
-  gsl_matrix_set (m, 1, 2, 0.0);
-  gsl_matrix_set (m, 1, 3, 0.0);
-   
-  gsl_matrix_set (m, 2, 0, 0.0);
-  gsl_matrix_set (m, 2, 1, 0.0);
-  gsl_matrix_set (m, 2, 2, 0.0);
-  gsl_matrix_set (m, 2, 3, 1.0);
-
-  gsl_matrix_set (m, 3, 0, 6.0*Omega_m/a*dF_ddelta);
-  gsl_matrix_set (m, 3, 1, 16.0/3.0*dF_ddelta_prime);
-  gsl_matrix_set (m, 3, 2, 1.5*Omega_m/a);
-  gsl_matrix_set (m, 3, 3, -hubble);
-  
-  return GSL_SUCCESS;
-}
-
-
-
 int F_dF_ddF_spherical_wrt_delta_gsl(double e, const double y[], double dfde[], void *params){
 
   integration_parameters *integration_params = (integration_parameters *) params;
@@ -538,8 +467,6 @@ int F_dF_ddF_spherical_wrt_delta_gsl(double e, const double y[], double dfde[], 
   return GSL_SUCCESS;
 }
 
-// <--- You got until here with checking the equations!
-
 int F_dF_ddF_spherical_wrt_delta_jac(double e, const double y[], double *dfdy, double dfde[], void *params){
 
   integration_parameters *integration_params = (integration_parameters *) params;
@@ -558,15 +485,19 @@ int F_dF_ddF_spherical_wrt_delta_jac(double e, const double y[], double *dfdy, d
   gsl_matrix_view dfdy_mat = gsl_matrix_view_array (dfdy, 4, 4);
   gsl_matrix * m = &dfdy_mat.matrix; 
   
-  //dfde[0] = F_prime;
-  //dfde[1] = 1.5*Omega_m/a*F*(1.0+F) + 4.0/3.0*pow(F_prime, 2)/(1+F) - hubble*F_prime;
-  
   gsl_matrix_set (m, 0, 0, 0.0);
   gsl_matrix_set (m, 0, 1, 1.0);
   gsl_matrix_set (m, 0, 2, 0.0);
   gsl_matrix_set (m, 0, 3, 0.0);
   gsl_matrix_set (m, 0, 4, 0.0);
   gsl_matrix_set (m, 0, 5, 0.0);
+  
+  //dfde[0] = F_prime;
+  //dfde[1] = 1.5*Omega_m/a*F*(1.0+F) + 4.0/3.0*pow(F_prime, 2)/(1+F) - hubble*F_prime;
+  //dfde[2] = dF_ddelta_prime;
+  //dfde[3] = 1.5*Omega_m/a*(dF_ddelta*(1.0+2.0*F)) + 8.0/3.0*F_prime*dF_ddelta_prime/(1+F) - 4.0/3.0*pow(F_prime, 2)/pow(1+F, 2)*dF_ddelta - hubble*dF_ddelta_prime;
+  //dfde[4] = d2F_ddelta2_prime;
+  //dfde[5] = 1.5*Omega_m/a*(d2F_ddelta2*(1.0+2.0*F) + 2.0*pow(dF_ddelta, 2)) + 8.0/3.0*pow(dF_ddelta_prime, 2)/(1+F) + 8.0/3.0*F_prime*d2F_ddelta2_prime/(1+F) - 16.0/3.0*F_prime*dF_ddelta*dF_ddelta_prime/pow(1+F, 2.0) - 4.0/3.0*pow(F_prime, 2)/pow(1+F, 2)*d2F_ddelta2 + 8.0/3.0*pow(F_prime, 2)/pow(1+F, 3)*pow(dF_ddelta, 2.0) - hubble*d2F_ddelta2_prime;
   
   gsl_matrix_set (m, 1, 0, 1.5*Omega_m/a*(1.0+2.0*F) - 4.0/3.0*pow(F_prime/(1.0+F), 2.0));
   gsl_matrix_set (m, 1, 1, 8.0/3.0*F_prime/(1+F) - hubble);
@@ -575,104 +506,52 @@ int F_dF_ddF_spherical_wrt_delta_jac(double e, const double y[], double *dfdy, d
   gsl_matrix_set (m, 1, 4, 0.0);
   gsl_matrix_set (m, 1, 5, 0.0);
   
+  gsl_matrix_set (m, 2, 0, 0.0);
+  gsl_matrix_set (m, 2, 1, 0.0);
+  gsl_matrix_set (m, 2, 2, 0.0);
+  gsl_matrix_set (m, 2, 3, 1.0);
+  gsl_matrix_set (m, 2, 4, 0.0);
+  gsl_matrix_set (m, 2, 5, 0.0);
+  
+  //dfde[0] = F_prime;
+  //dfde[1] = 1.5*Omega_m/a*F*(1.0+F) + 4.0/3.0*pow(F_prime, 2)/(1+F) - hubble*F_prime;
   //dfde[2] = dF_ddelta_prime;
   //dfde[3] = 1.5*Omega_m/a*(dF_ddelta*(1.0+2.0*F)) + 8.0/3.0*F_prime*dF_ddelta_prime/(1+F) - 4.0/3.0*pow(F_prime, 2)/pow(1+F, 2)*dF_ddelta - hubble*dF_ddelta_prime;
   //dfde[4] = d2F_ddelta2_prime;
   //dfde[5] = 1.5*Omega_m/a*(d2F_ddelta2*(1.0+2.0*F) + 2.0*pow(dF_ddelta, 2)) + 8.0/3.0*pow(dF_ddelta_prime, 2)/(1+F) + 8.0/3.0*F_prime*d2F_ddelta2_prime/(1+F) - 16.0/3.0*F_prime*dF_ddelta*dF_ddelta_prime/pow(1+F, 2.0) - 4.0/3.0*pow(F_prime, 2)/pow(1+F, 2)*d2F_ddelta2 + 8.0/3.0*pow(F_prime, 2)/pow(1+F, 3)*pow(dF_ddelta, 2.0) - hubble*d2F_ddelta2_prime;
   
-  gsl_matrix_set (m, 0, 0, 0.0);
-  gsl_matrix_set (m, 0, 1, 0.0);
-  gsl_matrix_set (m, 0, 2, 0.0);
-  gsl_matrix_set (m, 0, 3, 1.0);
-  gsl_matrix_set (m, 1, 4, 0.0);
-  gsl_matrix_set (m, 1, 5, 0.0);
-
-  gsl_matrix_set (m, 0, 0, 3.0*Omega_m/a*dF_ddelta - 8.0/3.0*F_prime*dF_ddelta_prime/pow(1.0+F, 2.0) + 8.0/3.0*pow(F_prime, 2)/pow(1.0+F, 3)*dF_ddelta);
-  gsl_matrix_set (m, 0, 1, 8.0/3.0*dF_ddelta_prime/(1+F) - 8.0/3.0*F_prime/pow(1+F, 2)*dF_ddelta);
-  gsl_matrix_set (m, 0, 2, 1.5*Omega_m/a*(1.0+2.0*F) - 4.0/3.0*pow(F_prime, 2)/pow(1+F, 2));
-  gsl_matrix_set (m, 0, 3, 8.0/3.0*F_prime/(1+F) - hubble);
-  gsl_matrix_set (m, 1, 4, 0.0);
-  gsl_matrix_set (m, 1, 5, 0.0);
+  gsl_matrix_set (m, 3, 0, 3.0*Omega_m/a*dF_ddelta - 8.0/3.0*F_prime*dF_ddelta_prime/pow(1.0+F, 2.0) + 8.0/3.0*pow(F_prime, 2)/pow(1.0+F, 3)*dF_ddelta);
+  gsl_matrix_set (m, 3, 1, 8.0/3.0*dF_ddelta_prime/(1+F) - 8.0/3.0*F_prime/pow(1+F, 2)*dF_ddelta);
+  gsl_matrix_set (m, 3, 2, 1.5*Omega_m/a*(1.0+2.0*F) - 4.0/3.0*pow(F_prime, 2)/pow(1+F, 2));
+  gsl_matrix_set (m, 3, 3, 8.0/3.0*F_prime/(1+F) - hubble);
+  gsl_matrix_set (m, 3, 4, 0.0);
+  gsl_matrix_set (m, 3, 5, 0.0);
   
+  gsl_matrix_set (m, 4, 0, 0.0);
+  gsl_matrix_set (m, 4, 1, 0.0);
+  gsl_matrix_set (m, 4, 2, 0.0);
+  gsl_matrix_set (m, 4, 3, 0.0);
+  gsl_matrix_set (m, 4, 4, 0.0);
+  gsl_matrix_set (m, 4, 5, 1.0);
+  
+  //dfde[0] = F_prime;
+  //dfde[1] = 1.5*Omega_m/a*F*(1.0+F) + 4.0/3.0*pow(F_prime, 2)/(1+F) - hubble*F_prime;
+  //dfde[2] = dF_ddelta_prime;
+  //dfde[3] = 1.5*Omega_m/a*(dF_ddelta*(1.0+2.0*F)) + 8.0/3.0*F_prime*dF_ddelta_prime/(1+F) - 4.0/3.0*pow(F_prime, 2)/pow(1+F, 2)*dF_ddelta - hubble*dF_ddelta_prime;
   //dfde[4] = d2F_ddelta2_prime;
   //dfde[5] = 1.5*Omega_m/a*(d2F_ddelta2*(1.0+2.0*F) + 2.0*pow(dF_ddelta, 2)) + 8.0/3.0*pow(dF_ddelta_prime, 2)/(1+F) + 8.0/3.0*F_prime*d2F_ddelta2_prime/(1+F) - 16.0/3.0*F_prime*dF_ddelta*dF_ddelta_prime/pow(1+F, 2.0) - 4.0/3.0*pow(F_prime, 2)/pow(1+F, 2)*d2F_ddelta2 + 8.0/3.0*pow(F_prime, 2)/pow(1+F, 3)*pow(dF_ddelta, 2.0) - hubble*d2F_ddelta2_prime;
   
-  gsl_matrix_set (m, 2, 0, 0.0);
-  gsl_matrix_set (m, 2, 1, 0.0);
-  gsl_matrix_set (m, 2, 2, 0.0);
-  gsl_matrix_set (m, 2, 3, 0.0);
-  gsl_matrix_set (m, 1, 4, 0.0);
-  gsl_matrix_set (m, 1, 5, 1.0);
+  gsl_matrix_set (m, 5, 0, 3.0*Omega_m/a*d2F_ddelta2 - 8.0/3.0*pow(dF_ddelta_prime, 2)/pow(1.0+F,2.0) - 8.0/3.0*F_prime*d2F_ddelta2_prime/pow(1.0+F,2.0) + 32.0/3.0*F_prime*dF_ddelta*dF_ddelta_prime/pow(1+F, 3.0) + 8.0/3.0*pow(F_prime, 2)/pow(1+F, 3)*d2F_ddelta2 - 24.0/3.0*pow(F_prime, 2)/pow(1+F, 4)*pow(dF_ddelta, 2.0));
+  gsl_matrix_set (m, 5, 1, 8.0/3.0*d2F_ddelta2_prime/(1+F) - 16.0/3.0*dF_ddelta*dF_ddelta_prime/pow(1+F, 2.0) - 8.0/3.0*F_prime/pow(1+F, 2)*d2F_ddelta2 + 16.0/3.0*F_prime/pow(1+F, 3)*pow(dF_ddelta, 2.0));
+  gsl_matrix_set (m, 5, 2, 6.0*Omega_m/a*dF_ddelta - 16.0/3.0*F_prime*dF_ddelta_prime/pow(1+F, 2.0) + 16.0/3.0*pow(F_prime, 2)/pow(1+F, 3)*dF_ddelta);
+  gsl_matrix_set (m, 5, 3, 16.0/3.0*dF_ddelta_prime/(1+F) - 16.0/3.0*F_prime*dF_ddelta/pow(1+F, 2.0));
+  gsl_matrix_set (m, 5, 4, 1.5*Omega_m/a*(1.0+2.0*F) - 4.0/3.0*pow(F_prime, 2)/pow(1+F, 2));
+  gsl_matrix_set (m, 5, 5, 8.0/3.0*F_prime/(1+F) - hubble);
   
-  gsl_matrix_set (m, 2, 0, 3.0*Omega_m/a*d2F_ddelta2 - 8.0/3.0*pow(dF_ddelta_prime, 2)/pow(1.0+F,2.0) - 8.0/3.0*F_prime*d2F_ddelta2_prime/pow(1.0+F,2.0) + 32.0/3.0*F_prime*dF_ddelta*dF_ddelta_prime/pow(1+F, 3.0) + 8.0/3.0*pow(F_prime, 2)/pow(1+F, 3)*d2F_ddelta2 - 24.0/3.0*pow(F_prime, 2)/pow(1+F, 4)*pow(dF_ddelta, 2.0));
-  gsl_matrix_set (m, 2, 1, 8.0/3.0*d2F_ddelta2_prime/(1+F) - 16.0/3.0*dF_ddelta*dF_ddelta_prime/pow(1+F, 2.0) - 8.0/3.0*F_prime/pow(1+F, 2)*d2F_ddelta2 + 16.0/3.0*F_prime/pow(1+F, 3)*pow(dF_ddelta, 2.0));
-  gsl_matrix_set (m, 2, 2, 6.0*Omega_m/a*dF_ddelta - 16.0/3.0*F_prime*dF_ddelta_prime/pow(1+F, 2.0) + 16.0/3.0*pow(F_prime, 2)/pow(1+F, 3)*dF_ddelta);
-  gsl_matrix_set (m, 2, 3, 16.0/3.0*dF_ddelta_prime/(1+F) - 16.0/3.0*F_prime*dF_ddelta/pow(1+F, 2.0));
-  gsl_matrix_set (m, 1, 4, 1.5*Omega_m/a*(1.0+2.0*F) - 4.0/3.0*pow(F_prime, 2)/pow(1+F, 2));
-  gsl_matrix_set (m, 1, 5, 8.0/3.0*F_prime/(1+F) - hubble);
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  /*
-  //dfde[0] = F_prime;
-  //dfde[1] = 1.5*Omega_m/a*F - hubble*F_prime;
-  
-  gsl_matrix_set (m, 0, 0, 0.0);
-  gsl_matrix_set (m, 0, 1, 1.0);
-  gsl_matrix_set (m, 0, 2, 0.0);
-  gsl_matrix_set (m, 0, 3, 0.0);
-  gsl_matrix_set (m, 0, 4, 0.0);
-  gsl_matrix_set (m, 0, 5, 0.0);
-  
-  gsl_matrix_set (m, 1, 0, 1.5*Omega_m/a);
-  gsl_matrix_set (m, 1, 1, - hubble);
-  gsl_matrix_set (m, 1, 2, 0.0);
-  gsl_matrix_set (m, 1, 3, 0.0);
-  gsl_matrix_set (m, 1, 4, 0.0);
-  gsl_matrix_set (m, 1, 5, 0.0);
-  
-  
-  //dfde[2] = dF_ddelta_prime;
-  //dfde[3] = 1.5*Omega_m/a*dF_ddelta - hubble*dF_ddelta_prime;
-  
-  gsl_matrix_set (m, 0, 0, 0.0);
-  gsl_matrix_set (m, 0, 1, 0.0);
-  gsl_matrix_set (m, 0, 2, 0.0);
-  gsl_matrix_set (m, 0, 3, 1.0);
-  gsl_matrix_set (m, 1, 4, 0.0);
-  gsl_matrix_set (m, 1, 5, 0.0);
-
-  gsl_matrix_set (m, 0, 0, 0.0);
-  gsl_matrix_set (m, 0, 1, 0.0);
-  gsl_matrix_set (m, 0, 2, 1.5*Omega_m/a);
-  gsl_matrix_set (m, 0, 3, -hubble);
-  gsl_matrix_set (m, 1, 4, 0.0);
-  gsl_matrix_set (m, 1, 5, 0.0);
-  
-  
-  //dfde[4] = d2F_ddelta2_prime;
-  //dfde[5] = 1.5*Omega_m/a*d2F_ddelta2 - hubble*d2F_ddelta2_prime;
-  
-  
-  gsl_matrix_set (m, 2, 0, 0.0);
-  gsl_matrix_set (m, 2, 1, 0.0);
-  gsl_matrix_set (m, 2, 2, 0.0);
-  gsl_matrix_set (m, 2, 3, 0.0);
-  gsl_matrix_set (m, 1, 4, 0.0);
-  gsl_matrix_set (m, 1, 5, 1.0);
-  
-  gsl_matrix_set (m, 2, 0, 0.0);
-  gsl_matrix_set (m, 2, 1, 0.0);
-  gsl_matrix_set (m, 2, 2, 0.0);
-  gsl_matrix_set (m, 2, 3, 0.0);
-  gsl_matrix_set (m, 1, 4, 1.5*Omega_m/a);
-  gsl_matrix_set (m, 1, 5, -hubble);
-  */
   return GSL_SUCCESS;
 }
+
+
+// <--- You got until here with checking the equations!
+
+

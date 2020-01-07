@@ -24,15 +24,6 @@ class Matter {
   Universe* universe;
 
   void print_Newtonian_growth_factor(string file_name);
-
-  void compute_Bernardeau_final_PDF_only(double R1, double eta, vector<double> *G_coeffs);
-  void compute_lognormal_final_PDF_only(double R1, double eta, vector<double> *G_coeffs);
-  void compute_lognormal_final(double R1, double eta, vector<double> *bins, vector<double> *G_coeffs, vector<vector<double> > *G_kappa_coeffs);
-  
-  void return_delta_NL_of_delta_L(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values);
-  void return_delta_NL_of_delta_L_and_dF_ddelta(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values);
-  void return_delta_NL_of_delta_L_and_dF_ddelta(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values, vector<double> *delta_NL_prime_prime_values);
-  
   void return_delta_NL_of_delta_L_and_dF_ddelta_3D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values);
     
   double Newtonian_linear_power_spectrum(double k, double e);
@@ -46,6 +37,7 @@ class Matter {
   vector<double> P_L(double e);
   vector<double> P_NL(double e);
   vector<double> return_wave_numbers();
+  
   vector<double> log_top_hat_radii;
   vector<double> top_hat_sphere_variances;
   vector<double> dtop_hat_sphere_variances_dR;
@@ -122,8 +114,6 @@ class Matter {
   vector<vector<double> > spherical_collapse_evolution_of_delta;
   vector<vector<double> > spherical_collapse_evolution_of_delta_ddelta;
   vector<vector<double> > spherical_collapse_evolution_of_delta_ddelta2;
-  vector<double> F_prime_of_eta_for_spherical_collapse;
-  vector<double> F_prime_prime_of_eta_for_spherical_collapse;   
   vector<double> eta_NL_for_spherical_collapse;
   
   cosmological_model cosmology;

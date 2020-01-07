@@ -84,7 +84,7 @@ extern "C" void set_primordial_skewness(int index_of_universe, int PNG_modus){
 
 extern "C" void set_primordial_skewness_from_eps3_powerlaw_approximation(int index_of_universe, int PNG_modus, double R_0_in_Mpc_over_h){
   cout << "Initialising primordial skewnesses from power law approximation\n";
-  cout << "eps(R) = skewness(R)/sigma(R)^3 = A_eps3*(R/R_0)^n_eps3 .\n";
+  cout << "eps3(R) = skewness(R)/sigma(R)^3 = A_eps3*(R/R_0)^n_eps3 .\n";
   global_universes.matter_contents[index_of_universe]->set_sphere_skewnesses_from_eps3_powerlaw_approximation(PNG_modus, R_0_in_Mpc_over_h);
 }
 
@@ -312,9 +312,7 @@ extern "C" void return_PDF(double* delta_values, double* PDF, int n_delta, doubl
   
   vector<double> coefficients_phi_of_tau = return_coefficients(&tau_for_fit, &phi_for_fit, n_coeff);
   vector<double> coefficients_phi_of_tau_prime = return_coefficients(&tau_for_fit, &phi_prime_for_fit, n_coeff);
-  //vector<double> coefficients_phi_of_tau_prime(coefficients_phi_of_tau.size(), 0.0);
-  //for(int i = 0; i < coefficients_phi_of_tau_prime.size()-1; i++) coefficients_phi_of_tau_prime[i] = coefficients_phi_of_tau[i+1]*double(i+1);
-
+  
   /*
    * Perform the inverse Laplace transform of phi(lambda) to compute p(delta).
    * 

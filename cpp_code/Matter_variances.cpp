@@ -291,6 +291,39 @@ void Matter::set_sphere_skewnesses_from_file(string file_name){
 }
 
 
+
+/*******************************************************************************************************************************************************
+ * 1.7 set_cylinder_variances
+ * Description:
+ *
+ * Arguments:
+ * 
+ * 
+*******************************************************************************************************************************************************/
+
+void Matter::set_cylinder_variances(){
+  
+  int n = 512;
+  
+  double R_min_in_Mpc_over_h = 0.1;
+  double R_max_in_Mpc_over_h = 150.0;
+  vector<double> radii_in_Mpc_over_h(0, 0.0);
+  log_binning(R_min_in_Mpc_over_h, R_max_in_Mpc_over_h, n-1, &radii_in_Mpc_over_h);
+  
+  this->log_top_hat_cylinder_radii.resize(n, 0.0);
+  this->top_hat_cylinder_variances.resize(n, 0.0);
+  this->dtop_hat_cylinder_variances_dR.resize(n, 0.0);
+  this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
+  
+  for(int i = 0; i < n; i++){
+    this->log_top_hat_cylinder_radii[i] = log(radii_in_Mpc_over_h[i]/constants::c_over_e5);
+    this->top_hat_cylinder_variances[i] = this->variance_of_matter_within_R_2D(radii_in_Mpc_over_h[i]/constants::c_over_e5);
+    this->dtop_hat_cylinder_variances_dR[i] = this->dvariance_of_matter_within_R_dR_2D(radii_in_Mpc_over_h[i]/constants::c_over_e5);
+  }
+  
+}
+
+
 /*******************************************************************************************************************************************************
  * 3.3 variance_of_matter_within_R
  * Description:
@@ -401,3 +434,49 @@ double Matter::dskewness_of_matter_within_R_dR(double R, double alpha_1, double 
   
 }
 
+
+
+/*******************************************************************************************************************************************************
+ * 3.5 variance_of_matter_within_R_2D
+ * Description:
+ *  - computes variance of density field when averaged over cylinders of radius R and length L = 1. 
+ * Arguments:
+ *  - R: radius of tophat filter in Mpc/h
+ * 
+*******************************************************************************************************************************************************/
+
+double Matter::variance_of_matter_within_R_2D(double R){
+ 
+  double s_sq = 0.0;
+  double prefactors;
+  
+  prefactors = 1.0/(2.0*constants::pi);
+  integration_parameters params;
+  params.top_hat_radius = R;
+  params.n_s = this->cosmology.n_s;
+  params.pointer_to_Matter = this;
+  integration_parameters * pointer_to_params = &params;
+
+  s_sq = int_gsl_integrate_medium_precision(var_derivs_2D_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
+
+  return prefactors*s_sq;
+  
+}
+
+double Matter::dvariance_of_matter_within_R_dR_2D(double R){
+ 
+  double s_sq = 0.0;
+  double prefactors;
+  
+  prefactors = 1.0/(2.0*constants::pi);
+  integration_parameters params;
+  params.top_hat_radius = R;
+  params.n_s = this->cosmology.n_s;
+  params.pointer_to_Matter = this;
+  integration_parameters * pointer_to_params = &params;
+
+  s_sq = int_gsl_integrate_medium_precision(dvar_dR_derivs_2D_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
+
+  return prefactors*s_sq;
+  
+}

@@ -35,6 +35,8 @@ class Matter {
   vector<double> log_top_hat_radii_for_skewnesses;
   vector<double> top_hat_sphere_skewnesses;
   vector<double> dtop_hat_sphere_skewnesses_dR;
+  vector<double> top_hat_cylinder_variances;
+  vector<double> dtop_hat_cylinder_variances_dR;
 
   void print_P_NL(double w, string output_file);
   void set_spherical_collapse_evolution_of_delta(double z_min, double z_max, int n_time);
@@ -125,6 +127,7 @@ class Matter {
   void set_transfer_function_from_file(string file);
   void set_P_today();
   void set_sphere_variances();
+  void set_cylinder_variances();
   
   void initialize_linear_growth_factor_of_delta();
   void initialize_up_to_second_order_growth_factor_of_delta(double D, double D_prime);  

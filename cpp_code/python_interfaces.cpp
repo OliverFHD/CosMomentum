@@ -67,7 +67,8 @@ extern "C" void initialise_new_Universe_with_Matter_content(double a_initial, do
     
   global_universes.universes.push_back(new Universe(cosmo, a_initial, a_final, does_universe_expand));
   int N_Universe = global_universes.universes.size();
-  global_universes.matter_contents.push_back(new Matter(global_universes.universes[N_Universe-1]));
+  //global_universes.matter_contents.push_back(new Matter(global_universes.universes[N_Universe-1]));
+  global_universes.matter_contents.push_back(new Matter(global_universes.universes[N_Universe-1], "../Density_Split_Statistics/code/Coras_PDFs/input_transfer_manera.dat"));
   int N_Matter = global_universes.matter_contents.size();
   
   error_handling::test_value_of_int(N_Universe, N_Matter, error_handling::EQUAL, "Number of Universes = " + to_string(N_Universe) + " does not match Number of Matter contents = " + to_string(N_Matter) + " .");
@@ -268,6 +269,210 @@ extern "C" void return_PDF(double* delta_values, double* PDF, int n_delta, doubl
   if(R_min < exp(global_universes.matter_contents[index_of_universe]->log_top_hat_radii_for_skewnesses[0])*constants::c_over_e5){
     tau_min = max(tau_min, interpolate_neville_aitken(exp(global_universes.matter_contents[index_of_universe]->log_top_hat_radii_for_skewnesses[0])*constants::c_over_e5, &R_L_values, &tau_values, constants::order_of_interpolation));
   }
+  
+  tau_c = tau_max;
+  
+  delta_c = interpolate_neville_aitken(tau_max, &tau_values, &delta_NL_values, constants::order_of_interpolation);
+  lambda_c = interpolate_neville_aitken(tau_max, &tau_values, &lambda_values, constants::order_of_interpolation);
+  
+  int n_tau = 4*constants::generating_function_coeff_order + 1; // has to be odd number in order to include tau=0 exactly.
+  
+  vector<double> tau_for_fit(n_tau,0.0);
+  vector<double> lambda_for_fit(n_tau,0.0);
+  vector<double> phi_for_fit(n_tau,0.0);
+  vector<double> phi_prime_for_fit(n_tau,0.0);
+  
+  
+  double dt = -tau_min/double(n_tau/2);
+  for(int i = 0; i < n_tau/2; i++){
+    tau_for_fit[i] = tau_min+double(i)*dt;
+  }
+  tau_for_fit[n_tau/2] = 0.0;
+  dt = tau_max/double(n_tau/2);
+  for(int i = 0; i < n_tau/2; i++){
+    tau_for_fit[i+n_tau/2+1] = double(i+1)*dt;
+  }
+  
+  for(int i = 0; i < n_tau; i++){
+    lambda_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &lambda_values, constants::order_of_interpolation);
+    phi_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &phi_values, constants::order_of_interpolation);
+    phi_prime_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &delta_NL_values, constants::order_of_interpolation);
+  }
+  
+  /*
+   * Express functions as polynomials in tau.
+   * 
+   */
+  cout << "Computing tau coefficients:\n";
+  
+  int n_coeff = constants::generating_function_coeff_order;
+  
+  vector<double> coefficients_lambda_of_tau = return_coefficients(&tau_for_fit, &lambda_for_fit, n_coeff);
+  vector<double> coefficients_lambda_of_tau_prime(coefficients_lambda_of_tau.size(), 0.0);
+  for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++) coefficients_lambda_of_tau_prime[i] = coefficients_lambda_of_tau[i+1]*double(i+1);
+  
+  vector<double> coefficients_phi_of_tau = return_coefficients(&tau_for_fit, &phi_for_fit, n_coeff);
+  vector<double> coefficients_phi_of_tau_prime = return_coefficients(&tau_for_fit, &phi_prime_for_fit, n_coeff);
+  
+  /*
+   * Perform the inverse Laplace transform of phi(lambda) to compute p(delta).
+   * 
+   */
+  double ddelta = (delta_max-delta_min)/double(n_delta-1);
+  double delta;
+  double tau_0, lambda_0;
+  double dr;
+  
+  complex<double> lambda;
+  complex<double> lambda_next;
+  complex<double> tau, tau_next;
+  complex<double> phi_prime, phi_prime_next;
+  complex<double> exponent, exponent_next;
+  complex<double> dlambda;
+  complex<double> dlambda_dtau;
+  complex<double> step, first_step;
+  
+  cout << "Staring PDF computation:\n";
+  for(int i = 0; i < n_delta; i++){
+    delta = delta_min + double(i)*ddelta;
+    
+    delta_values[i] = delta;
+    PDF[i] = 0.0;
+      
+    if(delta < delta_c){
+      tau_0 = interpolate_Newton(delta, &delta_NL_values, &tau_values, constants::order_of_interpolation);
+      lambda_0 = interpolate_Newton(delta, &delta_NL_values, &lambda_values, constants::order_of_interpolation);
+    }
+    else{
+      tau_0 = tau_c;
+      lambda_0 = lambda_c;
+    }
+    lambda = complex<double>(lambda_0, 0.0);
+    tau = complex<double>(tau_0, 0.0);
+    exponent = exp(-lambda*delta + return_polnomial_value(tau, &coefficients_phi_of_tau));
+    
+    // sigma_r^2 \approx 1/phi''(lambda_0)
+    double sigma_frac = 0.001;
+    dr = sigma_frac/sqrt(interpolate_neville_aitken_derivative(lambda_0, &lambda_values, &delta_NL_values, constants::order_of_interpolation));
+    dlambda = complex<double>(0.0, dr);
+    int j = 0;
+    
+    if(i%1 == 0){
+      cout << delta << setw(20);
+      cout.flush();
+    }
+    do{
+      lambda_next = lambda + 0.5*dlambda;
+      tau_next = Newtons_method_complex(tau, lambda_next,  &coefficients_lambda_of_tau, &coefficients_lambda_of_tau_prime);
+      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_of_tau_prime);
+      dlambda = -dr*conj(phi_prime_next-delta)/abs(phi_prime_next-delta);
+      lambda_next = lambda + dlambda;
+      tau_next = Newtons_method_complex(tau_next, lambda_next,  &coefficients_lambda_of_tau, &coefficients_lambda_of_tau_prime);
+      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_of_tau_prime);
+      exponent_next = exp(-lambda_next*delta + return_polnomial_value(tau_next, &coefficients_phi_of_tau));
+      
+      step = 0.5*dlambda*(exponent_next+exponent);
+      PDF[i] += step.imag();
+      
+      dlambda = -dr*conj(phi_prime_next-delta)/abs(phi_prime_next-delta);
+      lambda = lambda_next;
+      tau = tau_next;
+      exponent = exponent_next;
+      if(j == 0){
+        first_step = step;
+      }
+      j++;
+    }while(abs(step/first_step) > 1.0e-5 || j < int(6.0/sigma_frac));
+    
+    PDF[i] /= constants::pi;
+    
+    if(i%1 == 0){
+      cout << PDF[i] << setw(20);
+      cout  << '\n';
+    }
+    
+  }
+  
+}
+
+
+
+
+
+extern "C" void return_PDF_2D(double* delta_values, double* PDF, int n_delta, double delta_min, double delta_max, double z, double R_in_comoving_Mpc, double L_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
+  
+  cout << "Computing phi_data:\n";
+  cout.flush();
+  
+  vector<vector<double> > phi_data;
+  
+  phi_data = global_universes.matter_contents[index_of_universe]->compute_phi_of_lambda_2D(z, R_in_comoving_Mpc/constants::c_over_e5, L_in_comoving_Mpc/constants::c_over_e5, f_NL, var_NL_rescale);
+  
+  /*
+   * Determine critical point, where phi(lambda) splits into two branches on the complex plane. 
+   * 
+   */
+  int n_lambda = 0;
+  double lambda_c = phi_data[2][0];
+  double delta_c = phi_data[1][0];
+  double tau_c = phi_data[0][0]/sqrt(phi_data[6][0]);
+  for(int i = 1; i < phi_data[4].size(); i++){
+    if(phi_data[4][i-1] < phi_data[4][i]){
+      n_lambda = i+1;
+      lambda_c = phi_data[4][i];
+      delta_c = phi_data[1][i];
+      tau_c = phi_data[0][i]/sqrt(phi_data[6][i]);
+    }
+    else{
+      i = 2*phi_data[4].size();
+    }
+  }
+  
+  /*
+   * Extract phi_data up to the critical point.
+   * 
+   */
+  vector<double> delta_L_values(n_lambda, 0.0);
+  vector<double> delta_NL_values(n_lambda, 0.0);
+  vector<double> lambda_values(n_lambda, 0.0);
+  vector<double> phi_values(n_lambda, 0.0);
+  vector<double> lambda_values_Gauss(n_lambda, 0.0);
+  vector<double> phi_values_Gauss(n_lambda, 0.0);
+  vector<double> variances(n_lambda, 0.0);
+  vector<double> skewnesses(n_lambda, 0.0);
+  vector<double> R_L_values(n_lambda, 0.0);
+  vector<double> tau_values(n_lambda, 0.0);
+  
+  for(int i = 0; i < tau_values.size(); i++){
+    delta_L_values[i] = phi_data[0][i];
+    delta_NL_values[i] = phi_data[1][i];
+    lambda_values[i] = phi_data[2][i];
+    phi_values[i] = phi_data[3][i];
+    lambda_values_Gauss[i] = phi_data[4][i];
+    phi_values_Gauss[i] = phi_data[5][i];
+    variances[i] = phi_data[6][i];
+    skewnesses[i] = phi_data[7][i];
+    R_L_values[i] = phi_data[8][i];
+    tau_values[i] = delta_L_values[i]/sqrt(variances[i]);
+  }
+  
+  
+  /*
+   * Extract phi_data with equal number and range of points left and right of tau = 0 (better for polynomial fit).
+   * 
+   */
+  
+  double tau_max = 0.9*tau_c;
+  double tau_min = 0.9*tau_values[0];
+  
+  //double R_max = interpolate_neville_aitken(tau_max, &tau_values, &R_L_values, constants::order_of_interpolation);
+  //if(R_max > exp(global_universes.matter_contents[index_of_universe]->log_top_hat_radii_for_skewnesses[global_universes.matter_contents[index_of_universe]->log_top_hat_radii_for_skewnesses.size()-1])*constants::c_over_e5){
+  //  tau_max = min(tau_max, interpolate_neville_aitken(exp(global_universes.matter_contents[index_of_universe]->log_top_hat_radii_for_skewnesses[global_universes.matter_contents[index_of_universe]->log_top_hat_radii_for_skewnesses.size()-1])*constants::c_over_e5, &R_L_values, &tau_values, constants::order_of_interpolation));
+  //}
+  //double R_min = interpolate_neville_aitken(tau_min, &tau_values, &R_L_values, constants::order_of_interpolation);
+  //if(R_min < exp(global_universes.matter_contents[index_of_universe]->log_top_hat_radii_for_skewnesses[0])*constants::c_over_e5){
+  //  tau_min = max(tau_min, interpolate_neville_aitken(exp(global_universes.matter_contents[index_of_universe]->log_top_hat_radii_for_skewnesses[0])*constants::c_over_e5, &R_L_values, &tau_values, constants::order_of_interpolation));
+  //}
   
   tau_c = tau_max;
   

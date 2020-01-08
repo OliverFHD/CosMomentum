@@ -16,7 +16,8 @@ class Matter {
 
   void print_Newtonian_growth_factor(string file_name);
   void return_delta_NL_of_delta_L_and_dF_ddelta_3D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values);
-    
+  void return_delta_NL_of_delta_L_and_dF_ddelta_2D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values);
+  
   double Newtonian_linear_power_spectrum(double k, double e);
   double transfer_function_at(double k);
   double current_P_NL_at(double ln_k);
@@ -35,6 +36,8 @@ class Matter {
   vector<double> log_top_hat_radii_for_skewnesses;
   vector<double> top_hat_sphere_skewnesses;
   vector<double> dtop_hat_sphere_skewnesses_dR;
+  
+  vector<double> log_top_hat_cylinder_radii;
   vector<double> top_hat_cylinder_variances;
   vector<double> dtop_hat_cylinder_variances_dR;
 
@@ -46,6 +49,9 @@ class Matter {
   double variance_of_matter_within_R(double R);
   double dvariance_of_matter_within_R_dR(double R);
   double variance_of_matter_within_R_NL(double R);
+  double variance_of_matter_within_R_2D(double R);
+  double dvariance_of_matter_within_R_dR_2D(double R);
+  double variance_of_matter_within_R_NL_2D(double R);
   
   ///// Needed for PNG calculation:
   double skewness_of_matter_within_R(double R, double alpha_1, double alpha_2, double alpha_3);
@@ -63,6 +69,7 @@ class Matter {
   vector<vector<double> > return_power_spectra(double eta, double R);
   
   vector<vector<double> > compute_phi_of_lambda_3D(double z, double R, double f_NL, double var_NL_rescale);
+  vector<vector<double> > compute_phi_of_lambda_2D(double z, double R, double L, double f_NL, double var_NL_rescale);
   vector<vector<double> > compute_phi_of_lambda_3D_EdS(double z, double R, double f_NL, double var_NL_rescale);
   
   int return_N_of_lambda(){return this->delta_values_for_spherical_collapse.size();};

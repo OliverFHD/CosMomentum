@@ -97,6 +97,17 @@ void Matter::return_delta_NL_of_delta_L_and_dF_ddelta_3D(double eta, vector<doub
 }
 
 
+void Matter::return_delta_NL_of_delta_L_and_dF_ddelta_2D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values){
+  (*delta_L_values) = this->delta_values_for_cylindrical_collapse;
+  (*delta_NL_values) = this->delta_values_for_cylindrical_collapse;
+  (*delta_NL_prime_values) = this->delta_values_for_cylindrical_collapse;
+  for(int i = 0; i < this->delta_values_for_cylindrical_collapse.size(); i++){
+    (*delta_NL_values)[i] = interpolate_neville_aitken(eta, &this->eta_NL_for_cylindrical_collapse, &this->cylindrical_collapse_evolution_of_delta[i], constants::order_of_interpolation);
+    (*delta_NL_prime_values)[i] = interpolate_neville_aitken(eta, &this->eta_NL_for_cylindrical_collapse, &this->cylindrical_collapse_evolution_of_delta_ddelta[i], constants::order_of_interpolation);
+  }
+}
+
+
 double Matter::return_D_of_eta(double eta){
   
   return interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);

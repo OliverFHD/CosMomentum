@@ -463,6 +463,24 @@ double Matter::variance_of_matter_within_R_2D(double R){
   
 }
 
+double Matter::variance_of_matter_within_R_NL_2D(double R){
+ 
+  double s_sq = 0.0;
+  double prefactors;
+  
+  prefactors = 1.0/(2.0*constants::pi);
+  integration_parameters params;
+  params.top_hat_radius = R;
+  params.n_s = this->cosmology.n_s;
+  params.pointer_to_Matter = this;
+  integration_parameters * pointer_to_params = &params;
+
+  s_sq = int_gsl_integrate_medium_precision(var_NL_derivs_2D_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
+
+  return prefactors*s_sq;
+  
+}
+
 double Matter::dvariance_of_matter_within_R_dR_2D(double R){
  
   double s_sq = 0.0;

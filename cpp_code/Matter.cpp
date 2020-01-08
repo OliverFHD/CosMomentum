@@ -101,10 +101,14 @@ Matter::Matter(Universe* uni){
   
   cout << "Setting sphere variances.\n";
   this->set_sphere_variances();
+  cout << "Setting cylinder variances.\n";
+  this->set_cylinder_variances();
   this->skewness_initialisation = UNINITIALISED;
   
   cout << "Setting spherical collapse evolution.\n";
   this->set_spherical_collapse_evolution_of_delta(0.0, 3.0, 1000);
+  cout << "Setting cylindrical collapse evolution.\n";
+  this->set_cylindrical_collapse_evolution_of_delta(0.0, 3.0, 1000);
   cout << "Done.\n";
 }
 
@@ -134,10 +138,14 @@ Matter::Matter(Universe* uni, string file_for_transfer_function){
   
   cout << "Setting sphere variances.\n";
   this->set_sphere_variances();
+  cout << "Setting cylinder variances.\n";
+  this->set_cylinder_variances();
   this->skewness_initialisation = UNINITIALISED;
   
   cout << "Setting spherical collapse evolution.\n";
   this->set_spherical_collapse_evolution_of_delta(0.0, 3.0, 1000);
+  cout << "Setting cylindrical collapse evolution.\n";
+  this->set_cylindrical_collapse_evolution_of_delta(0.0, 3.0, 1000);
   cout << "Done.\n";
 }
 
@@ -524,7 +532,7 @@ void Matter::set_spherical_collapse_evolution_of_delta(double z_min, double z_ma
 void Matter::set_cylindrical_collapse_evolution_of_delta(double z_min, double z_max, int n_time){
 
   double delta_min = -10.0;
-  double delta_max = 1.64;
+  double delta_max = 1.4;
   double ddelta = 0.001;
   double delta = delta_min-ddelta;
   double eta_min = this->universe->eta_at_a(1.0/(1+z_max));
@@ -649,11 +657,6 @@ vector<vector<double> > Matter::compute_phi_of_lambda_3D(double z, double R, dou
     skew_L_RL *= f_NL;
     dskew_L_RL_dR *= f_NL;
     
-    j_values_Gauss[d] = delta_L_values[d]/var_L_RL;
-    lambda_values_Gauss[d] = j_values_Gauss[d]/delta_NL_prime_values[d];
-    lambda_values_Gauss[d] -= RL/(3.0*(1.0+delta_NL_values[d]))*dvar_L_RL_dR/2.0*pow(j_values_Gauss[d],2);
-    phi_values_Gauss[d] = lambda_values_Gauss[d]*delta_NL_values[d]-delta_L_values[d]*j_values_Gauss[d] + var_L_RL/2.0*pow(j_values_Gauss[d],2);
-    
     if(f_NL != 0.0){
       
       if(this->skewness_initialisation == UNINITIALISED){
@@ -768,11 +771,6 @@ vector<vector<double> > Matter::compute_phi_of_lambda_3D_EdS(double z, double R,
     skew_L_RL *= f_NL;
     dskew_L_RL_dR *= f_NL;
     
-    j_values_Gauss[d] = delta_L_values[d]/var_L_RL;
-    lambda_values_Gauss[d] = j_values_Gauss[d]/delta_NL_prime_values[d];
-    lambda_values_Gauss[d] -= RL/(3.0*(1.0+delta_NL_values[d]))*dvar_L_RL_dR/2.0*pow(j_values_Gauss[d],2);
-    phi_values_Gauss[d] = lambda_values_Gauss[d]*delta_NL_values[d]-delta_L_values[d]*j_values_Gauss[d] + var_L_RL/2.0*pow(j_values_Gauss[d],2);
-    
     if(f_NL != 0.0){
       
       if(this->skewness_initialisation == UNINITIALISED){
@@ -829,6 +827,99 @@ vector<vector<double> > Matter::compute_phi_of_lambda_3D_EdS(double z, double R,
 }
 
 
+
+vector<vector<double> > Matter::compute_phi_of_lambda_2D(double z, double R, double L, double f_NL, double var_NL_rescale){
+  
+  double eta = this->universe->eta_at_a(1.0/(1.0+z));
+  double log_R = log(R);
+  double RL, log_RL;
+  
+  this->current_P_NL = this->P_NL(eta);
+  this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
+  double D = interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
+  double D_sq = pow(D,2);
+  cout << "Test 1\n";
+  double var_NL_R = variance_of_matter_within_R_NL_2D(R)*var_NL_rescale/L;
+  double var_L_R = variance_of_matter_within_R_2D(R)/L;
+  double var_L_RL, skew_L_RL, dvar_L_RL_dR, dskew_L_RL_dR;
+  cout << "Test 2\n";
+  
+  vector<double> delta_L_values;
+  vector<double> delta_NL_values;
+  vector<double> delta_NL_prime_values;
+  
+  this->return_delta_NL_of_delta_L_and_dF_ddelta_2D(eta, &delta_L_values, &delta_NL_values, &delta_NL_prime_values);
+  
+  cout << "Test 3\n";
+  vector<vector<double> > data(9, vector<double>(delta_L_values.size(), 0.0));
+  
+  vector<double> j_values = delta_L_values;
+  vector<double> lambda_values = delta_L_values;
+  vector<double> phi_values = delta_L_values;
+  
+  vector<double> j_values_Gauss = delta_L_values;
+  vector<double> lambda_values_Gauss = delta_L_values;
+  vector<double> phi_values_Gauss = delta_L_values;
+  
+  int N_radii = this->log_top_hat_radii.size();
+  double log_R_min = this->log_top_hat_radii[0];
+  double log_R_max = this->log_top_hat_radii[N_radii-1];
+  
+  double var_L_R_min = this->top_hat_sphere_variances[0];
+  double var_L_R_max = this->top_hat_sphere_variances[N_radii-1];
+  
+  double dvar_L_R_min_dR = this->dtop_hat_sphere_variances_dR[0];
+  double dvar_L_R_max_dR = this->dtop_hat_sphere_variances_dR[N_radii-1];
+  
+  cout << "Test 4\n";
+  for(int d = 0; d < delta_L_values.size(); d++){
+    log_RL = log_R + log(1.0+delta_NL_values[d])/2.0;
+    RL = exp(log_RL);
+    
+    var_L_RL = interpolate_neville_aitken(log_RL, &this->log_top_hat_cylinder_radii, &this->top_hat_cylinder_variances, constants::order_of_interpolation);
+    dvar_L_RL_dR = interpolate_neville_aitken(log_RL, &this->log_top_hat_cylinder_radii, &this->dtop_hat_cylinder_variances_dR, constants::order_of_interpolation);
+    
+    var_L_RL /= L;
+    dvar_L_RL_dR /= L;
+    
+    j_values_Gauss[d] = delta_L_values[d]/var_L_RL;
+    lambda_values_Gauss[d] = j_values_Gauss[d]/delta_NL_prime_values[d];
+    lambda_values_Gauss[d] -= RL/(2.0*(1.0+delta_NL_values[d]))*dvar_L_RL_dR/2.0*pow(j_values_Gauss[d],2);
+    phi_values_Gauss[d] = lambda_values_Gauss[d]*delta_NL_values[d]-delta_L_values[d]*j_values_Gauss[d] + var_L_RL/2.0*pow(j_values_Gauss[d],2);
+    
+    if(f_NL != 0.0){
+      
+      cerr << "ERROR: f_NL != 0 not yet implemented for cylindrical smoothing.\n";
+      exit(1);
+      
+    }
+    else{
+      j_values[d] = j_values_Gauss[d];
+      lambda_values[d] = lambda_values_Gauss[d];
+      phi_values[d] = phi_values_Gauss[d];
+    }
+    
+    phi_values[d] *= D_sq*var_L_R/var_NL_R;
+    phi_values_Gauss[d] *= D_sq*var_L_R/var_NL_R;
+    lambda_values[d] *= D_sq*var_L_R/var_NL_R;
+    lambda_values_Gauss[d] *= D_sq*var_L_R/var_NL_R;
+        
+    data[0][d] = delta_L_values[d];
+    data[1][d] = delta_NL_values[d];
+    data[2][d] = lambda_values[d];
+    data[3][d] = phi_values[d];
+    data[4][d] = lambda_values_Gauss[d];
+    data[5][d] = phi_values_Gauss[d];
+    data[6][d] = var_L_RL;
+    data[7][d] = skew_L_RL;
+    data[8][d] = RL*constants::c_over_e5;
+    
+  }
+  cout << "Test 5\n";
+  
+  return data;
+  
+}
 
 
 

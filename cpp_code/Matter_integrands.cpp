@@ -147,6 +147,20 @@ double var_derivs_2D_gsl(double lnk, void *params){
   
 }
 
+double var_NL_derivs_2D_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  double index = 2.0;
+  double WR = w_R_2D(k, integration_params->top_hat_radius);
+  double P = pointer_to_Matter->current_P_NL_at(lnk);
+  
+  return pow(k,index)*P*WR*WR;
+  
+}
+
 double dvar_dR_derivs_2D_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;

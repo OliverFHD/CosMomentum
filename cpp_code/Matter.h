@@ -4,15 +4,6 @@
 #include <stdlib.h>
 
 
-struct Matter_status {
-  
-  double eta, a;
-  double D_plus;
-  double D_21, D_22;
-  
-};
-
-
 class Matter {
 
  public:
@@ -47,6 +38,7 @@ class Matter {
 
   void print_P_NL(double w, string output_file);
   void set_spherical_collapse_evolution_of_delta(double z_min, double z_max, int n_time);
+  void set_cylindrical_collapse_evolution_of_delta(double z_min, double z_max, int n_time);
     
   double variance_of_matter_within_R_before_norm_was_determined(double R);
   double variance_of_matter_within_R(double R);
@@ -69,8 +61,10 @@ class Matter {
   vector<vector<double> > return_power_spectra(double eta, double R);
   
   vector<vector<double> > compute_phi_of_lambda_3D(double z, double R, double f_NL, double var_NL_rescale);
+  vector<vector<double> > compute_phi_of_lambda_3D_EdS(double z, double R, double f_NL, double var_NL_rescale);
   
   int return_N_of_lambda(){return this->delta_values_for_spherical_collapse.size();};
+  int return_N_of_lambda_2D(){return this->delta_values_for_cylindrical_collapse.size();};
   void return_2rd_moment_and_derivative(double R, double *variance, double *dvariance_dR);
   
   void set_sphere_skewnesses(int PNG_modus);
@@ -115,6 +109,12 @@ class Matter {
   vector<vector<double> > spherical_collapse_evolution_of_delta_ddelta;
   vector<vector<double> > spherical_collapse_evolution_of_delta_ddelta2;
   vector<double> eta_NL_for_spherical_collapse;
+
+  vector<double> delta_values_for_cylindrical_collapse;
+  vector<vector<double> > cylindrical_collapse_evolution_of_delta;
+  vector<vector<double> > cylindrical_collapse_evolution_of_delta_ddelta;
+  vector<vector<double> > cylindrical_collapse_evolution_of_delta_ddelta2;
+  vector<double> eta_NL_for_cylindrical_collapse;
   
   cosmological_model cosmology;
   
@@ -160,3 +160,59 @@ class Matter {
   double current_r_sq;
    
 };
+
+
+
+
+
+
+
+void return_EdS_spherical_collapse(double D, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values){
+  
+  double delta_min = -10.0;
+  double delta_max = 1.674;
+  double ddelta = 0.001;
+  double delta = delta_min-ddelta;
+  
+  int n = 1+int((delta_max - delta_min)/ddelta);
+  
+  
+  delta_L_values->resize(n, 0.0);
+  delta_NL_values->resize(n, 0.0);
+  delta_NL_prime_values->resize(n, 0.0);
+  
+  for(int i = 0; i < n; i++){
+    delta += ddelta;
+    (*delta_L_values)[i] = delta;
+  }
+  
+  fstream input;
+  input.open("Data/pretabulated_data_for_EdS/EdS_spherical_collapse.dat");
+  
+  string headline;
+  double dummy;
+  vector<double> dummy_delta_L(0, 0.0);
+  vector<double> dummy_delta_NL(0, 0.0);
+  vector<double> dummy_delta_NL_prime(0, 0.0);
+  
+  std::getline(input, headline);
+  
+  while(input.good()){
+    input >> dummy;
+    if(input.good()){
+      dummy_delta_L.push_back(dummy);
+      input >> dummy; dummy_delta_NL.push_back(dummy);
+      input >> dummy; dummy_delta_NL_prime.push_back(dummy);
+    }
+  }
+  
+  
+  for(int i = 0; i < n; i++){
+    delta = D*(*delta_L_values)[i];
+    (*delta_NL_values)[i] = interpolate_neville_aitken(delta, &dummy_delta_L, &dummy_delta_NL, constants::order_of_interpolation);
+    (*delta_NL_prime_values)[i] = D*interpolate_neville_aitken(delta, &dummy_delta_L, &dummy_delta_NL_prime, constants::order_of_interpolation);
+  }
+  
+  input.close();
+}
+

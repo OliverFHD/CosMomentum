@@ -5,7 +5,8 @@
 <---> As of now, this code can compute
 - the probability distribution function (PDF) of the 3D matter density field,
 - the cumulant generating function (CGF) of the 3D matter density field,
-- individual cumulants of the 3D matter density field.
+- individual cumulants of the 3D matter density field,
+- all of this for Gaussian and 3 types of non-Gaussian initial conditions.
 
 <---> Features that will be added in the near future are
 -- statistics of 2D projections of the density field,

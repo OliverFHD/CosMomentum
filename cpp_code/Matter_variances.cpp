@@ -365,7 +365,7 @@ void Matter::set_sphere_skewnesses_from_eps3_powerlaw_approximation(int PNG_modu
     this->top_hat_sphere_skewnesses[i]  = A_eps3*pow(R/R_0, n_eps3);
     this->top_hat_sphere_skewnesses[i] *= pow(this->top_hat_sphere_variances[i],1.5);
     
-    this->dtop_hat_sphere_skewnesses_dR[i]  = this->top_hat_sphere_skewnesses[i]*(n_eps3/R + 1.5*this->top_hat_sphere_variances[i]/this->dtop_hat_sphere_variances_dR[i]);
+    this->dtop_hat_sphere_skewnesses_dR[i]  = this->top_hat_sphere_skewnesses[i]*(n_eps3/R + 1.5*this->dtop_hat_sphere_variances_dR[i]/this->top_hat_sphere_variances[i]);
     
   }
   
@@ -475,7 +475,7 @@ void Matter::set_cylinder_skewnesses_from_eps3_powerlaw_approximation(int PNG_mo
     this->top_hat_cylinder_skewnesses[i]  = A_eps3*pow(R/R_0, n_eps3);
     this->top_hat_cylinder_skewnesses[i] *= pow(this->top_hat_cylinder_variances[i],1.5);
     
-    this->dtop_hat_cylinder_skewnesses_dR[i]  = this->top_hat_cylinder_skewnesses[i]*(n_eps3/R + 1.5*this->top_hat_cylinder_variances[i]/this->dtop_hat_cylinder_variances_dR[i]);
+    this->dtop_hat_cylinder_skewnesses_dR[i]  = this->top_hat_cylinder_skewnesses[i]*(n_eps3/R + 1.5*this->dtop_hat_cylinder_variances_dR[i]/this->top_hat_cylinder_variances[i]);
     
   }
   cout << "Arrays set.\n";

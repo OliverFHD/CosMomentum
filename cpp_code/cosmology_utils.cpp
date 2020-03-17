@@ -70,6 +70,24 @@ double w_R_2D(double k, double R){
   return 1.0;
 }
 
+double w_L_1D(double k, double L){
+  
+  double x = k*L;
+  if(x > eps_from_0)
+    return 2.0*sin(x/2.0)/x;
+
+  return 1.0;
+}
+
+double w_L_1D_Gauss(double k, double L){
+  
+  double x = k*L;
+  if(x > eps_from_0)
+    return exp(-0.5*pow(x/sqrtPi_times_2,2));
+
+  return 1.0;
+}
+
 double deriv_of_w_R_2D(double k, double R){
   
   double x = k*R;

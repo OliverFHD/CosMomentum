@@ -5,8 +5,10 @@
 struct integration_parameters{
   
   double top_hat_radius;
+  double top_hat_length;
   double second_top_hat_radius;
   double k;
+  double k_1, k_2;
   double lnk;
   double r;
   double n_s;
@@ -132,6 +134,182 @@ double dvar_dR_derivs_gsl(double lnk, void *params){
 }
 
 
+
+double var_derivs_2D_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  double index = 2.0;
+  double WR = w_R_2D(k, integration_params->top_hat_radius);
+  double P = pointer_to_Matter->current_P_L_at(lnk);
+  
+  return pow(k,index)*P*WR*WR;
+  
+}
+
+double var_NL_derivs_2D_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  double index = 2.0;
+  double WR = w_R_2D(k, integration_params->top_hat_radius);
+  double P = pointer_to_Matter->current_P_NL_at(lnk);
+  
+  return pow(k,index)*P*WR*WR;
+  
+}
+
+double var_NL_derivs_2D_2_gsl(double lnk_2D, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k_2D = exp(lnk_2D);
+  double lnk = 0.5*log(k_2D*k_2D+pow(integration_params->k,2));
+  double index = 2.0;
+  double WR = w_R_2D(k_2D, integration_params->top_hat_radius);
+  double P = pointer_to_Matter->current_P_NL_at(lnk);
+  
+  return pow(k_2D,index)*P*WR*WR;
+  
+}
+
+double var_NL_derivs_2D_1_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  double index = 1.0;
+  double WL = w_L_1D(k, integration_params->top_hat_length);
+  integration_params->k = k;
+  
+  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(var_NL_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);;
+  
+}
+
+double var_derivs_2D_2_gsl(double lnk_2D, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k_2D = exp(lnk_2D);
+  double lnk = 0.5*log(k_2D*k_2D+pow(integration_params->k,2));
+  double index = 2.0;
+  double WR = w_R_2D(k_2D, integration_params->top_hat_radius);
+  double P = pointer_to_Matter->current_P_L_at(lnk);
+  
+  return pow(k_2D,index)*P*WR*WR;
+  
+}
+
+double var_derivs_2D_1_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  double index = 1.0;
+  double WL = w_L_1D(k, integration_params->top_hat_length);
+  integration_params->k = k;
+  
+  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(var_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);;
+  
+}
+
+
+double var_derivs_2D_GaussianLOS_1_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  double index = 1.0;
+  double WL = w_L_1D_Gauss(k, integration_params->top_hat_length);
+  integration_params->k = k;
+  
+  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(var_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);;
+  
+}
+
+double var_NL_derivs_2D_GaussianLOS_1_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  double index = 1.0;
+  double WL = w_L_1D_Gauss(k, integration_params->top_hat_length);
+  integration_params->k = k;
+  
+  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(var_NL_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);;
+  
+}
+
+
+
+double dvar_dR_derivs_2D_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  double index = 2.0;
+  double WR = w_R_2D(k, integration_params->top_hat_radius);
+  double dWR_dR = deriv_of_w_R_2D(k, integration_params->top_hat_radius);
+  double P = pointer_to_Matter->current_P_L_at(lnk);
+  
+  return pow(k,index)*P*2.0*dWR_dR*WR;
+  
+}
+
+double dvar_dR_derivs_2D_2_gsl(double lnk_2D, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k_2D = exp(lnk_2D);
+  double lnk = 0.5*log(k_2D*k_2D+pow(integration_params->k,2));
+  double index = 2.0;
+  double WR = w_R_2D(k_2D, integration_params->top_hat_radius);
+  double dWR_dR = deriv_of_w_R_2D(k_2D, integration_params->top_hat_radius);
+  double P = pointer_to_Matter->current_P_L_at(lnk);
+  
+  return pow(k_2D,index)*P*2.0*WR*dWR_dR;
+  
+}
+
+double dvar_dR_derivs_2D_1_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  double index = 1.0;
+  double WL = w_L_1D(k, integration_params->top_hat_length);
+  integration_params->k = k;
+  
+  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(dvar_dR_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);;
+  
+}
+
+double dvar_dR_derivs_2D_GaussianLOS_1_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  double index = 1.0;
+  double WL = w_L_1D_Gauss(k, integration_params->top_hat_length);
+  integration_params->k = k;
+  
+  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(dvar_dR_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);;
+  
+}
 
 
 
@@ -277,6 +455,183 @@ double dskewness_integral_1_derivs_gsl(double lnk, void *params){
   return integral*pow(k, 4.0-4.0*alpha)*pow(T, 1.0-2.0*alpha)*pow(P, alpha);
   
 }
+
+
+/**************************************
+ * 
+ * 2D skewness integrands start here.
+ * 
+ * ************************************/
+
+
+
+
+double skewness_integral_2D_3_derivs_gsl(double phi, void *params){
+  
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k_1 = integration_params->k_1;
+  double k_2 = integration_params->k_2;
+  double cosphi = cos(phi);
+  double k;
+  
+  if (cosphi >= 1.0)
+    k = k_1 + k_2;
+  else if (cosphi <= -1.0)
+    k = abs(k_1 - k_2);
+  else
+    k = sqrt(k_1*k_1 + k_2*k_2 + 2.0*k_1*k_2*cosphi);
+  
+  if(k > maximal_wave_number_in_H0_units || k < minimal_wave_number_in_H0_units)
+    return 0.0;
+  
+  double WR = w_R_2D(k, integration_params->top_hat_radius);
+  double T = pointer_to_Matter->transfer_function_at(k);
+  double P = pointer_to_Matter->current_P_L_at(log(k));
+  double alpha = integration_params->alpha_3;
+  
+  return pow(k, 2.0-4.0*alpha)*pow(T, 1.0-2.0*alpha)*WR*pow(P, alpha);
+  
+}
+
+double skewness_integral_2D_2_derivs_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  integration_params->k_2 = k;
+  double WR = w_R_2D(k, integration_params->top_hat_radius);
+  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double T = pointer_to_Matter->transfer_function_at(k);
+  double alpha = integration_params->alpha_2;
+  
+  double integral = int_gsl_integrate_low_precision(skewness_integral_2D_3_derivs_gsl,params,0.0,constants::pi,NULL,1000);
+  
+  return integral*pow(k, 4.0-4.0*alpha)*pow(T, 1.0-2.0*alpha)*WR*pow(P, alpha);
+  
+}
+ 
+
+double skewness_integral_2D_1_derivs_gsl(double lnk, void *params){
+  
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  integration_params->k_1 = k;
+  double WR = w_R_2D(k, integration_params->top_hat_radius);
+  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double T = pointer_to_Matter->transfer_function_at(k);
+  double P_phi = P;
+  
+  double log_k_max = min(constants::product_of_kmax_and_R/integration_params->top_hat_radius, maximal_wave_number_in_H0_units);
+  log_k_max = log(log_k_max);
+  
+  double integral = int_gsl_integrate_low_precision(skewness_integral_2D_2_derivs_gsl,params,log_minimal_wave_number_in_H0_units,log_k_max,NULL,1000);
+  
+  double result = 0.0;
+  double alpha = integration_params->alpha_1;
+  
+  return integral*pow(k, 4.0-4.0*alpha)*pow(T, 1.0-2.0*alpha)*WR*pow(P, alpha);
+  
+}
+
+
+
+
+double dskewness_integral_2D_3_derivs_gsl(double phi, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k_1 = integration_params->k_1;
+  double k_2 = integration_params->k_2;
+  double cosphi = cos(phi);
+  double k;
+  
+  if (cosphi >= 1.0)
+    k = k_1 + k_2;
+  else if (cosphi <= -1.0)
+    k = abs(k_1 - k_2);
+  else
+    k = sqrt(k_1*k_1 + k_2*k_2 + 2.0*k_1*k_2*cosphi);
+  
+  if(k > maximal_wave_number_in_H0_units || k < minimal_wave_number_in_H0_units)
+    return 0.0;
+  
+  
+  integration_params->WR_3 = w_R_2D(k, integration_params->top_hat_radius);
+  integration_params->dWR_3 = deriv_of_w_R_2D(k, integration_params->top_hat_radius);
+  double T = pointer_to_Matter->transfer_function_at(k);
+  double P = pointer_to_Matter->current_P_L_at(log(k));
+  double alpha = integration_params->alpha_3;
+  
+  double W_dervis = 0.0;
+  W_dervis += integration_params->dWR_1*integration_params->WR_2*integration_params->WR_3;
+  W_dervis += integration_params->WR_1*integration_params->dWR_2*integration_params->WR_3;
+  W_dervis += integration_params->WR_1*integration_params->WR_2*integration_params->dWR_3;
+  
+  return pow(k, 2.0-4.0*alpha)*pow(T, 1.0-2.0*alpha)*W_dervis*pow(P, alpha);
+  
+}
+
+double dskewness_integral_2D_2_derivs_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  integration_params->k_2 = k;
+  integration_params->WR_2 = w_R_2D(k, integration_params->top_hat_radius);
+  integration_params->dWR_2 = deriv_of_w_R_2D(k, integration_params->top_hat_radius);
+  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double T = pointer_to_Matter->transfer_function_at(k);
+  double alpha = integration_params->alpha_2;
+  
+  double integral = int_gsl_integrate_low_precision(dskewness_integral_2D_3_derivs_gsl,params,0.0,constants::pi,NULL,1000);
+  
+  return integral*pow(k, 4.0-4.0*alpha)*pow(T, 1.0-2.0*alpha)*pow(P, alpha);
+  
+}
+ 
+
+double dskewness_integral_2D_1_derivs_gsl(double lnk, void *params){
+  
+  integration_parameters *integration_params = (integration_parameters *) params;
+  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  
+  double k = exp(lnk);
+  integration_params->k_1 = k;
+  integration_params->WR_1 = w_R_2D(k, integration_params->top_hat_radius);
+  integration_params->dWR_1 = deriv_of_w_R_2D(k, integration_params->top_hat_radius);
+  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double T = pointer_to_Matter->transfer_function_at(k);
+  double P_phi = P;
+  
+  double log_k_max = min(constants::product_of_kmax_and_R/integration_params->top_hat_radius, maximal_wave_number_in_H0_units);
+  log_k_max = log(log_k_max);
+  
+  double integral = int_gsl_integrate_low_precision(dskewness_integral_2D_2_derivs_gsl,params,log_minimal_wave_number_in_H0_units,log_k_max,NULL,1000);
+  
+  double result = 0.0;
+  double alpha = integration_params->alpha_1;
+  
+  return integral*pow(k, 4.0-4.0*alpha)*pow(T, 1.0-2.0*alpha)*pow(P, alpha);
+  
+}
+
+
+
+
+/**************************************
+ * 
+ * 2D skewness integrands end here.
+ * 
+ * ************************************/
+
+
 
 
 double halofit_sig_sq_gsl(double lnk, void *params){

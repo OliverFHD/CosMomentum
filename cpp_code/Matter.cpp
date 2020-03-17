@@ -82,6 +82,7 @@ Matter::Matter(Universe* uni){
   
   this->set_initial_conditions();
   this->initialize_linear_growth_factor_of_delta();
+  this->print_growth_history("linear_growth_history.dat");
   this->initialize_up_to_second_order_growth_factor_of_delta(2.0/7.0*this->D_initial*this->D_initial, 4.0/7.0*this->D_initial*this->D_prime_initial);
   
   double z_of_f_NL_rescale = 500.0;
@@ -104,6 +105,7 @@ Matter::Matter(Universe* uni){
   cout << "Setting cylinder variances.\n";
   this->set_cylinder_variances();
   this->skewness_initialisation = UNINITIALISED;
+  this->skewness_initialisation_2D = UNINITIALISED;
   
   cout << "Setting spherical collapse evolution.\n";
   this->set_spherical_collapse_evolution_of_delta(0.0, 3.0, 1000);
@@ -124,6 +126,7 @@ Matter::Matter(Universe* uni, string file_for_transfer_function){
   
   this->set_initial_conditions();
   this->initialize_linear_growth_factor_of_delta();
+  this->print_growth_history("linear_growth_history.dat");
   this->initialize_up_to_second_order_growth_factor_of_delta(2.0/7.0*this->D_initial*this->D_initial, 4.0/7.0*this->D_initial*this->D_prime_initial);
   
   double z_of_f_NL_rescale = 500.0;
@@ -141,6 +144,7 @@ Matter::Matter(Universe* uni, string file_for_transfer_function){
   cout << "Setting cylinder variances.\n";
   this->set_cylinder_variances();
   this->skewness_initialisation = UNINITIALISED;
+  this->skewness_initialisation_2D = UNINITIALISED;
   
   cout << "Setting spherical collapse evolution.\n";
   this->set_spherical_collapse_evolution_of_delta(0.0, 3.0, 1000);
@@ -839,7 +843,7 @@ vector<vector<double> > Matter::compute_phi_of_lambda_2D(double z, double R, dou
   double D = interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
   double D_sq = pow(D,2);
   cout << "Test 1\n";
-  double var_NL_R = variance_of_matter_within_R_NL_2D(R)*var_NL_rescale/L;
+  double var_NL_R = variance_of_matter_within_R_NL_2D(R, L)*var_NL_rescale;
   double var_L_R = variance_of_matter_within_R_2D(R)/L;
   double var_L_RL, skew_L_RL, dvar_L_RL_dR, dskew_L_RL_dR;
   cout << "Test 2\n";
@@ -862,14 +866,14 @@ vector<vector<double> > Matter::compute_phi_of_lambda_2D(double z, double R, dou
   vector<double> phi_values_Gauss = delta_L_values;
   
   int N_radii = this->log_top_hat_radii.size();
-  double log_R_min = this->log_top_hat_radii[0];
-  double log_R_max = this->log_top_hat_radii[N_radii-1];
+  double log_R_min = this->log_top_hat_cylinder_radii[0];
+  double log_R_max = this->log_top_hat_cylinder_radii[N_radii-1];
   
-  double var_L_R_min = this->top_hat_sphere_variances[0];
-  double var_L_R_max = this->top_hat_sphere_variances[N_radii-1];
+  double var_L_R_min = this->top_hat_cylinder_variances[0];
+  double var_L_R_max = this->top_hat_cylinder_variances[N_radii-1];
   
-  double dvar_L_R_min_dR = this->dtop_hat_sphere_variances_dR[0];
-  double dvar_L_R_max_dR = this->dtop_hat_sphere_variances_dR[N_radii-1];
+  double dvar_L_R_min_dR = this->dtop_hat_cylinder_variances_dR[0];
+  double dvar_L_R_max_dR = this->dtop_hat_cylinder_variances_dR[N_radii-1];
   
   cout << "Test 4\n";
   for(int d = 0; d < delta_L_values.size(); d++){
@@ -887,11 +891,39 @@ vector<vector<double> > Matter::compute_phi_of_lambda_2D(double z, double R, dou
     lambda_values_Gauss[d] -= RL/(2.0*(1.0+delta_NL_values[d]))*dvar_L_RL_dR/2.0*pow(j_values_Gauss[d],2);
     phi_values_Gauss[d] = lambda_values_Gauss[d]*delta_NL_values[d]-delta_L_values[d]*j_values_Gauss[d] + var_L_RL/2.0*pow(j_values_Gauss[d],2);
     
+    skew_L_RL = interpolate_neville_aitken(log_RL, &this->log_top_hat_cylinder_radii_for_skewnesses, &this->top_hat_cylinder_skewnesses, constants::order_of_interpolation);
+    dskew_L_RL_dR = interpolate_neville_aitken(log_RL, &this->log_top_hat_cylinder_radii_for_skewnesses, &this->dtop_hat_cylinder_skewnesses_dR, constants::order_of_interpolation);
+    
+    skew_L_RL *= f_NL/(L*L);
+    dskew_L_RL_dR *= f_NL/(L*L);
+    
     if(f_NL != 0.0){
       
-      cerr << "ERROR: f_NL != 0 not yet implemented for cylindrical smoothing.\n";
-      exit(1);
+      if(this->skewness_initialisation_2D == UNINITIALISED){
+        cerr << "ERROR: skewness_initialisation == UNINITIALISED , i.e.\n";
+        cerr << "no primordial skewnesses have been computed.\n";
+        cerr << "either set f_NL = 0.0 or initialise skewnesses.\n";
+        exit(1);
+      }
       
+      /*
+       * phi(j) = var/2 * j**2 + skew/6*j**3
+       * phi'(j) = var * j + skew/2*j**2
+       * => 0 = j**2 + 2 var/skew * j - 2/skew * delta
+       * => j = -var/skew \pm sqrt(var**2/skew**2 + 2/skew * delta)
+       */
+      
+      j_values[d] = -var_L_RL/skew_L_RL;
+      if(skew_L_RL > 0.0)
+        j_values[d] += sqrt(pow(var_L_RL/skew_L_RL,2) + 2.0*delta_L_values[d]/skew_L_RL);
+      else
+        j_values[d] -= sqrt(pow(var_L_RL/skew_L_RL,2) + 2.0*delta_L_values[d]/skew_L_RL);
+      
+      lambda_values[d] = j_values[d]/delta_NL_prime_values[d];
+      lambda_values[d] -= RL/(2.0*(1.0+delta_NL_values[d]))*(dvar_L_RL_dR/2.0*pow(j_values[d],2) + dskew_L_RL_dR/6.0*pow(j_values[d],3));
+      
+      phi_values[d] = -lambda_values[d]*delta_NL_values[d]+delta_L_values[d]*j_values[d] - (var_L_RL/2.0*pow(j_values[d],2) + skew_L_RL/6.0*pow(j_values[d],3));
+      phi_values[d] *= -1.0;
     }
     else{
       j_values[d] = j_values_Gauss[d];

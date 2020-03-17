@@ -27,7 +27,8 @@ const char *INITIALISATION_types[] = {"INITIALISED", "UNINITIALISED"};
 
 static double eulers_constant = exp(1.0);
 static double pi = 3.14159265;
-static double pi2 = 2.0*3.14159265;
+static double pi2 = 2.0*pi;
+static double sqrtPi_times_2 = 2.0*sqrt(pi);
 static double pi_sq = pi*pi;
 static double one_over_2_pi_sq = 1.0/(2.0*pi_sq); // = 1.0/(2.0*pi^2)
 static double sqrt2 = 1.414213562373095;

@@ -40,6 +40,9 @@ class Matter {
   vector<double> log_top_hat_cylinder_radii;
   vector<double> top_hat_cylinder_variances;
   vector<double> dtop_hat_cylinder_variances_dR;
+  vector<double> log_top_hat_cylinder_radii_for_skewnesses;
+  vector<double> top_hat_cylinder_skewnesses;
+  vector<double> dtop_hat_cylinder_skewnesses_dR;
 
   void print_P_NL(double w, string output_file);
   void set_spherical_collapse_evolution_of_delta(double z_min, double z_max, int n_time);
@@ -50,8 +53,14 @@ class Matter {
   double dvariance_of_matter_within_R_dR(double R);
   double variance_of_matter_within_R_NL(double R);
   double variance_of_matter_within_R_2D(double R);
+  double variance_of_matter_within_R_2D(double R, double L);
+  double variance_of_matter_within_R_2D_GaussianLOS(double R, double L);
   double dvariance_of_matter_within_R_dR_2D(double R);
+  double dvariance_of_matter_within_R_dR_2D(double R, double L);
+  double dvariance_of_matter_within_R_dR_2D_GaussianLOS(double R, double L);
   double variance_of_matter_within_R_NL_2D(double R);
+  double variance_of_matter_within_R_NL_2D(double R, double L);
+  double variance_of_matter_within_R_NL_2D_GaussianLOS(double R, double L);
   
   ///// Needed for PNG calculation:
   double skewness_of_matter_within_R(double R, double alpha_1, double alpha_2, double alpha_3);
@@ -61,6 +70,7 @@ class Matter {
   double return_D_of_eta(double eta);
   double return_D_prime_of_eta(double eta);
   vector<vector<double> > return_linear_growth_history(int conformal_time_steps);
+  void print_growth_history(string file_name);
   
   void growth_of_DM_fluctuations_in_flat_matter_dominated_universe(double a, double *eta, double *D, double *D_prime);
   void growth_of_DM_fluctuations_in_flat_radiation_dominated_universe(double a, double *eta, double *D, double *D_prime);
@@ -74,11 +84,17 @@ class Matter {
   
   int return_N_of_lambda(){return this->delta_values_for_spherical_collapse.size();};
   int return_N_of_lambda_2D(){return this->delta_values_for_cylindrical_collapse.size();};
-  void return_2rd_moment_and_derivative(double R, double *variance, double *dvariance_dR);
+  void return_2nd_moment_and_derivative(double R, double *variance, double *dvariance_dR);
+  void return_2nd_moment_and_derivative_2D(double R, double *variance, double *dvariance_dR);
   
   void set_sphere_skewnesses(int PNG_modus);
   void set_sphere_skewnesses_from_eps3_powerlaw_approximation(int PNG_modus, double R_0_in_Mpc_over_h);
   void set_sphere_skewnesses_from_file(string file_name);
+  
+  
+  void set_cylinder_skewnesses(int PNG_modus);
+  void set_cylinder_skewnesses_from_eps3_powerlaw_approximation(int PNG_modus, double R_0_in_Mpc_over_h);
+  void set_cylinder_skewnesses_from_file(string file_name);
   
  private:
    
@@ -97,6 +113,7 @@ class Matter {
   double second_top_hat_radius;
   
   INITIALISATION skewness_initialisation;
+  INITIALISATION skewness_initialisation_2D;
       
   vector<double> eta_Newton;   
   vector<double> eta_NL;   

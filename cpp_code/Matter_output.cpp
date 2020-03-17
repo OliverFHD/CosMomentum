@@ -163,10 +163,17 @@ vector<vector<double> > Matter::return_power_spectra(double eta, double R){
   
 }
 
-void Matter::return_2rd_moment_and_derivative(double R, double *variance, double *dvariance_dR){
+void Matter::return_2nd_moment_and_derivative(double R, double *variance, double *dvariance_dR){
   
   (*variance) = interpolate_neville_aitken(log(R), &this->log_top_hat_radii, &this->top_hat_sphere_variances, constants::order_of_interpolation);
   (*dvariance_dR) = interpolate_neville_aitken(log(R), &this->log_top_hat_radii, &this->dtop_hat_sphere_variances_dR, constants::order_of_interpolation);
+  
+}
+
+void Matter::return_2nd_moment_and_derivative_2D(double R, double *variance, double *dvariance_dR){
+  
+  (*variance) = interpolate_neville_aitken(log(R), &this->log_top_hat_cylinder_radii, &this->top_hat_cylinder_variances, constants::order_of_interpolation);
+  (*dvariance_dR) = interpolate_neville_aitken(log(R), &this->log_top_hat_cylinder_radii, &this->dtop_hat_cylinder_variances_dR, constants::order_of_interpolation);
   
 }
 
@@ -194,4 +201,36 @@ double Matter::return_linear_variance(double z, double R_in_Mpc_over_h){
   
 }
 
+
+void Matter::print_growth_history(string file_name){
+  
+  double Om_m = this->cosmology.Omega_m;
+  double Om_l = this->cosmology.Omega_L;
+  double Om_r = this->cosmology.Omega_r;
+  double a, e;
+  fstream growth_stream;
+  
+  remove(file_name.c_str());
+  FILE * F = fopen(file_name.c_str(), "w");
+  fclose(F);
+  growth_stream.open(file_name.c_str());
+  
+  growth_stream << setprecision(10) << scientific;
+  growth_stream << "#Cosmological Parameters: Om_m = " << Om_m << ", Om_l = " << Om_l << ", Om_r = " << Om_r << '\n';
+  growth_stream << "#a_max = " << this->a_final << '\n';
+  growth_stream << "#eta(t)" << setw(20) << "w(eta)" << setw(20) << "z(eta)" << setw(20) << "a(eta)" << setw(20) << "D(eta)" << setw(20) << "D_prime(eta)\n";
+  for(int i = 0; i < this->eta_Newton.size(); i++){
+    e = this->eta_Newton[i];
+    a = this->universe->a_at_eta(e);
+    growth_stream << setw(20) << e;
+    growth_stream << setw(20) << this->universe->eta_at_a(1.0)-e;
+    growth_stream << setw(20) << 1.0/a - 1.0;
+    growth_stream << setw(20) << a;
+    growth_stream << setw(20) << this->Newtonian_growth_factor_of_delta[i];
+    growth_stream << setw(20) << this->Newtonian_growth_factor_of_delta_prime[i] << '\n';
+  }
+    
+  growth_stream.close();
+  
+}
 

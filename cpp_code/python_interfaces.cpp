@@ -97,6 +97,21 @@ extern "C" void set_primordial_skewness_from_file(int index_of_universe, const c
   global_universes.matter_contents[index_of_universe]->set_sphere_skewnesses_from_file(skewness_file);
 }
 
+
+
+
+extern "C" void set_primordial_skewness_2D(int index_of_universe, int PNG_modus){
+  cout << "Initialising primordial skewnesses from exact integrals.\n";
+  cout << "NOTE: this can be very slow!";
+  global_universes.matter_contents[index_of_universe]->set_cylinder_skewnesses(PNG_modus);
+}
+
+extern "C" void set_primordial_skewness_from_eps3_powerlaw_approximation_2D(int index_of_universe, int PNG_modus, double R_0_in_Mpc_over_h){
+  cout << "Initialising primordial skewnesses from power law approximation\n";
+  cout << "eps3(R) = skewness(R)/sigma(R)^3 = A_eps3*(R/R_0)^n_eps3 .\n";
+  global_universes.matter_contents[index_of_universe]->set_cylinder_skewnesses_from_eps3_powerlaw_approximation(PNG_modus, R_0_in_Mpc_over_h);
+}
+
 extern "C" void clear_universes(){
   
   for(int i = 0; i < global_universes.universes.size();i++) delete global_universes.universes[i];

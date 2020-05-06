@@ -70,6 +70,10 @@ static int order_of_interpolation = 5;
 
 //static int generating_function_coeff_order = 15;
 static int generating_function_coeff_order = 10;
+
+/***** Variable controlling for how many delta values the PDF is computed *****/
+
+static int N_delta_values_for_PDFs = 400;
   
 
 /***** Variables controlling the precision of gsl integrators *****/
@@ -95,7 +99,7 @@ static double high_k_cutoff = maximal_wave_number;
 static double log_minimal_wave_number = log(minimal_wave_number);
 static double log_maximal_wave_number = log(maximal_wave_number);
 
-static double product_of_kmax_and_R = 1.0e3;
+static double product_of_kmax_and_R = 1.0e2;//1.0e3;
 
 // values of wave numbers in H_0/c
 static double high_k_cutoff_in_H0_units = high_k_cutoff*c_over_e5;

@@ -108,6 +108,13 @@ void Matter::return_delta_NL_of_delta_L_and_dF_ddelta_2D(double eta, vector<doub
 }
 
 
+double Matter::return_D_of_z(double z){
+  
+  double eta = this->universe->eta_at_a(1.0/(1.0+z));
+  return interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
+  
+}
+
 double Matter::return_D_of_eta(double eta){
   
   return interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
@@ -187,6 +194,18 @@ double Matter::return_non_linear_variance(double z, double R_in_Mpc_over_h){
   
   return var_NL_R;
   
+}
+
+void Matter::return_2D_non_linear_variance(double *var_deltaLOS, double *var_GaussLOS, double *var_tophatLOS, double z, double R_in_Mpc_over_h, double L_in_Mpc_over_h){
+  double eta = this->universe->eta_at_a(1.0/(1.0+z));
+  double R = R_in_Mpc_over_h/constants::c_over_e5;
+  double L = L_in_Mpc_over_h/constants::c_over_e5;
+  
+  this->current_P_NL = this->P_NL(eta);
+  
+  (*var_deltaLOS) = variance_of_matter_within_R_NL_2D(R)/L;
+  (*var_GaussLOS) = variance_of_matter_within_R_NL_2D_GaussianLOS(R, L);
+  (*var_tophatLOS) = variance_of_matter_within_R_NL_2D(R, L);
 }
 
 double Matter::return_linear_variance(double z, double R_in_Mpc_over_h){

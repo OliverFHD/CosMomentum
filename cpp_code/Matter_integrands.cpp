@@ -67,7 +67,9 @@ double int_gsl_integrate_low_precision(double (*func)(double, void*),void *arg,d
   gsl_function F;
   F.function = func;
   F.params  = arg;
-  gsl_integration_cquad(&F,a,b,0,1.0e-4,w,&res,&err,0);
+  //gsl_integration_cquad(&F,a,b,0,1.0e-4,w,&res,&err,0);
+  gsl_integration_cquad(&F,a,b,0,1.0e-3,w,&res,&err,0);
+  // --> ISSUE: precision of 1.0e-3 may not be good enough in skewness integral for all PNG types.
   if(NULL!=error)
     *error=err;
   gsl_integration_cquad_workspace_free(w);
@@ -307,7 +309,7 @@ double dvar_dR_derivs_2D_GaussianLOS_1_gsl(double lnk, void *params){
   double WL = w_L_1D_Gauss(k, integration_params->top_hat_length);
   integration_params->k = k;
   
-  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(dvar_dR_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);;
+  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(dvar_dR_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
   
 }
 

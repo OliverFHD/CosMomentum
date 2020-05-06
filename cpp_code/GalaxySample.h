@@ -12,9 +12,9 @@ class GalaxySample {
   Matter* matter;
   
   void change_parameters(double density_in_Mpc_over_h_cubed, double z, double b1, double b2, double a0, double a1);
-  double set_b2_to_minimise_negative_densities(double z, double R_in_Mpc_over_h);
+  double set_b2_to_minimise_negative_densities(double z, double R_in_Mpc_over_h, double var_NL_rescale);
   
-  int return_N_max(double z, double R_in_Mpc_over_h);
+  int return_N_max(double z, double R_in_Mpc_over_h, double var_NL_rescale);
   int return_N_max_and_variance(double z, double R_in_Mpc_over_h, double* variance);
   
   vector<double> return_CiC_PDF(double z, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale);

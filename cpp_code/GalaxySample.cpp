@@ -48,10 +48,10 @@ void GalaxySample::change_parameters(double z, double density_in_Mpc_over_h_cube
  */
 
 double GalaxySample::set_b2_to_minimise_negative_densities(double z, double R_in_Mpc_over_h){
-  double var, dvar;
+  
+  double var = this->matter->return_non_linear_variance(z, R_in_Mpc_over_h);
   double R = R_in_Mpc_over_h/c_over_e5;
-  double D = this->matter->return_D_of_z(z);
-  this->matter->return_2nd_moment_and_derivative(R, &var, &dvar);
+  
   if(this->linear_bias>1.0)
     this->quadratic_bias = min(0.5*this->linear_bias,(this->linear_bias-1.0)/(1.0-var));
   else
@@ -116,17 +116,14 @@ double GalaxySample::return_P_of_N_given_delta(int N, double V, double delta, do
 
 int GalaxySample::return_N_max(double z, double R_in_Mpc_over_h){
   
-  double var, dvar;
+  double var = this->matter->return_non_linear_variance(z, R_in_Mpc_over_h);
   double R = R_in_Mpc_over_h/c_over_e5;
-  double D = this->matter->return_D_of_z(z);
-  
-  this->matter->return_2nd_moment_and_derivative(R, &var, &dvar);
   
   // to estimate the maximum N:
   // assume delta_matter is log-normal with delta_0 = -1
   // go to 5\sigma of both delta and shot-noise
   
-  double var_Gauss = log(1.0+var*D*D);
+  double var_Gauss = log(1.0+var);
   double delta_max = (exp(-0.5*var_Gauss + 5.0*sqrt(var_Gauss))-1.0);
   double delta_g_max = this->linear_bias*delta_max + this->quadratic_bias*(delta_max*delta_max - var);
   double N_bar = 4.0*constants::pi/3.0*pow(R,3)*delta_g_max*this->density;
@@ -138,17 +135,14 @@ int GalaxySample::return_N_max(double z, double R_in_Mpc_over_h){
 
 int GalaxySample::return_N_max_and_variance(double z, double R_in_Mpc_over_h, double* variance){
   
-  double dvar;
+  (*variance) = this->matter->return_non_linear_variance(z, R_in_Mpc_over_h);
   double R = R_in_Mpc_over_h/c_over_e5;
-  double D = this->matter->return_D_of_z(z);
-  
-  this->matter->return_2nd_moment_and_derivative(R, variance, &dvar);
   
   // to estimate the maximum N:
   // assume delta_matter is log-normal with delta_0 = -1
   // go to 5\sigma of both delta and shot-noise
   
-  double var_Gauss = log(1.0+(*variance)*D*D);
+  double var_Gauss = log(1.0+(*variance));
   double delta_max = (exp(-0.5*var_Gauss + 5.0*sqrt(var_Gauss))-1.0);
   double delta_g_max = this->linear_bias*delta_max + this->quadratic_bias*(delta_max*delta_max - (*variance));
   double N_bar = 4.0*constants::pi/3.0*pow(R,3)*delta_g_max*this->density;

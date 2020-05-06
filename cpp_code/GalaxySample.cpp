@@ -47,9 +47,9 @@ void GalaxySample::change_parameters(double z, double density_in_Mpc_over_h_cube
  * 
  */
 
-double GalaxySample::set_b2_to_minimise_negative_densities(double z, double R_in_Mpc_over_h){
+double GalaxySample::set_b2_to_minimise_negative_densities(double z, double R_in_Mpc_over_h, double var_NL_rescale){
   
-  double var = this->matter->return_non_linear_variance(z, R_in_Mpc_over_h);
+  double var = var_NL_rescale*this->matter->return_non_linear_variance(z, R_in_Mpc_over_h);
   double R = R_in_Mpc_over_h/c_over_e5;
   
   if(this->linear_bias>1.0)
@@ -114,9 +114,9 @@ double GalaxySample::return_P_of_N_given_delta(int N, double V, double delta, do
  * 
  */
 
-int GalaxySample::return_N_max(double z, double R_in_Mpc_over_h){
+int GalaxySample::return_N_max(double z, double R_in_Mpc_over_h, double var_NL_rescale){
   
-  double var = this->matter->return_non_linear_variance(z, R_in_Mpc_over_h);
+  double var = var_NL_rescale*this->matter->return_non_linear_variance(z, R_in_Mpc_over_h);
   double R = R_in_Mpc_over_h/c_over_e5;
   
   // to estimate the maximum N:
@@ -172,6 +172,7 @@ vector<double> GalaxySample::return_CiC_PDF(double z, double R_in_Mpc_over_h, do
   double variance;
   
   int N_max = this->return_N_max_and_variance(z, R_in_Mpc_over_h, &variance);
+  variance *= var_NL_rescale;
   int n_delta = PDF_data[0].size();
   
   vector<double> P_of_N(N_max+1, 0.0);

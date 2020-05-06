@@ -83,16 +83,16 @@ extern "C" void add_galaxy_sample(int index_of_universe, double z, double densit
 }
 
 
-extern "C" int return_N_max(int index_of_galaxy_sample, double z, double R_in_Mpc_over_h){
-  return global_universes.galaxy_samples[index_of_galaxy_sample]->return_N_max(z, R_in_Mpc_over_h);
+extern "C" int return_N_max(int index_of_galaxy_sample, double z, double R_in_Mpc_over_h, double var_NL_rescale){
+  return global_universes.galaxy_samples[index_of_galaxy_sample]->return_N_max(z, R_in_Mpc_over_h, var_NL_rescale);
 }
 
 extern "C" void change_parameters_of_galaxy_sample(int index_of_galaxy_sample, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1){
   global_universes.galaxy_samples[index_of_galaxy_sample]->change_parameters(z, density_in_Mpc_over_h_cubed, b1, b2, a0, a1);
 }
 
-extern "C" double change_b2_to_minimise_negative_densities(int index_of_galaxy_sample, double z, double R_in_Mpc_over_h){
-  return global_universes.galaxy_samples[index_of_galaxy_sample]->set_b2_to_minimise_negative_densities(z, R_in_Mpc_over_h);
+extern "C" double change_b2_to_minimise_negative_densities(int index_of_galaxy_sample, double z, double R_in_Mpc_over_h, double var_NL_rescale){
+  return global_universes.galaxy_samples[index_of_galaxy_sample]->set_b2_to_minimise_negative_densities(z, R_in_Mpc_over_h, var_NL_rescale);
 }
 
 

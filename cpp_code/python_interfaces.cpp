@@ -69,8 +69,8 @@ extern "C" void initialise_new_Universe_with_Matter_content(double a_initial, do
     
   global_universes.universes.push_back(new Universe(cosmo, a_initial, a_final, does_universe_expand));
   int N_Universe = global_universes.universes.size();
-  //global_universes.matter_contents.push_back(new Matter(global_universes.universes[N_Universe-1]));
-  global_universes.matter_contents.push_back(new Matter(global_universes.universes[N_Universe-1], "../Density_Split_Statistics/code/Coras_PDFs/input_transfer_manera.dat"));
+  global_universes.matter_contents.push_back(new Matter(global_universes.universes[N_Universe-1]));
+  //global_universes.matter_contents.push_back(new Matter(global_universes.universes[N_Universe-1], "../Density_Split_Statistics/code/Coras_PDFs/input_transfer_manera.dat"));
   int N_Matter = global_universes.matter_contents.size();
   
   error_handling::test_value_of_int(N_Universe, N_Matter, error_handling::EQUAL, "Number of Universes = " + to_string(N_Universe) + " does not match Number of Matter contents = " + to_string(N_Matter) + " .");

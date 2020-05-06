@@ -681,7 +681,7 @@ void Matter::set_cylindrical_collapse_evolution_of_delta(double z_min, double z_
  * 
 *******************************************************************************************************************************************************/
 
-void vector<vector<double> > return_LOS_integrated_phi_of_lambda(vector<double> z_values, vector<double> n_of_z_values){
+vector<vector<double> > Matter::return_LOS_integrated_phi_of_lambda(vector<double> z_values, vector<double> n_of_z_values){
   
   int n_delta = this->delta_values_for_cylindrical_collapse.size();
   int n_time = z_values.size()-1;
@@ -705,61 +705,10 @@ void vector<vector<double> > return_LOS_integrated_phi_of_lambda(vector<double> 
     n_of_w_values[i] = n_of_z_values[i]*dz_values[i]/dw_values[i];
   }
   
-  
-  double R;
-  double eta;
-  double w;
-  
   // These vector are needed for line-of-sight integration of the CGF:
-  vector<vector<double> > cylindrical_collapse_lambda_of_delta.resize(n_time, vector<double>(n_delta, 0.0));
-  vector<vector<double> > cylindrical_collapse_phi_of_delta.resize(n_time, vector<double>(n_delta, 0.0));
-  vector<vector<double> > cylindrical_collapse_phi_of_delta_Gauss.resize(n_time, vector<double>(n_delta, 0.0));
+  vector<vector<double> > cylindrical_collapse_lambda_of_delta(n_time, vector<double>(n_delta, 0.0));
   
-  for (int t = 0; t < n_time; t++){
-    eta = this->eta_NL_for_cylindrical_collapse[t];
-    w = this->eta_final - eta;
-    R = theta*w;
-    this->compute_phi_tilde_of_lambda_2D(eta, R, f_NL, &this->cylindrical_collapse_lambda_of_delta[t], &this->cylindrical_collapse_phi_of_delta[t]);
-  }
-  
-  FILE *F_phi = fopen("phi_of_delta.dat", "w");
-  FILE *F_lambda = fopen("lambda_of_delta.dat", "w");
-  fclose(F_phi);
-  fclose(F_lambda);
-  
-  fstream str_phi;
-  str_phi.open("phi_of_delta.dat");
-  fstream str_lambda;
-  str_lambda.open("lambda_of_delta.dat");
-  
-  str_phi << scientific << setprecision(10);
-  str_lambda << scientific << setprecision(10);
-  
-  for (int t = -1; t < n_time; t++){
-    
-    if(t > -1){
-      str_phi << this->eta_NL_for_cylindrical_collapse[t] << "  ";
-      for (int d = 0; d < n_delta; d++) str_phi << this->cylindrical_collapse_phi_of_delta[t][d] << "  ";
-      str_phi << '\n';
-      
-      
-      str_lambda << this->eta_NL_for_cylindrical_collapse[t] << "  ";
-      for (int d = 0; d < n_delta; d++) str_lambda << this->cylindrical_collapse_lambda_of_delta[t][d] << "  ";
-      str_lambda << '\n';
-    }
-    else{
-      str_phi << -1 << "  ";
-      for (int d = 0; d < n_delta; d++) str_phi << this->delta_values_for_cylindrical_collapse[d] << "  ";
-      str_phi << '\n';
-    
-      str_lambda << -1 << "  ";
-      for (int d = 0; d < n_delta; d++) str_lambda << this->delta_values_for_cylindrical_collapse[d] << "  ";
-      str_lambda << '\n';
-    }
-  }
-  
-  str_phi.close();
-  str_lambda.close();
+  return cylindrical_collapse_lambda_of_delta;
   
 }
 
@@ -1336,7 +1285,7 @@ vector<vector<double> > Matter::compute_phi_of_lambda_2D(double z, double R, dou
 
 
 
-void Matter::compute_phi_tilde_of_lambda_2D(double eta, double R, double f_NL, vector<double> * lambda_of_delta, vector<double> * phi_of_delta, vector<double> * lambda_of_delta_Gauss, vector<double> * phi_of_delta_Gauss){
+void Matter::compute_phi_tilde_of_lambda_2D(double eta, double R, double f_NL, vector<double> * lambda_of_delta, vector<double> * phi_of_delta){
   
   double log_R = log(R);
   double RL, log_RL;
@@ -1358,8 +1307,6 @@ void Matter::compute_phi_tilde_of_lambda_2D(double eta, double R, double f_NL, v
   
   if(lambda_of_delta->size()!=delta_L_values.size()) (*lambda_of_delta) = delta_L_values;
   if(phi_of_delta->size()!=delta_L_values.size()) (*phi_of_delta) = delta_L_values;
-  if(lambda_of_delta_Gauss->size()!=delta_L_values.size()) (*lambda_of_delta_Gauss) = delta_L_values;
-  if(phi_of_delta_Gauss->size()!=delta_L_values.size()) (*phi_of_delta_Gauss) = delta_L_values;
   
   vector<double> j_values = delta_L_values;
   vector<double> j_values_Gauss = delta_L_values;
@@ -1380,11 +1327,6 @@ void Matter::compute_phi_tilde_of_lambda_2D(double eta, double R, double f_NL, v
     
     var_L_RL = interpolate_neville_aitken(log_RL, &this->log_top_hat_cylinder_radii, &this->top_hat_cylinder_variances, constants::order_of_interpolation);
     dvar_L_RL_dR = interpolate_neville_aitken(log_RL, &this->log_top_hat_cylinder_radii, &this->dtop_hat_cylinder_variances_dR, constants::order_of_interpolation);
-    
-    j_values_Gauss[d] = delta_L_values[d]/var_L_RL;
-    (*lambda_of_delta_Gauss)[d] = j_values_Gauss[d]/delta_NL_prime_values[d];
-    (*lambda_of_delta_Gauss)[d] -= RL/(2.0*(1.0+delta_NL_values[d]))*dvar_L_RL_dR/2.0*pow(j_values_Gauss[d],2);
-    (*phi_of_delta_Gauss)[d] = (*lambda_of_delta_Gauss)[d]*delta_NL_values[d]-delta_L_values[d]*j_values_Gauss[d] + var_L_RL/2.0*pow(j_values_Gauss[d],2);
     
     
     if(f_NL != 0.0){
@@ -1422,15 +1364,14 @@ void Matter::compute_phi_tilde_of_lambda_2D(double eta, double R, double f_NL, v
       (*phi_of_delta)[d] *= -1.0;
     }
     else{
-      j_values[d] = j_values_Gauss[d];
-      (*lambda_of_delta)[d] = (*lambda_of_delta_Gauss)[d];
-      (*phi_of_delta)[d] = (*phi_of_delta_Gauss)[d];
+      j_values[d] = delta_L_values[d]/var_L_RL;
+      (*lambda_of_delta)[d] = j_values[d]/delta_NL_prime_values[d];
+      (*lambda_of_delta)[d] -= RL/(2.0*(1.0+delta_NL_values[d]))*dvar_L_RL_dR/2.0*pow(j_values[d],2);
+      (*phi_of_delta)[d] = (*lambda_of_delta)[d]*delta_NL_values[d]-delta_L_values[d]*j_values[d] + var_L_RL/2.0*pow(j_values[d],2);
     }
     
     (*phi_of_delta)[d] *= D_sq*var_L_R/var_NL_R;
-    (*phi_of_delta_Gauss)[d] *= D_sq*var_L_R/var_NL_R;
     (*lambda_of_delta)[d] *= D_sq*var_L_R/var_NL_R;
-    (*lambda_of_delta_Gauss)[d] *= D_sq*var_L_R/var_NL_R;
     
   }
   

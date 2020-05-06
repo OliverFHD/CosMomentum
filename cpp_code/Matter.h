@@ -25,6 +25,7 @@ class Matter {
   double P_L_today_at(double ln_k);
   double return_linear_variance(double z, double R_in_Mpc_over_h);
   double return_non_linear_variance(double z, double R_in_Mpc_over_h);
+  void return_2D_non_linear_variance(double *var_deltaLOS, double *var_GaussLOS, double *var_tophatLOS, double z, double R_in_Mpc_over_h, double L_in_Mpc_over_h);
   
   vector<double> P_L(double e);
   vector<double> P_NL(double e);
@@ -47,6 +48,7 @@ class Matter {
   void print_P_NL(double w, string output_file);
   void set_spherical_collapse_evolution_of_delta(double z_min, double z_max, int n_time);
   void set_cylindrical_collapse_evolution_of_delta(double z_min, double z_max, int n_time);
+  void set_phi_tilde_for_LOS_integration(double theta, double f_NL);
     
   double variance_of_matter_within_R_before_norm_was_determined(double R);
   double variance_of_matter_within_R(double R);
@@ -67,6 +69,7 @@ class Matter {
   double dskewness_of_matter_within_R_dR(double R, double alpha_1, double alpha_2, double alpha_3);
   /////
   
+  double return_D_of_z(double z);
   double return_D_of_eta(double eta);
   double return_D_prime_of_eta(double eta);
   vector<vector<double> > return_linear_growth_history(int conformal_time_steps);
@@ -79,8 +82,11 @@ class Matter {
   vector<vector<double> > return_power_spectra(double eta, double R);
   
   vector<vector<double> > compute_phi_of_lambda_3D(double z, double R, double f_NL, double var_NL_rescale);
-  vector<vector<double> > compute_phi_of_lambda_2D(double z, double R, double L, double f_NL, double var_NL_rescale);
+  vector<vector<double> > compute_phi_of_lambda_2D(double z, double R, double L, double f_NL, double var_NL_rescale, int LOS_modus);
+  void compute_phi_tilde_of_lambda_2D(double z, double R, double f_NL, vector<double> * lambda_of_delta, vector<double> * phi_of_delta, vector<double> * lambda_of_delta_Gauss, vector<double> * phi_of_delta_Gauss);
   vector<vector<double> > compute_phi_of_lambda_3D_EdS(double z, double R, double f_NL, double var_NL_rescale);
+  
+  vector<vector<double> > compute_PDF_3D(double z, double R, double f_NL, double var_NL_rescale);
   
   int return_N_of_lambda(){return this->delta_values_for_spherical_collapse.size();};
   int return_N_of_lambda_2D(){return this->delta_values_for_cylindrical_collapse.size();};
@@ -140,6 +146,11 @@ class Matter {
   vector<vector<double> > cylindrical_collapse_evolution_of_delta;
   vector<vector<double> > cylindrical_collapse_evolution_of_delta_ddelta;
   vector<vector<double> > cylindrical_collapse_evolution_of_delta_ddelta2;
+  // These vector are needed for line-of-sight integration of the CGF
+  vector<vector<double> > cylindrical_collapse_lambda_of_delta;
+  vector<vector<double> > cylindrical_collapse_phi_of_delta;
+  vector<vector<double> > cylindrical_collapse_lambda_of_delta_Gauss;
+  vector<vector<double> > cylindrical_collapse_phi_of_delta_Gauss;
   vector<double> eta_NL_for_cylindrical_collapse;
   
   cosmological_model cosmology;

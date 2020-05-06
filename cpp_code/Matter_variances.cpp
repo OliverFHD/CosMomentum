@@ -106,6 +106,8 @@ void Matter::set_sphere_variances(){
     this->dtop_hat_sphere_variances_dR[i] = this->dvariance_of_matter_within_R_dR(radii_in_Mpc_over_h[i]/constants::c_over_e5);
   }
   
+  this->log_top_hat_radii_for_skewnesses = this->log_top_hat_radii;
+  
 }
 
 /*******************************************************************************************************************************************************
@@ -399,7 +401,7 @@ void Matter::set_cylinder_skewnesses_from_eps3_powerlaw_approximation(int PNG_mo
   this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
   
   // f_NL is now set in the ipython interface
-  double prefactor = 3.0*this->cosmology.Omega_m/pow(constants::pi2, 5);//*this->f_NL_rescaling_factor;
+  double prefactor = 3.0*this->cosmology.Omega_m/pow(constants::pi2, 3);//*this->f_NL_rescaling_factor;
   double skew_1, dskew_1;
   double skew_2, dskew_2;
   double skew_3, dskew_3;
@@ -462,21 +464,24 @@ void Matter::set_cylinder_skewnesses_from_eps3_powerlaw_approximation(int PNG_mo
   double var, dvar_dR;
   this->return_2nd_moment_and_derivative_2D(R_0, &var, &dvar_dR);
   
+  cout << var << "   " << dvar_dR << '\n';
+  
   cout << "Variance computed.\n";
   
+  //double L = 200.0/constants::c_over_e5;
+  //skewness /= L*L;
   double A_eps3, n_eps3;
-  A_eps3 = skewness/pow(var, 1.5);
-  n_eps3 = R_0*(dskewness_dR/skewness-1.5*dvar_dR/var);
+  double alpha = 2.0;
+  A_eps3 = skewness/pow(var, alpha);
+  n_eps3 = R_0*(dskewness_dR/skewness-alpha*dvar_dR/var);
   
   cout << "Setting arrays.\n";
   for(int i = 0; i < n; i++){
     R = exp(this->log_top_hat_cylinder_radii[i]);
     
     this->top_hat_cylinder_skewnesses[i]  = A_eps3*pow(R/R_0, n_eps3);
-    this->top_hat_cylinder_skewnesses[i] *= pow(this->top_hat_cylinder_variances[i],1.5);
-    
-    this->dtop_hat_cylinder_skewnesses_dR[i]  = this->top_hat_cylinder_skewnesses[i]*(n_eps3/R + 1.5*this->dtop_hat_cylinder_variances_dR[i]/this->top_hat_cylinder_variances[i]);
-    
+    this->top_hat_cylinder_skewnesses[i] *= pow(this->top_hat_cylinder_variances[i],alpha);
+    this->dtop_hat_cylinder_skewnesses_dR[i]  = this->top_hat_cylinder_skewnesses[i]*(n_eps3/R + alpha*this->dtop_hat_cylinder_variances_dR[i]/this->top_hat_cylinder_variances[i]);
   }
   cout << "Arrays set.\n";
   
@@ -545,20 +550,19 @@ void Matter::set_cylinder_variances(){
   this->top_hat_cylinder_variances.resize(n, 0.0);
   this->dtop_hat_cylinder_variances_dR.resize(n, 0.0);
   this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
+  this->current_P_NL = this->P_NL(this->universe->eta_at_a(1.0));
   
   double R = 15.0/constants::c_over_e5;
-  double L = 600.0/constants::c_over_e5;
-  cout << variance_of_matter_within_R_2D(R, L) << "     HAHAHAHAHAHAHA\n";
-  cout << variance_of_matter_within_R_2D_GaussianLOS(R, L) << "     HAHAHAHAHAHAHA\n";
-  cout << variance_of_matter_within_R_2D(R)/L << "     HAHAHAHAHAHAHA\n";
+  double L = 200.0/constants::c_over_e5;
+  //cout << variance_of_matter_within_R_2D(R, L) << "     HAHAHAHAHAHAHA\n";
+  //cout << variance_of_matter_within_R_2D_GaussianLOS(R, L) << "     HAHAHAHAHAHAHA\n";
+  //cout << variance_of_matter_within_R_2D(R)/L << " <-- P_L\n";
+  //cout << variance_of_matter_within_R_NL_2D(R, L) << " <-- P_NL\n";
   
   for(int i = 0; i < n; i++){
-    cout << i << '\n';
     this->log_top_hat_cylinder_radii[i] = log(radii_in_Mpc_over_h[i]/constants::c_over_e5);
-    //this->top_hat_cylinder_variances[i] = this->variance_of_matter_within_R_2D_GaussianLOS(radii_in_Mpc_over_h[i]/constants::c_over_e5, L)*L;
-    //this->dtop_hat_cylinder_variances_dR[i] = this->dvariance_of_matter_within_R_dR_2D_GaussianLOS(radii_in_Mpc_over_h[i]/constants::c_over_e5, L)*L;
     this->top_hat_cylinder_variances[i] = this->variance_of_matter_within_R_2D(radii_in_Mpc_over_h[i]/constants::c_over_e5);
-    this->dtop_hat_cylinder_variances_dR[i] = this->variance_of_matter_within_R_2D(radii_in_Mpc_over_h[i]/constants::c_over_e5);
+    this->dtop_hat_cylinder_variances_dR[i] = this->dvariance_of_matter_within_R_dR_2D(radii_in_Mpc_over_h[i]/constants::c_over_e5);
   }
   
 }

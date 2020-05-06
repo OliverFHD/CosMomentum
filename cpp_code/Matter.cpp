@@ -681,26 +681,45 @@ void Matter::set_cylindrical_collapse_evolution_of_delta(double z_min, double z_
  * 
 *******************************************************************************************************************************************************/
 
-void Matter::set_phi_tilde_for_LOS_integration(double theta, double f_NL){
+void vector<vector<double> > return_LOS_integrated_phi_of_lambda(vector<double> z_values, vector<double> n_of_z_values){
   
   int n_delta = this->delta_values_for_cylindrical_collapse.size();
-  int n_time = this->eta_NL_for_cylindrical_collapse.size();
+  int n_time = z_values.size()-1;
+  
+  vector<double> w_values(n_time+1, 0.0);
+  vector<double> dw_values(n_time, 0.0);
+  vector<double> dz_values(n_time, 0.0);
+  vector<double> n_of_w_values(n_time, 0.0);
+  
+  double a, eta, eta_0, w;
+  eta_0 = this->universe->eta_at_a(1.0);
+  
+  for(int i = 0; i < n_time+1; i++){
+    a = 1.0/(1.0+z_values[i]);
+    w_values[i] = eta_0 - this->universe->eta_at_a(a);
+  }
+  
+  for(int i = 0; i < n_time; i++){
+    dz_values[i] = z_values[i+1]-z_values[i];
+    dw_values[i] = w_values[i+1]-w_values[i];
+    n_of_w_values[i] = n_of_z_values[i]*dz_values[i]/dw_values[i];
+  }
+  
   
   double R;
   double eta;
   double w;
   
   // These vector are needed for line-of-sight integration of the CGF:
-  this->cylindrical_collapse_lambda_of_delta.resize(n_time, vector<double>(n_delta, 0.0));
-  this->cylindrical_collapse_phi_of_delta.resize(n_time, vector<double>(n_delta, 0.0));
-  this->cylindrical_collapse_lambda_of_delta_Gauss.resize(n_time, vector<double>(n_delta, 0.0));
-  this->cylindrical_collapse_phi_of_delta_Gauss.resize(n_time, vector<double>(n_delta, 0.0));
+  vector<vector<double> > cylindrical_collapse_lambda_of_delta.resize(n_time, vector<double>(n_delta, 0.0));
+  vector<vector<double> > cylindrical_collapse_phi_of_delta.resize(n_time, vector<double>(n_delta, 0.0));
+  vector<vector<double> > cylindrical_collapse_phi_of_delta_Gauss.resize(n_time, vector<double>(n_delta, 0.0));
   
   for (int t = 0; t < n_time; t++){
     eta = this->eta_NL_for_cylindrical_collapse[t];
     w = this->eta_final - eta;
     R = theta*w;
-    this->compute_phi_tilde_of_lambda_2D(eta, R, f_NL, &this->cylindrical_collapse_lambda_of_delta[t], &this->cylindrical_collapse_phi_of_delta[t], &this->cylindrical_collapse_lambda_of_delta_Gauss[t], &this->cylindrical_collapse_phi_of_delta_Gauss[t]);
+    this->compute_phi_tilde_of_lambda_2D(eta, R, f_NL, &this->cylindrical_collapse_lambda_of_delta[t], &this->cylindrical_collapse_phi_of_delta[t]);
   }
   
   FILE *F_phi = fopen("phi_of_delta.dat", "w");

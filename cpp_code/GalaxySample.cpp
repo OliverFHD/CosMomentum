@@ -52,7 +52,10 @@ double GalaxySample::set_b2_to_minimise_negative_densities(double z, double R_in
   double R = R_in_Mpc_over_h/c_over_e5;
   double D = this->matter->return_D_of_z(z);
   this->matter->return_2nd_moment_and_derivative(R, &var, &dvar);
-  this->quadratic_bias = min(0.5*this->linear_bias,this->linear_bias/(1.0-var));
+  if(this->linear_bias>1.0)
+    this->quadratic_bias = min(0.5*this->linear_bias,(this->linear_bias-1.0)/(1.0-var));
+  else
+    this->quadratic_bias = 0.0;
   
   cout << " b1 = " << this->linear_bias << '\n';
   cout << " b2 = " << this->quadratic_bias << '\n';

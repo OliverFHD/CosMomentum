@@ -48,7 +48,6 @@ class Matter {
   void print_P_NL(double w, string output_file);
   void set_spherical_collapse_evolution_of_delta(double z_min, double z_max, int n_time);
   void set_cylindrical_collapse_evolution_of_delta(double z_min, double z_max, int n_time);
-  void set_phi_tilde_for_LOS_integration(double theta, double f_NL);
     
   double variance_of_matter_within_R_before_norm_was_determined(double R);
   double variance_of_matter_within_R(double R);
@@ -83,8 +82,9 @@ class Matter {
   
   vector<vector<double> > compute_phi_of_lambda_3D(double z, double R, double f_NL, double var_NL_rescale);
   vector<vector<double> > compute_phi_of_lambda_2D(double z, double R, double L, double f_NL, double var_NL_rescale, int LOS_modus);
-  void compute_phi_tilde_of_lambda_2D(double z, double R, double f_NL, vector<double> * lambda_of_delta, vector<double> * phi_of_delta, vector<double> * lambda_of_delta_Gauss, vector<double> * phi_of_delta_Gauss);
+  void compute_phi_tilde_of_lambda_2D(double z, double R, double f_NL, vector<double> * lambda_of_delta, vector<double> * phi_of_delta);
   vector<vector<double> > compute_phi_of_lambda_3D_EdS(double z, double R, double f_NL, double var_NL_rescale);
+  vector<vector<double> > return_LOS_integrated_phi_of_lambda(vector<double> z_values, vector<double> n_of_z_values);
   
   vector<vector<double> > compute_PDF_3D(double z, double R, double f_NL, double var_NL_rescale);
   
@@ -146,11 +146,6 @@ class Matter {
   vector<vector<double> > cylindrical_collapse_evolution_of_delta;
   vector<vector<double> > cylindrical_collapse_evolution_of_delta_ddelta;
   vector<vector<double> > cylindrical_collapse_evolution_of_delta_ddelta2;
-  // These vector are needed for line-of-sight integration of the CGF
-  vector<vector<double> > cylindrical_collapse_lambda_of_delta;
-  vector<vector<double> > cylindrical_collapse_phi_of_delta;
-  vector<vector<double> > cylindrical_collapse_lambda_of_delta_Gauss;
-  vector<vector<double> > cylindrical_collapse_phi_of_delta_Gauss;
   vector<double> eta_NL_for_cylindrical_collapse;
   
   cosmological_model cosmology;

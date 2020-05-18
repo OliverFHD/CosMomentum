@@ -1,10 +1,14 @@
 
 #include "constants.h"
+#include "lognormal_tools.h"
+#include "io_utils.h"
 #include "error_handling.h"
 #include "interpolators.h"
 #include "Universe.cpp"
 #include "Matter.cpp"
 #include "GalaxySample.cpp"
+#include "GalaxySample3D.cpp"
+#include "ProjectedGalaxySample.cpp"
 
 
 class Global_Universes {
@@ -16,7 +20,8 @@ class Global_Universes {
     
     vector<Universe*> universes;
     vector<Matter*> matter_contents;
-    vector<GalaxySample*> galaxy_samples;
+    vector<GalaxySample3D*> galaxy_samples_3D;
+    vector<ProjectedGalaxySample*> projected_galaxy_samples;
     
 };
 
@@ -78,27 +83,58 @@ extern "C" void initialise_new_Universe_with_Matter_content(double a_initial, do
 }
 
 
-extern "C" void add_galaxy_sample(int index_of_universe, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1){
-  global_universes.galaxy_samples.push_back(new GalaxySample(global_universes.matter_contents[index_of_universe], z, density_in_Mpc_over_h_cubed, b1, b2, a0, a1));
+extern "C" void add_3D_galaxy_sample(int index_of_universe, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1){
+  global_universes.galaxy_samples_3D.push_back(new GalaxySample3D(global_universes.matter_contents[index_of_universe], z, density_in_Mpc_over_h_cubed, b1, b2, a0, a1));
 }
 
-
-extern "C" int return_N_max(int index_of_galaxy_sample, double z, double R_in_Mpc_over_h, double var_NL_rescale){
-  return global_universes.galaxy_samples[index_of_galaxy_sample]->return_N_max(z, R_in_Mpc_over_h, var_NL_rescale);
+extern "C" int return_N_max_3D(int index_of_galaxy_sample, double R_in_Mpc_over_h, double var_NL_rescale){
+  return global_universes.galaxy_samples_3D[index_of_galaxy_sample]->return_N_max_in_3D_tophat(R_in_Mpc_over_h, var_NL_rescale);
 }
 
-extern "C" void change_parameters_of_galaxy_sample(int index_of_galaxy_sample, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1){
-  global_universes.galaxy_samples[index_of_galaxy_sample]->change_parameters(z, density_in_Mpc_over_h_cubed, b1, b2, a0, a1);
+extern "C" void change_parameters_of_3D_galaxy_sample(int index_of_galaxy_sample, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1){
+  global_universes.galaxy_samples_3D[index_of_galaxy_sample]->set_parameters_3D(z, density_in_Mpc_over_h_cubed, b1, b2, a0, a1);
 }
 
-extern "C" double change_b2_to_minimise_negative_densities(int index_of_galaxy_sample, double z, double R_in_Mpc_over_h, double var_NL_rescale){
-  return global_universes.galaxy_samples[index_of_galaxy_sample]->set_b2_to_minimise_negative_densities(z, R_in_Mpc_over_h, var_NL_rescale);
+extern "C" double change_b2_to_minimise_negative_densities_3D(int index_of_galaxy_sample, double R_in_Mpc_over_h, double var_NL_rescale){
+  return global_universes.galaxy_samples_3D[index_of_galaxy_sample]->set_b2_to_minimise_negative_densities_in_3D_tophat(R_in_Mpc_over_h, var_NL_rescale);
 }
 
+extern "C" void update_3D_bias_model_from_br_parametrisation(int index_of_galaxy_sample, double b_tilde, double r, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale){
+  global_universes.galaxy_samples_3D[index_of_galaxy_sample]->set_3D_bias_model_from_br_parametrisation(b_tilde, r, R_in_Mpc_over_h, f_NL, var_NL_rescale);
+}
 
-extern "C" void return_CiC_PDF(double* P_of_N, double z, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
+extern "C" void return_CiC_PDF_3D(double* P_of_N, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
   
-  vector<double> P_of_N_vector = global_universes.galaxy_samples[index_of_galaxy_sample]->return_CiC_PDF(z, R_in_Mpc_over_h, f_NL, var_NL_rescale);
+  vector<double> P_of_N_vector = global_universes.galaxy_samples_3D[index_of_galaxy_sample]->return_CiC_PDF_in_3D_tophat(R_in_Mpc_over_h, f_NL, var_NL_rescale);
+  
+  int number_of_Ns = P_of_N_vector.size();
+  
+  for(int i = 0; i < number_of_Ns; i++){
+    P_of_N[i] = P_of_N_vector[i];
+  }
+  
+}
+
+
+extern "C" void add_projected_galaxy_sample(int index_of_universe, const char *n_of_z_file, double density_in_arcmin_squared, double b1, double b2, double a0, double a1){
+  global_universes.projected_galaxy_samples.push_back(new ProjectedGalaxySample(global_universes.matter_contents[index_of_universe], density_in_arcmin_squared, b1, b2, a0, a1, string(n_of_z_file)));
+}
+
+extern "C" int return_N_max_projected(int index_of_galaxy_sample, double theta, double var_NL_rescale){
+  return global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_N_max_in_angular_tophat(theta, var_NL_rescale);
+}
+
+extern "C" void change_parameters_of_projected_galaxy_sample(int index_of_galaxy_sample, double density_in_arcmin_squared, double b1, double b2, double a0, double a1, const char *n_of_z_file){
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->set_parameters_projected(density_in_arcmin_squared, b1, b2, a0, a1, string(n_of_z_file));
+}
+
+extern "C" double change_b2_to_minimise_negative_densities_projected(int index_of_galaxy_sample, double theta, double var_NL_rescale){
+  return global_universes.projected_galaxy_samples[index_of_galaxy_sample]->set_b2_to_minimise_negative_densities_in_angular_tophat(theta, var_NL_rescale);
+}
+
+extern "C" void return_CiC_PDF_projected(double* P_of_N, double theta, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
+  
+  vector<double> P_of_N_vector = global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_CiC_PDF_in_angular_tophat(theta, f_NL, var_NL_rescale);
   
   int number_of_Ns = P_of_N_vector.size();
   
@@ -149,10 +185,22 @@ extern "C" void clear_universes(){
   
   for(int i = 0; i < global_universes.universes.size();i++) delete global_universes.universes[i];
   for(int i = 0; i < global_universes.matter_contents.size();i++) delete global_universes.matter_contents[i];
+  for(int i = 0; i < global_universes.galaxy_samples_3D.size();i++) delete global_universes.galaxy_samples_3D[i];
+  for(int i = 0; i < global_universes.projected_galaxy_samples.size();i++) delete global_universes.projected_galaxy_samples[i];
   
   global_universes.universes.clear();
   global_universes.matter_contents.clear();
-  global_universes.galaxy_samples.clear();
+  global_universes.galaxy_samples_3D.clear();
+  global_universes.projected_galaxy_samples.clear();
+  
+}
+
+extern "C" void clear_galaxy_samples(){
+  
+  for(int i = 0; i < global_universes.galaxy_samples_3D.size();i++) delete global_universes.galaxy_samples_3D[i];
+  for(int i = 0; i < global_universes.projected_galaxy_samples.size();i++) delete global_universes.projected_galaxy_samples[i];
+  global_universes.galaxy_samples_3D.clear();
+  global_universes.projected_galaxy_samples.clear();
   
 }
 

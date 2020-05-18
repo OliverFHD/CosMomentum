@@ -5,8 +5,6 @@
 #include <gsl/gsl_multimin.h>
 #include <gsl/gsl_sf_legendre.h>
 
-#include "delta0_and_kappa0.h"
-
 #include "Matter.h"
 #include "Eisenstein_and_Hu.h"
 #include "generating_function_utils.h"
@@ -115,36 +113,21 @@ Matter::Matter(Universe* uni){
   //this->set_phi_tilde_for_LOS_integration(20.0*constants::pi/180.0/60.0, 0.0);
   //cout << "Done.\n";
   
+  /*cout << "loading pofz data\n";
+  vector<vector<double> > nofz_data = read_table_double("Data/redshift_distributions/nofz_redmagic_0.2_0.45_true.dat");
   
-  /*vector<double> delta_L_values0;
-  vector<double> delta_NL_values0;
-  vector<double> delta_NL_prime_values0;
-  vector<double> delta_L_values1;
-  vector<double> delta_NL_values1;
-  vector<double> delta_NL_prime_values1;
-  double a0 = 1.0/(1.0+0.0);
-  double a1 = 1.0/(1.0+1.0);
-  double eta0 = this->universe->eta_at_a(a0);
-  double eta1 = this->universe->eta_at_a(a1);
-  
-  double D0 = this->return_D_of_eta(eta0);
-  double D1 = this->return_D_of_eta(eta1);
-  
-  cout << D0 << "  " << D1 << '\n';
-  
-  this->return_delta_NL_of_delta_L_and_dF_ddelta_2D(eta1, &delta_L_values0, &delta_NL_values0, &delta_NL_prime_values0);
-  this->return_delta_NL_of_delta_L_and_dF_ddelta_2D(eta1, &delta_L_values1, &delta_NL_values1, &delta_NL_prime_values1);
-  
-  cout << scientific << setprecision(10);
-  cout << "# No      delta_L(z=0)      delta_NL(z=0)      delta_L(z=1)      delta_NL(z=1)\n";
-  for(int i = 0; i < delta_L_values0.size(); i++){
-    cout << setw(20) << i;
-    cout << setw(20) << delta_L_values0[i];
-    cout << setw(20) << delta_NL_values0[i];
-    cout << setw(20) << delta_L_values1[i];
-    cout << setw(20) << delta_NL_values1[i];
-    cout << '\n';
+  int Nz = nofz_data.size();
+  vector<double> z_values(Nz, 0.0);
+  vector<double> nofz_values(Nz, 0.0);
+  for(int i = 0; i < Nz; i++){
+    z_values[i] = nofz_data[i][0];
+    nofz_values[i] = nofz_data[i][1];
+    cout << i << "   " << z_values[i] << "   " << nofz_values[i] << "\n";
   }
+  
+  cout << "projecting CGF\n";
+  
+  this->return_LOS_integrated_phi_of_lambda(20.0*constants::arcmin, 0.0, z_values, nofz_values);
   */
   
   
@@ -606,7 +589,7 @@ void Matter::set_spherical_collapse_evolution_of_delta(double z_min, double z_ma
 void Matter::set_cylindrical_collapse_evolution_of_delta(double z_min, double z_max, int n_time){
 
   double delta_min = -10.0;
-  double delta_max = 1.4;
+  double delta_max = 1.45;
   double ddelta = 0.01;
   double delta = delta_min-ddelta;
   double eta_min = this->universe->eta_at_a(1.0/(1+z_max));
@@ -671,47 +654,6 @@ void Matter::set_cylindrical_collapse_evolution_of_delta(double z_min, double z_
 
   
 }
-
-/*******************************************************************************************************************************************************
- * set_phi_tilde_for_LOS_integration
- * Description:
- * - set phi(delta, eta) and lambda(delta, eta) on a 2D grid. This grid is used when computing the LOS-projected CGF in Limber approximation
- * Arguments:
- * - double theta: angular top-hat radius with which LOS-integrated field is smoothed
- * 
-*******************************************************************************************************************************************************/
-
-vector<vector<double> > Matter::return_LOS_integrated_phi_of_lambda(vector<double> z_values, vector<double> n_of_z_values){
-  
-  int n_delta = this->delta_values_for_cylindrical_collapse.size();
-  int n_time = z_values.size()-1;
-  
-  vector<double> w_values(n_time+1, 0.0);
-  vector<double> dw_values(n_time, 0.0);
-  vector<double> dz_values(n_time, 0.0);
-  vector<double> n_of_w_values(n_time, 0.0);
-  
-  double a, eta, eta_0, w;
-  eta_0 = this->universe->eta_at_a(1.0);
-  
-  for(int i = 0; i < n_time+1; i++){
-    a = 1.0/(1.0+z_values[i]);
-    w_values[i] = eta_0 - this->universe->eta_at_a(a);
-  }
-  
-  for(int i = 0; i < n_time; i++){
-    dz_values[i] = z_values[i+1]-z_values[i];
-    dw_values[i] = w_values[i+1]-w_values[i];
-    n_of_w_values[i] = n_of_z_values[i]*dz_values[i]/dw_values[i];
-  }
-  
-  // These vector are needed for line-of-sight integration of the CGF:
-  vector<vector<double> > cylindrical_collapse_lambda_of_delta(n_time, vector<double>(n_delta, 0.0));
-  
-  return cylindrical_collapse_lambda_of_delta;
-  
-}
-
 
 vector<vector<double> > Matter::compute_PDF_3D(double z, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale){
   
@@ -840,12 +782,9 @@ vector<vector<double> > Matter::compute_PDF_3D(double z, double R_in_Mpc_over_h,
    */
   
   int n_delta = constants::N_delta_values_for_PDFs;
-  double var, dvar;
-  double R = R_in_Mpc_over_h/c_over_e5;
-  double D = this->return_D_of_z(z);
-  this->return_2nd_moment_and_derivative(R, &var, &dvar);
+  double var = this->return_non_linear_variance(z, R_in_Mpc_over_h);
   double delta_min = interpolate_neville_aitken(tau_min, &tau_values, &delta_NL_values, constants::order_of_interpolation);
-  double delta_max = max(delta_c, 6.0*D*sqrt(var));
+  double delta_max = max(delta_c, 6.0*sqrt(var));
   // --> ISSUE: choosing delta_max to be 6*sigma may not be 100% reasonable for very skewed PDFs
   //            Maybe choose it by some quantile in a log-normal PDF that approximates the real PDF?
   
@@ -1285,7 +1224,7 @@ vector<vector<double> > Matter::compute_phi_of_lambda_2D(double z, double R, dou
 
 
 
-void Matter::compute_phi_tilde_of_lambda_2D(double eta, double R, double f_NL, vector<double> * lambda_of_delta, vector<double> * phi_of_delta){
+void Matter::compute_phi_tilde_of_lambda_2D(double eta, double R, double f_NL, vector<double> * lambda_of_delta, vector<double> * phi_of_delta, vector<double> * phi_prime_of_delta){
   
   double log_R = log(R);
   double RL, log_RL;
@@ -1307,6 +1246,7 @@ void Matter::compute_phi_tilde_of_lambda_2D(double eta, double R, double f_NL, v
   
   if(lambda_of_delta->size()!=delta_L_values.size()) (*lambda_of_delta) = delta_L_values;
   if(phi_of_delta->size()!=delta_L_values.size()) (*phi_of_delta) = delta_L_values;
+  (*phi_prime_of_delta) = delta_NL_values;
   
   vector<double> j_values = delta_L_values;
   vector<double> j_values_Gauss = delta_L_values;
@@ -1373,8 +1313,7 @@ void Matter::compute_phi_tilde_of_lambda_2D(double eta, double R, double f_NL, v
     (*phi_of_delta)[d] *= D_sq*var_L_R/var_NL_R;
     (*lambda_of_delta)[d] *= D_sq*var_L_R/var_NL_R;
     
-  }
-  
+  }  
   
 }
 

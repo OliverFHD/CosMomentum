@@ -1,18 +1,10 @@
 #include "GalaxySample.h"
 
 
-GalaxySample::GalaxySample(Matter* matter, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1){
+GalaxySample::GalaxySample(Matter* matter, double b1, double b2, double a0, double a1){
   
-  this->matter = matter;
-  this->universe = this->matter->universe;
-  this->cosmology = this->universe->return_cosmology(); 
-  
-  this->density = density_in_Mpc_over_h_cubed*pow(c_over_e5,3); // changing to units c/H_0 == 1
-  this->redshift = z;
-  this->linear_bias = b1;
-  this->quadratic_bias = b2;
-  this->alpha_0 = a0;
-  this->alpha_1 = a1;
+  this->set_matter_density_field(matter);
+  this->set_parameters(b1, b2, a0, a1);
   
 }
 
@@ -22,20 +14,56 @@ GalaxySample::~GalaxySample(){
 
 
 /*
- * GalaxySample::change_parameters
+ * GalaxySample::set_parameters
  * 
- * Changes the parameters that characterise the galaxy sample.
+ * Set the parameters that characterise the galaxy sample.
  * 
  * 
  */
 
-void GalaxySample::change_parameters(double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1){
-  this->density = density_in_Mpc_over_h_cubed*pow(c_over_e5,3); // changing to units c/H_0 == 1
-  this->redshift = z;
+void GalaxySample::set_parameters(double b1, double b2, double a0, double a1){
   this->linear_bias = b1;
   this->quadratic_bias = b2;
   this->alpha_0 = a0;
   this->alpha_1 = a1;
+}
+
+
+/*
+ * GalaxySample::set_bias_model_from_br_parametrisation
+ * 
+ * Translating the br-parametrisation of bias and shot-noise (cf. https://arxiv.org/pdf/1710.05162.pdf) to the b-alpha_0-alpha_1 parametrisation.
+ * 
+ * 
+ */
+
+void GalaxySample::set_bias_model_from_br_parametrisation(double b_tilde, double r, double N_bar, double variance, double skewness){
+  
+  this->linear_bias = b_tilde*r;
+  if(this->quadratic_bias != 0.0){
+    this->quadratic_bias = 0.0;
+    cerr << "CAREFUL: currently, b_2 = 0 is still enforced when calling set_bias_model_from_br_parametrisation.\n";
+  }
+  double delta_m0 = lognormal_tools::get_delta0(variance, skewness);
+  
+  this->alpha_0 = lognormal_tools::return_alpha_0(r, b_tilde, N_bar, variance, delta_m0);
+  this->alpha_1 = lognormal_tools::return_alpha_1(r, b_tilde, N_bar, variance, delta_m0);
+  
+}
+
+
+/*
+ * GalaxySample::set_matter_density_field
+ * 
+ * Anchor the galaxy sample in a matter density field (and the corresponding universe).
+ * 
+ * 
+ */
+
+void GalaxySample::set_matter_density_field(Matter* matter){
+  this->matter = matter;
+  this->universe = this->matter->universe;
+  this->cosmology = this->universe->return_cosmology(); 
 }
 
 
@@ -47,22 +75,44 @@ void GalaxySample::change_parameters(double z, double density_in_Mpc_over_h_cube
  * 
  */
 
-double GalaxySample::set_b2_to_minimise_negative_densities(double z, double R_in_Mpc_over_h, double var_NL_rescale){
-  
-  double var = var_NL_rescale*this->matter->return_non_linear_variance(z, R_in_Mpc_over_h);
-  double R = R_in_Mpc_over_h/c_over_e5;
+double GalaxySample::set_b2_to_minimise_negative_densities(double variance){
   
   if(this->linear_bias>1.0)
-    this->quadratic_bias = min(0.5*this->linear_bias,(this->linear_bias-1.0)/(1.0-var));
+    this->quadratic_bias = min(0.5*this->linear_bias,(this->linear_bias-1.0)/(1.0-variance));
   else
     this->quadratic_bias = 0.0;
   
   cout << " b1 = " << this->linear_bias << '\n';
   cout << " b2 = " << this->quadratic_bias << '\n';
-  cout << "var = " << var << '\n';
+  cout << "var = " << variance << '\n';
   
   return this->quadratic_bias;
 }
+
+
+/*
+ * GalaxySample::return_N_max
+ * 
+ * Given a spherical volume of radius R at this->redshift, return the maximum N up to which the CiC histogram is computed in GalaxySample::return_CiC_PDF. The python interface needs to know this before calling the CiC computation (which is why this function exists in the first place).
+ * 
+ */
+
+int GalaxySample::return_N_max(double N_bar, double variance){
+  
+  // to estimate the maximum N:
+  // assume delta_matter is log-normal with delta_0 = -1
+  // go to 5\sigma of both delta and shot-noise
+  
+  double var_Gauss = log(1.0+variance);
+  double delta_max = (exp(-0.5*var_Gauss + 5.0*sqrt(var_Gauss))-1.0);
+  double delta_g_max = this->linear_bias*delta_max + this->quadratic_bias*(delta_max*delta_max - variance);
+  double N_bar_max = N_bar*(1.0+delta_g_max);
+  double galaxies_per_Poisson_halo = this->alpha_0 + delta_max*this->alpha_1;
+  
+  return int(0.5+N_bar_max+5.0*sqrt(N_bar_max*galaxies_per_Poisson_halo));
+  
+}
+
 
 
 /*
@@ -72,12 +122,12 @@ double GalaxySample::set_b2_to_minimise_negative_densities(double z, double R_in
  * 
  */
 
-double GalaxySample::return_P_of_N_given_delta(int N, double V, double delta, double variance){
+double GalaxySample::return_P_of_N_given_delta(int N, double N_bar, double delta, double variance){
   double delta_g = this->linear_bias*delta + this->quadratic_bias*(delta*delta - variance);
   if(delta_g<-1){
     delta_g=-1.0;
-    if(this->error_flag_negative_density==0){
-      this->error_flag_negative_density = 1;
+    if(this->get_error_flag_negative_density()==0){
+      this->set_error_flag_negative_density(1);
       cerr << "delta_g found to be < -1 in GalaxySample::P_of_N_given_delta!\n";
       cerr << "Set to delta_g == -1.\n";
     }
@@ -89,7 +139,6 @@ double GalaxySample::return_P_of_N_given_delta(int N, double V, double delta, do
   }
   
   double galaxy_per_Poisson_halo = this->alpha_0 + this->alpha_1*delta; // In the convention of https://arxiv.org/abs/1710.05162 this uses indeed delta==delta_matter.
-  double N_bar = this->density*V;
   
   if(galaxy_per_Poisson_halo == 1.0) return gsl_ran_poisson_pdf(N, N_bar*(1.0+delta_g)); // galaxy_per_Poisson_halo == 1.0 ==> shot-noise is Poisson
   if(galaxy_per_Poisson_halo <= 0.0) {
@@ -107,73 +156,21 @@ double GalaxySample::return_P_of_N_given_delta(int N, double V, double delta, do
 
 
 
-/*
- * GalaxySample::return_N_max
- * 
- * Given a spherical volume of radius R at redshift z, return the maximum N up to which the CiC histogram is computed in GalaxySample::return_CiC_PDF. The python interface needs to know this before calling the CiC computation (which is why this function exists in the first place).
- * 
- */
-
-int GalaxySample::return_N_max(double z, double R_in_Mpc_over_h, double var_NL_rescale){
-  
-  double var = var_NL_rescale*this->matter->return_non_linear_variance(z, R_in_Mpc_over_h);
-  double R = R_in_Mpc_over_h/c_over_e5;
-  
-  // to estimate the maximum N:
-  // assume delta_matter is log-normal with delta_0 = -1
-  // go to 5\sigma of both delta and shot-noise
-  
-  double var_Gauss = log(1.0+var);
-  double delta_max = (exp(-0.5*var_Gauss + 5.0*sqrt(var_Gauss))-1.0);
-  double delta_g_max = this->linear_bias*delta_max + this->quadratic_bias*(delta_max*delta_max - var);
-  double N_bar = 4.0*constants::pi/3.0*pow(R,3)*delta_g_max*this->density;
-  double galaxies_per_Poisson_halo = this->alpha_0 + delta_max*this->alpha_1;
-  
-  return int(0.5+N_bar+5.0*sqrt(N_bar*galaxies_per_Poisson_halo));
-  
-}
-
-int GalaxySample::return_N_max_and_variance(double z, double R_in_Mpc_over_h, double* variance){
-  
-  (*variance) = this->matter->return_non_linear_variance(z, R_in_Mpc_over_h);
-  double R = R_in_Mpc_over_h/c_over_e5;
-  
-  // to estimate the maximum N:
-  // assume delta_matter is log-normal with delta_0 = -1
-  // go to 5\sigma of both delta and shot-noise
-  
-  double var_Gauss = log(1.0+(*variance));
-  double delta_max = (exp(-0.5*var_Gauss + 5.0*sqrt(var_Gauss))-1.0);
-  double delta_g_max = this->linear_bias*delta_max + this->quadratic_bias*(delta_max*delta_max - (*variance));
-  double N_bar = 4.0*constants::pi/3.0*pow(R,3)*delta_g_max*this->density;
-  double galaxies_per_Poisson_halo = this->alpha_0 + delta_max*this->alpha_1;
-  
-  return int(0.5+N_bar+5.0*sqrt(N_bar*galaxies_per_Poisson_halo));
-  
-}
-
-
-
-
-
-/*
- * GalaxySample::return_CiC_PDF
- * 
- * Returns an array containing the probabilities of finding N galaxies in a spherical colume of radius R_in_Mpc_over_h at redshift z.
- * 
- */
-
-vector<double> GalaxySample::return_CiC_PDF(double z, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale){
-  
-  vector<vector<double> > PDF_data = this->matter->compute_PDF_3D(z, R_in_Mpc_over_h, f_NL, var_NL_rescale);
-  
-  double V = 4.0*constants::pi/3.0*pow(R_in_Mpc_over_h/c_over_e5,3);
-  double d_delta = PDF_data[0][1] - PDF_data[0][0];
-  double variance;
-  
-  int N_max = this->return_N_max_and_variance(z, R_in_Mpc_over_h, &variance);
-  variance *= var_NL_rescale;
+vector<double> GalaxySample::return_CIC_from_matter_density_PDF(double N_bar, vector<vector<double> > PDF_data){
+    
   int n_delta = PDF_data[0].size();
+  double d_delta;
+  double integrand;
+  double variance = 0.0;
+  
+  for(int d = 0; d < n_delta-1; d++){
+    d_delta = PDF_data[0][d+1]-PDF_data[0][d];
+    integrand = 0.5*(pow(PDF_data[0][d],2)*PDF_data[1][d]+pow(PDF_data[0][d+1],2)*PDF_data[1][d+1]);
+    variance += integrand*d_delta;
+  }
+  
+  int N_max = this->return_N_max(N_bar, variance);
+  
   
   vector<double> P_of_N(N_max+1, 0.0);
   vector<vector<double> > P_of_N_given_delta(N_max+1, vector<double>(n_delta, 0.0));
@@ -181,7 +178,7 @@ vector<double> GalaxySample::return_CiC_PDF(double z, double R_in_Mpc_over_h, do
   for(int d = 0; d < n_delta; d++){
     double norm = 0.0;
     for(int n = 0; n < N_max+1; n++){
-      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta(n, V, PDF_data[0][d], variance);
+      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta(n, N_bar, PDF_data[0][d], variance);
       norm += P_of_N_given_delta[n][d];
     }
     for(int n = 0; n < N_max+1; n++){
@@ -190,20 +187,16 @@ vector<double> GalaxySample::return_CiC_PDF(double z, double R_in_Mpc_over_h, do
   }
   
   for(int n = 0; n < N_max+1; n++){
-    for(int d = 0; d < n_delta; d++){
-      P_of_N[n] += P_of_N_given_delta[n][d]*PDF_data[1][d];
+    for(int d = 0; d < n_delta-1; d++){
+      d_delta = PDF_data[0][d+1]-PDF_data[0][d];
+      integrand = 0.5*(P_of_N_given_delta[n][d]*PDF_data[1][d] + P_of_N_given_delta[n][d+1]*PDF_data[1][d+1]);
+      P_of_N[n] += d_delta*integrand;
     }
-    P_of_N[n] *= d_delta;
   }
   
   return P_of_N;
   
 }
-
-
-
-
-
 
 
 

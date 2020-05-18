@@ -122,7 +122,9 @@ static double max_relative_bin_width = 0.02;
 /***** minimum number of steps when performing projections along the LOS (too prevent input histograms being to broadly binned) *****/
 /***** NOTE: this should be changed in the future, to integrate redshift histograms with variable stepsizes! ****/
 
-static double minimal_n_w = 300;
+static int minimal_n_w = 300;
+static double maximal_dw = 0.01;
+static double z_last_scattering = 1090.30; // from https://arxiv.org/pdf/1807.06209.pdf , TT-only
 
 };
 

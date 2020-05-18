@@ -11,6 +11,7 @@ class GalaxySample {
    // setting class attributes
    void set_matter_density_field(Matter* matter);
    void set_parameters(double b1, double b2, double a0, double a1);
+   void set_bias_model_from_br_parametrisation(double b_tilde, double r, double N_bar, double variance, double skewness);
    void set_error_flag_negative_density(int flag){this->error_flag_negative_density = flag;};
    double set_b2_to_minimise_negative_densities(double variance); // also returns new b2
    

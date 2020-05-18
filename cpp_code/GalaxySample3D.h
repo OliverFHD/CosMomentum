@@ -9,6 +9,7 @@ class GalaxySample3D : public GalaxySample  {
    ~GalaxySample3D();
    
    void set_parameters_3D(double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1);
+   void set_3D_bias_model_from_br_parametrisation(double b_tilde, double r, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale);
    double set_b2_to_minimise_negative_densities_in_3D_tophat(double R_in_Mpc_over_h, double var_NL_rescale);
    double compute_variance_in_3D_tophat(double R_in_Mpc_over_h, double var_NL_rescale);
    

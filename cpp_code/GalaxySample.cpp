@@ -30,6 +30,29 @@ void GalaxySample::set_parameters(double b1, double b2, double a0, double a1){
 
 
 /*
+ * GalaxySample::set_bias_model_from_br_parametrisation
+ * 
+ * Translating the br-parametrisation of bias and shot-noise (cf. https://arxiv.org/pdf/1710.05162.pdf) to the b-alpha_0-alpha_1 parametrisation.
+ * 
+ * 
+ */
+
+void GalaxySample::set_bias_model_from_br_parametrisation(double b_tilde, double r, double N_bar, double variance, double skewness){
+  
+  this->linear_bias = b_tilde*r;
+  if(this->quadratic_bias != 0.0){
+    this->quadratic_bias = 0.0;
+    cerr << "CAREFUL: currently, b_2 = 0 is still enforced when calling set_bias_model_from_br_parametrisation.\n";
+  }
+  double delta_m0 = lognormal_tools::get_delta0(variance, skewness);
+  
+  this->alpha_0 = lognormal_tools::return_alpha_0(r, b_tilde, N_bar, variance, delta_m0);
+  this->alpha_1 = lognormal_tools::return_alpha_1(r, b_tilde, N_bar, variance, delta_m0);
+  
+}
+
+
+/*
  * GalaxySample::set_matter_density_field
  * 
  * Anchor the galaxy sample in a matter density field (and the corresponding universe).

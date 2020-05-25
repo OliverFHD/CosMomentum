@@ -38,7 +38,7 @@ using namespace std;
  * =>        t_phys = Omega_m * eta^3/12.0
  * 
  */
-void Universe::expansion_in_flat_matter_dominated_universe(double a, double Omega_m, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime){
+void FlatHomogeneousUniverseLCDM::expansion_in_flat_matter_dominated_universe(double a, double Omega_m, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime){
   {
     using namespace error_handling;
     string error_message, warning_message;
@@ -74,7 +74,7 @@ void Universe::expansion_in_flat_matter_dominated_universe(double a, double Omeg
  * 
  */
 
-void Universe::expansion_in_flat_radiation_dominated_universe(double a, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime){
+void FlatHomogeneousUniverseLCDM::expansion_in_flat_radiation_dominated_universe(double a, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime){
   {
     using namespace error_handling;
     string error_message, warning_message;
@@ -105,7 +105,7 @@ void Universe::expansion_in_flat_radiation_dominated_universe(double a, double *
  * =>        t_phys = -ln(-eta) , since eta < 0
  * 
  */
-void Universe::expansion_in_flat_Lambda_dominated_universe(double a, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime){
+void FlatHomogeneousUniverseLCDM::expansion_in_flat_Lambda_dominated_universe(double a, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime){
   {
     using namespace error_handling;
     string error_message, warning_message;

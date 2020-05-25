@@ -1,11 +1,13 @@
-#include <gsl/gsl_sf_gamma.h>
+#ifndef _ProjectedGalaxySample
+#define _ProjectedGalaxySample
+#include "GalaxySample.h"
 
 
 class ProjectedGalaxySample : public GalaxySample {
 
  public:
 
-   ProjectedGalaxySample(Matter* matter, double density_in_arcmin_squared, double b1, double b2, double a0, double a1, string input_file);
+   ProjectedGalaxySample(FlatInhomogeneousUniverseLCDM* universe, double density_in_arcmin_squared, double b1, double b2, double a0, double a1, string input_file);
    ~ProjectedGalaxySample();
    
    void set_n_of_z_data(string input_file);
@@ -24,3 +26,7 @@ class ProjectedGalaxySample : public GalaxySample {
    double density; // in radians
    
 };
+
+
+#include "ProjectedGalaxySample.cpp"
+#endif

@@ -497,7 +497,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
   
   cout << "Computing phi_data:\n";
   cout.flush();
-    
   vector<vector<double> > phi_data = this->compute_phi_of_lambda_3D(z, R_in_Mpc_over_h/constants::c_over_e5, f_NL, var_NL_rescale);
   
   /*
@@ -611,6 +610,13 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
   
   vector<double> coefficients_phi_of_tau = return_coefficients(&tau_for_fit, &phi_for_fit, n_coeff);
   vector<double> coefficients_phi_of_tau_prime = return_coefficients(&tau_for_fit, &phi_prime_for_fit, n_coeff);
+  
+  /*
+   * ISSUE: one can enforce even more coefficients to their analytical value!
+   */
+  coefficients_phi_of_tau[0] = 0.0;
+  coefficients_phi_of_tau[1] = 0.0;
+  coefficients_phi_of_tau_prime[0] = 0.0;
   
   cout << "Done.\n";
   
@@ -755,6 +761,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_of_lambda_3D(
     lambda_values_Gauss[d] -= RL/(3.0*(1.0+delta_NL_values[d]))*dvar_L_RL_dR/2.0*pow(j_values_Gauss[d],2);
     phi_values_Gauss[d] = lambda_values_Gauss[d]*delta_NL_values[d]-delta_L_values[d]*j_values_Gauss[d] + var_L_RL/2.0*pow(j_values_Gauss[d],2);
     
+    
     skew_L_RL *= f_NL;
     dskew_L_RL_dR *= f_NL;
     
@@ -806,6 +813,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_of_lambda_3D(
     data[6][d] = var_L_RL;
     data[7][d] = skew_L_RL;
     data[8][d] = RL*constants::c_over_e5;
+    
     
   }
   

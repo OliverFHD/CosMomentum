@@ -49,12 +49,11 @@ void FlatHomogeneousUniverseLCDM::set_initial_conditions(){
       break;
   }
   
-  cout << a_i << '\n';
-  cout << this->a_initial << '\n';
   if(a_i >= this->a_initial){
     this->t_initial = t_i;
     this->eta_initial = e_i;
     this->H_initial = H_i;
+    this->H_prime_initial = this->hubble_prime_from_Friedmann(this->a_initial);
   }
   else{
     double a_f = this->a_initial;
@@ -64,7 +63,6 @@ void FlatHomogeneousUniverseLCDM::set_initial_conditions(){
     params.pointer_to_Universe = this;
     integration_parameters_Universe * pointer_to_params = &params;
     gsl_odeiv2_system sys = {scale_factor_gsl, scale_factor_gsl_jac, 3, (void *) pointer_to_params};
-    cout << a_i << "   " << a_f << '\n';
     double hstart = (a_f-a_i)*constants::gsl_hstart_relative;
     double eps_absolute = constants::gsl_eps_relative*std::max(e_i, std::max(H_i, t_i));
     gsl_odeiv2_driver * d = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45, hstart, eps_absolute, constants::gsl_eps_relative);
@@ -74,6 +72,7 @@ void FlatHomogeneousUniverseLCDM::set_initial_conditions(){
     this->eta_initial = y[0];
     this->H_initial = y[1];
     this->t_initial = y[2];
+    this->H_prime_initial = this->hubble_prime_from_Friedmann(this->a_initial);
     
     gsl_odeiv2_driver_free(d);
   }

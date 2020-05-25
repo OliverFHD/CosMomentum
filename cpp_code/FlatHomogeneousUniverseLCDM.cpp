@@ -59,8 +59,6 @@ FlatHomogeneousUniverseLCDM::FlatHomogeneousUniverseLCDM(cosmological_model cosm
 
   this->a_initial = a_min;
   this->a_final = a_max;
-  cout << this->a_initial << '\n';
-  cout << this->a_final << '\n';
   this->set_spatial_curvature(0.0);
   this->cosmology = cosmo;
   this->set_initial_conditions();
@@ -95,7 +93,7 @@ void FlatHomogeneousUniverseLCDM::set_expansion_history(){
   gsl_odeiv2_system sys = {scale_factor_gsl, scale_factor_gsl_jac, 3, (void *) pointer_to_params};
 
   
-  double a_i;
+  double a_i = this->a_initial;
   double a_f;
   double eta_i, d_eta;
   
@@ -103,7 +101,6 @@ void FlatHomogeneousUniverseLCDM::set_expansion_history(){
   vector<double> eta_dummy(1, 0.0);
   vector<double> t_dummy(1, 0.0);
   double y[3];
-  
   a_dummy[0] = this->a_initial;
   eta_dummy[0] = this->eta_initial;
   t_dummy[0] = this->t_initial;
@@ -128,12 +125,11 @@ void FlatHomogeneousUniverseLCDM::set_expansion_history(){
 
   double da_attempt;
   int step = 0;
-  while(a_i < 1.0){
+  while(a_i < this->a_final){
     step++;
     da_attempt = constants::maximal_dw*this->hubble_from_Friedmann(a_dummy[step-1])*a_dummy[step-1];
     da_attempt = min(constants::maximal_da, da_attempt);
     da_attempt = min(this->a_final - a_dummy[step-1], da_attempt);
-    //cout << a_i << "   " << step << "   " << da_attempt << "  " ;
     do{
       a_i = a_dummy[step-1];
       a_f = a_i + da_attempt;
@@ -144,7 +140,6 @@ void FlatHomogeneousUniverseLCDM::set_expansion_history(){
       d_eta = y[0]-eta_dummy[step-1];
       da_attempt *= 0.9;
     }while(d_eta > constants::maximal_dw);
-    //cout << da_attempt << "\n" ;
     
     if (status != GSL_SUCCESS){
       printf ("error, return value=%d\n", status);

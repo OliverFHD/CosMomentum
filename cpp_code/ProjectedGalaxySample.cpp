@@ -64,7 +64,6 @@ int ProjectedGalaxySample::return_N_max_in_angular_tophat(double theta_in_arcmin
   double A = 2.0*constants::pi*(1.0-cos(theta_in_arcmin*constants::arcmin));
   double N_bar = A*this->density;
   double variance = this->compute_variance_in_angular_tophat(theta_in_arcmin, var_NL_rescale);
-  cout << N_bar << "  " << variance << '\n';
   
   return this->return_N_max(N_bar, variance);
   

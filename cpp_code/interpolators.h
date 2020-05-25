@@ -86,8 +86,6 @@ double neville_aitken(double x0, vector<double> *x, vector<double> *f){
 
 double neville_aitken_more_clever(int index, int length, double x0, vector<double> *x, vector<double> *f){
   
-  int n = (*x).size();
-  
   if(length == 2){
     
     double x1 = (*x)[index];

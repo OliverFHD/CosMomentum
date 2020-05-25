@@ -683,6 +683,14 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
   vector<double> coefficients_phi_of_tau = return_coefficients(&tau_for_fit, &phi_for_fit, n_coeff);
   vector<double> coefficients_phi_of_tau_prime = return_coefficients(&tau_for_fit, &phi_prime_for_fit, n_coeff);
   
+  
+  /*
+   * ISSUE: one can enforce even more coefficients to their analytical value!
+   */
+  coefficients_phi_of_tau[0] = 0.0;
+  coefficients_phi_of_tau[1] = 0.0;
+  coefficients_phi_of_tau_prime[0] = 0.0;
+  
   cout << "Done.\n";
   
   /*

@@ -60,7 +60,7 @@ class FlatInhomogeneousUniverseLCDM : public FlatHomogeneousUniverseLCDM {
   vector<vector<double> > return_LOS_integrated_phi_of_lambda(double theta, double f_NL, vector<double> z_values, vector<double> n_of_z_values);
   vector<vector<vector<double> > > return_LOS_integrated_CGF_of_delta_and_kappa(double theta, double f_NL, vector<double> z_values, vector<double> n_of_z_values);
   
-  vector<vector<double> > compute_PDF_3D(double z, double R, double f_NL, double var_NL_rescale);
+  vector<vector<double> > compute_PDF_3D(double z, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale);
   vector<vector<double> > compute_LOS_projected_PDF(vector<double> z_values, vector<double> n_of_z_values, double theta, double f_NL, double var_NL_rescale);
   
   int return_N_of_lambda(){return this->delta_values_for_spherical_collapse.size();};

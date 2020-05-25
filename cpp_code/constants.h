@@ -61,9 +61,14 @@ static double eps_nested = 1.0e-5;
 static int ell_max = 20000;
 
 
-/***** Variable controlling the order of interpolating polynomials *****/
+/***** Variable controlling the order of interpolation polynomials *****/
 
 static int order_of_interpolation = 5;
+
+
+/***** Variable controlling maximal stepsize when integration expansion history *****/
+
+static double maximal_da = 0.001;
 
 
 /***** Variable controlling the order of interpolating polynomials for generating functions *****/

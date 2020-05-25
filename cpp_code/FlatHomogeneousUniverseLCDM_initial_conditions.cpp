@@ -5,9 +5,9 @@ using namespace std;
 enum STATE_OF_EARLY_UNIVERSE {UNDEFINED, MATTER_DOMINATED, RADIATION_DOMINATED, LAMBDA_DOMINATED};
 
 
-void Universe::set_initial_conditions(){
+void FlatHomogeneousUniverseLCDM::set_initial_conditions(){
   
-  error_handling::general_warning("WARNING in Universe::set_initial_conditions(): initial conditions module still assumes flat universe!");
+  error_handling::general_warning("NOTE: in FlatHomogeneousUniverseLCDM::set_initial_conditions(): initial conditions module assumes flat universe!");
   
   STATE_OF_EARLY_UNIVERSE early_state = UNDEFINED;
   
@@ -49,6 +49,8 @@ void Universe::set_initial_conditions(){
       break;
   }
   
+  cout << a_i << '\n';
+  cout << this->a_initial << '\n';
   if(a_i >= this->a_initial){
     this->t_initial = t_i;
     this->eta_initial = e_i;
@@ -62,7 +64,7 @@ void Universe::set_initial_conditions(){
     params.pointer_to_Universe = this;
     integration_parameters_Universe * pointer_to_params = &params;
     gsl_odeiv2_system sys = {scale_factor_gsl, scale_factor_gsl_jac, 3, (void *) pointer_to_params};
-    
+    cout << a_i << "   " << a_f << '\n';
     double hstart = (a_f-a_i)*constants::gsl_hstart_relative;
     double eps_absolute = constants::gsl_eps_relative*std::max(e_i, std::max(H_i, t_i));
     gsl_odeiv2_driver * d = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45, hstart, eps_absolute, constants::gsl_eps_relative);

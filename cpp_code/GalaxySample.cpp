@@ -1,9 +1,7 @@
-#include "GalaxySample.h"
 
-
-GalaxySample::GalaxySample(Matter* matter, double b1, double b2, double a0, double a1){
+GalaxySample::GalaxySample(FlatInhomogeneousUniverseLCDM* universe, double b1, double b2, double a0, double a1){
   
-  this->set_matter_density_field(matter);
+  this->set_universe(universe);
   this->set_parameters(b1, b2, a0, a1);
   
 }
@@ -53,16 +51,15 @@ void GalaxySample::set_bias_model_from_br_parametrisation(double b_tilde, double
 
 
 /*
- * GalaxySample::set_matter_density_field
+ * GalaxySample::set_universe
  * 
- * Anchor the galaxy sample in a matter density field (and the corresponding universe).
+ * Anchor the galaxy sample in a universe.
  * 
  * 
  */
 
-void GalaxySample::set_matter_density_field(Matter* matter){
-  this->matter = matter;
-  this->universe = this->matter->universe;
+void GalaxySample::set_universe(FlatInhomogeneousUniverseLCDM* universe){
+  this->universe = universe;
   this->cosmology = this->universe->return_cosmology(); 
 }
 

@@ -1,7 +1,6 @@
-#include "GalaxySample3D.h"
 
 
-GalaxySample3D::GalaxySample3D(Matter* matter, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1) : GalaxySample(matter, b1, b2, a0, a1){
+GalaxySample3D::GalaxySample3D(FlatInhomogeneousUniverseLCDM* universe, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1) : GalaxySample(universe, b1, b2, a0, a1){
   
   this->redshift = z;
   this->density = density_in_Mpc_over_h_cubed*pow(constants::c_over_e5, 3); // changing from Mpc/h to units with c/H_0 == 1
@@ -23,7 +22,7 @@ void GalaxySample3D::set_3D_bias_model_from_br_parametrisation(double b_tilde, d
   double V = 4.0*constants::pi/3.0*pow(R_in_Mpc_over_h/constants::c_over_e5, 3);
   double N_bar = V*this->density;
   double variance = this->compute_variance_in_3D_tophat(R_in_Mpc_over_h, var_NL_rescale);
-  double skewness = var_NL_rescale*var_NL_rescale*this->pointer_to_matter()->return_3D_skewness(this->redshift, R_in_Mpc_over_h, f_NL);
+  double skewness = var_NL_rescale*var_NL_rescale*this->pointer_to_universe()->return_3D_skewness(this->redshift, R_in_Mpc_over_h, f_NL);
   
   this->set_bias_model_from_br_parametrisation(b_tilde, r, N_bar, variance, skewness);
 }
@@ -37,7 +36,7 @@ void GalaxySample3D::set_3D_bias_model_from_br_parametrisation(double b_tilde, d
  */
 
 double GalaxySample3D::compute_variance_in_3D_tophat(double R_in_Mpc_over_h, double var_NL_rescale){
-  return var_NL_rescale*this->pointer_to_matter()->return_non_linear_variance(this->redshift, R_in_Mpc_over_h);
+  return var_NL_rescale*this->pointer_to_universe()->return_non_linear_variance(this->redshift, R_in_Mpc_over_h);
 }
 
 
@@ -82,7 +81,7 @@ double GalaxySample3D::set_b2_to_minimise_negative_densities_in_3D_tophat(double
 
 vector<double> GalaxySample3D::return_CiC_PDF_in_3D_tophat(double R_in_Mpc_over_h, double f_NL, double var_NL_rescale){
   
-  vector<vector<double> > PDF_data = this->pointer_to_matter()->compute_PDF_3D(this->redshift, R_in_Mpc_over_h, f_NL, var_NL_rescale);
+  vector<vector<double> > PDF_data = this->pointer_to_universe()->compute_PDF_3D(this->redshift, R_in_Mpc_over_h, f_NL, var_NL_rescale);
   
   double V = 4.0*constants::pi/3.0*pow(R_in_Mpc_over_h/constants::c_over_e5, 3);
   double N_bar = V*this->density;

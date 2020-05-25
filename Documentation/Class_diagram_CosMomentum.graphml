@@ -18,94 +18,12 @@
       <data key="d4" xml:space="preserve"/>
       <data key="d6">
         <y:UMLClassNode>
-          <y:Geometry height="960.6410505836575" width="1046.294747081712" x="362.0" y="105.0"/>
-          <y:Fill color="#FFCC00" transparent="false"/>
-          <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="19.310546875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="102.66162109375" x="471.81656299398105" xml:space="preserve" y="3.0">Class Universe<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
-          <y:UML clipContent="true" constraint="" hasDetailsColor="false" omitDetails="false" stereotype="" use3DEffect="true">
-            <y:AttributeLabel xml:space="preserve">﻿public attributes:
-
-   /
-
-private attributes:
-
-﻿   int expansion_or_collapse; // 1 == expansion ; 0 == collapse
-   int number_of_time_steps;
-   
-   double t_initial;
-   double eta_initial;
-   double H_initial;
-   double H_prime_initial;
-   double a_initial;
-   double a_final;
-
-   vector&lt;double&gt; t;
-   vector&lt;double&gt; eta;
-   vector&lt;double&gt; a;
-   vector&lt;double&gt; H;
-   vector&lt;double&gt; H_prime;
-   
-   cosmological_model cosmology;
-
-</y:AttributeLabel>
-            <y:MethodLabel xml:space="preserve">﻿public methods:
-
-﻿   Universe(cosmological_model cosmo, double a_min, double a_max, int expand_or_collapse);
-  ~Universe();
-  
-  double return_a_initial();
-  double return_a_final();
-  double return_eta_initial();
-  double return_eta_final();
-  cosmological_model return_cosmology();
-  
-  void print_background_cosmology(string filename);
-  
-  double f_k(double w);
-  double t_at_eta(double e);
-  double a_at_eta(double e);
-  double H_at_eta(double e);
-  double H_prime_at_eta(double e);  
-  double eta_at_a(double a);
-  
-  vector&lt;vector&lt;double&gt; &gt; return_background_expansion();
-  vector&lt;vector&lt;double&gt; &gt; return_background_expansion(int conformal_time_steps);
-   
-  double rho_m_of_a(double scale); // All in units of TODAYS critical density
-  double rho_r_of_a(double scale);
-  double rho_L_of_a(double scale);
-  double w_L_of_a(double scale);
-  
-  static void expansion_in_flat_matter_dominated_universe(double a, double Omega_m, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime);
-  static void expansion_in_flat_radiation_dominated_universe(double a, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime);
-  static void expansion_in_flat_Lambda_dominated_universe(double a, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime);
-
-private methods:
-
-﻿   void set_initial_conditions();
-   void set_background_cosmology();
-   void set_number_of_time_steps(int n_entries);
-   
-   double hubble_from_Friedmann(double a_start);
-   double hubble_prime_from_Friedmann(double a_start);
-
-</y:MethodLabel>
-          </y:UML>
-        </y:UMLClassNode>
-      </data>
-    </node>
-    <node id="n1">
-      <data key="d4" xml:space="preserve"/>
-      <data key="d6">
-        <y:UMLClassNode>
-          <y:Geometry height="246.0" width="219.0" x="1599.612840466926" y="462.32052529182874"/>
+          <y:Geometry height="246.0" width="219.0" x="1833.4438856482557" y="385.9627632491318"/>
           <y:Fill color="#FFCC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="19.310546875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="183.01025390625" x="17.994873046875" xml:space="preserve" y="3.0">struct ﻿cosmological_model<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
           <y:UML clipContent="true" constraint="" hasDetailsColor="false" omitDetails="false" stereotype="" use3DEffect="true">
-            <y:AttributeLabel xml:space="preserve">﻿  int collapse;
-
-  double Omega_m;
+            <y:AttributeLabel xml:space="preserve">﻿  double Omega_m;
   double Omega_r;
   double Omega_L;
   double Omega_b;
@@ -125,7 +43,7 @@ private methods:
         </y:UMLClassNode>
       </data>
     </node>
-    <node id="n2">
+    <node id="n1">
       <data key="d6">
         <y:ShapeNode>
           <y:Geometry height="80.0" width="345.0" x="362.0" y="-75.5"/>
@@ -133,193 +51,254 @@ private methods:
           <y:BorderStyle color="#000000" raised="false" type="line" width="2.0"/>
           <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="16" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="60.53125" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="265.328125" x="39.8359375" xml:space="preserve" y="9.734375">Class Diagram for CosMomentum
 
-Last edited: March 5th, 2019<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
+Last edited: May 25, 2020<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
           <y:Shape type="rectangle"/>
         </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n2">
+      <data key="d4" xml:space="preserve"/>
+      <data key="d6">
+        <y:UMLClassNode>
+          <y:Geometry height="310.6546692607004" width="302.3326848249027" x="1356.0404702190074" y="-115.97957198443595"/>
+          <y:Fill color="#FFCC00" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="19.310546875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="173.81884765625" x="64.25691858432634" xml:space="preserve" y="3.0">Class FriedmannUniverse<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
+          <y:UML clipContent="false" constraint="" hasDetailsColor="false" omitDetails="false" stereotype="" use3DEffect="true">
+            <y:AttributeLabel xml:space="preserve">public attributes:
+
+
+protected attributes:
+
+
+private attributes:
+
+
+</y:AttributeLabel>
+            <y:MethodLabel xml:space="preserve">public methods:
+
+
+protected methods:
+
+
+private methods:
+
+
+</y:MethodLabel>
+          </y:UML>
+        </y:UMLClassNode>
       </data>
     </node>
     <node id="n3">
       <data key="d4" xml:space="preserve"/>
       <data key="d6">
         <y:UMLClassNode>
-          <y:Geometry height="2129.996108949419" width="1047.7743190661474" x="361.26021400778234" y="1250.0359922178989"/>
+          <y:Geometry height="310.6546692607004" width="302.3326848249027" x="1356.0404702190074" y="353.6354286187816"/>
           <y:Fill color="#FFCC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="19.310546875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="87.6240234375" x="480.0751478143237" xml:space="preserve" y="3.0">Class Matter<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
-          <y:UML clipContent="true" constraint="" hasDetailsColor="false" omitDetails="false" stereotype="" use3DEffect="true">
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="19.310546875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="262.08935546875" x="20.121664678076343" xml:space="preserve" y="3.0">Class FlatHomogeneousUniverseLCDM<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
+          <y:UML clipContent="false" constraint="" hasDetailsColor="false" omitDetails="false" stereotype="" use3DEffect="true">
             <y:AttributeLabel xml:space="preserve">public attributes:
 
-   ﻿Universe* universe;
-   
-   ﻿
-   vector&lt;double&gt; log_top_hat_radii;
-   vector&lt;double&gt; top_hat_sphere_variances;
-   vector&lt;double&gt; dtop_hat_sphere_variances_dR;
-   vector&lt;double&gt; log_top_hat_radii_for_skewnesses;
-   vector&lt;double&gt; top_hat_sphere_skewnesses;
-   vector&lt;double&gt; dtop_hat_sphere_skewnesses_dR;
+
+protected attributes:
+
 
 private attributes:
 
-   ﻿int number_of_entries_Newton;
-   int ell_max;
-
-   double a_initial;
-   double a_final;
-   double eta_initial;
-   double eta_final;
-   double D_initial;
-   double D_prime_initial;
-   double norm;
-   double f_NL_rescaling_factor;
-   double top_hat_radius;
-   double second_top_hat_radius;
-  
-   INITIALISATION skewness_initialisation;
-      
-   vector&lt;double&gt; eta_Newton;   
-   vector&lt;double&gt; eta_NL;   
-   vector&lt;double&gt; Newtonian_growth_factor_of_delta;
-   vector&lt;double&gt; Newtonian_growth_factor_of_delta_prime;
-   vector&lt;double&gt; Newtonian_growth_factor_of_delta_prime_prime;
-   vector&lt;double&gt; Newtonian_growth_factor_of_delta_prime_prime_prime;
-   vector&lt;double&gt; Newtonian_growth_factor_second_order;
-   vector&lt;double&gt; Newtonian_growth_factor_second_order_prime;
-  
-   vector&lt;double&gt; wave_numbers;
-   vector&lt;double&gt; log_wave_numbers;
-   vector&lt;double&gt; transfer_function;
-   vector&lt;double&gt; P_L_today;
-   vector&lt;double&gt; P_NL_today;
-
-   vector&lt;double&gt; delta_values_for_spherical_collapse;
-   vector&lt;vector&lt;double&gt; &gt; spherical_collapse_evolution_of_delta;
-   vector&lt;vector&lt;double&gt; &gt; spherical_collapse_evolution_of_delta_ddelta;
-   vector&lt;vector&lt;double&gt; &gt; spherical_collapse_evolution_of_delta_ddelta2;
-   vector&lt;double&gt; eta_NL_for_spherical_collapse;
-  
-   cosmological_model cosmology;
-
-   /* Variables for halofit  (Smith++2003, Takahashi++2012) */
-
-   ﻿double current_k_non_linear;
-   double current_n_eff;
-   double current_C_sm;
-   double current_scale;
-
-   ﻿ouble f_1, f_2, f_3, mun, nun, betan, alphan;
-   double current_r_sq;
-   
-   vector&lt;double&gt; current_P_NL;
-   vector&lt;double&gt; current_P_L;
 
 </y:AttributeLabel>
             <y:MethodLabel xml:space="preserve">public methods:
 
-   Matter(Universe* uni);
-   Matter(Universe* uni, string file_for_transfer_function);
-   ~Matter();
 
-   void print_Newtonian_growth_factor(string file_name);
-   void return_delta_NL_of_delta_L_and_dF_ddelta_3D(double eta, vector&lt;double&gt; *delta_L_values, vector&lt;double&gt; *delta_NL_values, vector&lt;double&gt; *delta_NL_prime_values);
-    
-   double Newtonian_linear_power_spectrum(double k, double e);
-   double transfer_function_at(double k);
-   double current_P_NL_at(double ln_k);
-   double current_P_L_at(double ln_k);
-   double P_L_today_at(double ln_k);
-   double return_linear_variance(double z, double R_in_Mpc_over_h);
-   double return_non_linear_variance(double z, double R_in_Mpc_over_h);
-  
-   vector&lt;double&gt; P_L(double e);
-   vector&lt;double&gt; P_NL(double e);
-   vector&lt;double&gt; return_wave_numbers();
+protected methods:
 
-   ﻿void print_P_NL(double w, string output_file);
-   void set_spherical_collapse_evolution_of_delta(double z_min, double z_max, int n_time);
-    
-   double variance_of_matter_within_R_before_norm_was_determined(double R);
-   double variance_of_matter_within_R(double R);
-   double dvariance_of_matter_within_R_dR(double R);
-   double variance_of_matter_within_R_NL(double R);
-  
-   /* Needed for PNG calculation: */
-   double skewness_of_matter_within_R(double R, double alpha_1, double alpha_2, double alpha_3);
-   double dskewness_of_matter_within_R_dR(double R, double alpha_1, double alpha_2, double alpha_3);
-   /******/
-  
-   double return_D_of_eta(double eta);
-   double return_D_prime_of_eta(double eta);
-   vector&lt;vector&lt;double&gt; &gt; return_linear_growth_history(int conformal_time_steps);
-  
-   void growth_of_DM_fluctuations_in_flat_matter_dominated_universe(double a, double *eta, double *D, double *D_prime);
-   void growth_of_DM_fluctuations_in_flat_radiation_dominated_universe(double a, double *eta, double *D, double *D_prime);
-   void growth_of_DM_fluctuations_in_flat_Lambda_dominated_universe(double a, double *eta, double *D, double *D_prime);
-  
-   vector&lt;vector&lt;double&gt; &gt; return_power_spectra(double eta, double R);
-  
-   vector&lt;vector&lt;double&gt; &gt; compute_phi_of_lambda_3D(double z, double R, double f_NL, double var_NL_rescale);
-  
-   int return_N_of_lambda(){return this-&gt;delta_values_for_spherical_collapse.size();};
-   void return_2rd_moment_and_derivative(double R, double *variance, double *dvariance_dR);
-  
-   void set_sphere_skewnesses(int PNG_modus);
-   void set_sphere_skewnesses_from_eps3_powerlaw_approximation(int PNG_modus, double R_0_in_Mpc_over_h);
-   void set_sphere_skewnesses_from_file(string file_name);
 
 private methods:
 
-   ﻿void set_initial_conditions();
-   void set_wave_numbers();
-   void set_transfer_function_Eisenstein_and_Hu();
-   void set_transfer_function_Bond_and_Efstathiou();
-   void set_transfer_function_from_file(string file);
-   void set_P_today();
-   void set_sphere_variances();
-  
-   void initialize_linear_growth_factor_of_delta();
-   void initialize_up_to_second_order_growth_factor_of_delta(double D, double D_prime); 
 
-   /* Methods for halofit  (Smith++2003, Takahashi++2012) */
-
-   ﻿double sig_sq(double R, double e);
-   vector&lt;double&gt; c_and_n_NL(double R, double e);
-
-   double k_NL(double k_min, double k_max, double e);
-
-   double Delta_Q_sq(double k, double e);
-   double Delta_H_sq(double k);
-   double Delta_H_prime_sq(double k);
-   double P_NL_at(double k, double e);
-   
-   void sig_sq_derivs(vector&lt;double&gt; (*a), vector&lt;double&gt; (*dadt));
-   void norm_derivs(vector&lt;double&gt; (*a), vector&lt;double&gt; (*dadt));
-   void c_and_n_derivs(vector&lt;double&gt; (*a), vector&lt;double&gt; (*dadt));</y:MethodLabel>
+</y:MethodLabel>
           </y:UML>
         </y:UMLClassNode>
       </data>
     </node>
-    <edge id="e0" source="n0" target="n1">
-      <data key="d8" xml:space="preserve"/>
+    <node id="n4">
+      <data key="d4" xml:space="preserve"/>
+      <data key="d6">
+        <y:UMLClassNode>
+          <y:Geometry height="310.6546692607004" width="302.3326848249027" x="1356.0404702190071" y="823.2504292219992"/>
+          <y:Fill color="#FFCC00" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="19.310546875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="273.3310546875" x="14.500815068701343" xml:space="preserve" y="3.0">Class FlatInhomogeneousUniverseLCDM<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
+          <y:UML clipContent="false" constraint="" hasDetailsColor="false" omitDetails="false" stereotype="" use3DEffect="true">
+            <y:AttributeLabel xml:space="preserve">public attributes:
+
+
+protected attributes:
+
+
+private attributes:
+
+
+</y:AttributeLabel>
+            <y:MethodLabel xml:space="preserve">public methods:
+
+
+protected methods:
+
+
+private methods:
+
+
+</y:MethodLabel>
+          </y:UML>
+        </y:UMLClassNode>
+      </data>
+    </node>
+    <node id="n5">
+      <data key="d4" xml:space="preserve"/>
+      <data key="d6">
+        <y:UMLClassNode>
+          <y:Geometry height="310.6546692607004" width="302.3326848249027" x="770.9607897780974" y="608.77653374601"/>
+          <y:Fill color="#FFCC00" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="19.310546875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="155.60107421875" x="73.36580530307634" xml:space="preserve" y="3.0">Class GalaxySample3D<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
+          <y:UML clipContent="false" constraint="" hasDetailsColor="false" omitDetails="false" stereotype="" use3DEffect="true">
+            <y:AttributeLabel xml:space="preserve">public attributes:
+
+
+protected attributes:
+
+
+private attributes:
+
+
+</y:AttributeLabel>
+            <y:MethodLabel xml:space="preserve">public methods:
+
+
+protected methods:
+
+
+private methods:
+
+
+</y:MethodLabel>
+          </y:UML>
+        </y:UMLClassNode>
+      </data>
+    </node>
+    <node id="n6">
+      <data key="d4" xml:space="preserve"/>
+      <data key="d6">
+        <y:UMLClassNode>
+          <y:Geometry height="310.6546692607004" width="302.3326848249027" x="304.3818430629194" y="823.2504292219991"/>
+          <y:Fill color="#FFCC00" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="19.310546875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="136.716796875" x="82.80794397495134" xml:space="preserve" y="3.0">Class GalaxySample<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
+          <y:UML clipContent="false" constraint="" hasDetailsColor="false" omitDetails="false" stereotype="" use3DEffect="true">
+            <y:AttributeLabel xml:space="preserve">public attributes:
+
+
+protected attributes:
+
+
+private attributes:
+
+
+</y:AttributeLabel>
+            <y:MethodLabel xml:space="preserve">public methods:
+
+
+protected methods:
+
+
+private methods:
+
+
+</y:MethodLabel>
+          </y:UML>
+        </y:UMLClassNode>
+      </data>
+    </node>
+    <node id="n7">
+      <data key="d4" xml:space="preserve"/>
+      <data key="d6">
+        <y:UMLClassNode>
+          <y:Geometry height="310.6546692607004" width="302.3326848249027" x="770.9607897780974" y="1071.230560254673"/>
+          <y:Fill color="#FFCC00" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="13" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="19.310546875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#000000" verticalTextPosition="bottom" visible="true" width="199.2666015625" x="51.53304163120134" xml:space="preserve" y="3.0">Class ProjectedGalaxySample<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
+          <y:UML clipContent="false" constraint="" hasDetailsColor="false" omitDetails="false" stereotype="" use3DEffect="true">
+            <y:AttributeLabel xml:space="preserve">public attributes:
+
+
+protected attributes:
+
+
+private attributes:
+
+
+</y:AttributeLabel>
+            <y:MethodLabel xml:space="preserve">public methods:
+
+
+protected methods:
+
+
+private methods:
+
+
+</y:MethodLabel>
+          </y:UML>
+        </y:UMLClassNode>
+      </data>
+    </node>
+    <edge id="e0" source="n5" target="n6">
+      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
-          <y:Arrows source="white_diamond" target="none"/>
-          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" hasText="false" height="4.0" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="4.0" x="93.65569807119391" y="28.000029686359994">
-            <y:LabelModel>
-              <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
-            </y:LabelModel>
-            <y:ModelParameter>
-              <y:SmartEdgeLabelModelParameter angle="0.0" distance="30.0" distanceToCenter="true" position="right" ratio="0.5" segment="0"/>
-            </y:ModelParameter>
-            <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/>
-          </y:EdgeLabel>
+          <y:Arrows source="none" target="white_delta"/>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
       </data>
     </edge>
-    <edge id="e1" source="n3" target="n0">
+    <edge id="e1" source="n7" target="n6">
+      <data key="d9"/>
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="white_delta"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e2" source="n4" target="n3">
+      <data key="d9"/>
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="white_delta"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e3" source="n3" target="n2">
+      <data key="d9"/>
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="white_delta"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e4" source="n5" target="n4">
       <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
@@ -330,13 +309,22 @@ private methods:
         </y:PolyLineEdge>
       </data>
     </edge>
-    <edge id="e2" source="n3" target="n1">
+    <edge id="e5" source="n7" target="n4">
       <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
-          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
-            <y:Point x="1709.112840466926" y="1361.3239299610896"/>
-          </y:Path>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="white_diamond"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e6" source="n0" target="n3">
+      <data key="d9"/>
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="white_diamond"/>
           <y:BendStyle smoothed="false"/>

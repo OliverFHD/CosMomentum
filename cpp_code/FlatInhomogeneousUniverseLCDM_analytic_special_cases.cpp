@@ -39,7 +39,7 @@ using namespace std;
  * =>        t_phys = eta^3/12.0
  * 
  */
-void Matter::growth_of_DM_fluctuations_in_flat_matter_dominated_universe(double a, double *eta, double *D, double *D_prime){
+void FlatInhomogeneousUniverseLCDM::growth_of_DM_fluctuations_in_flat_matter_dominated_universe(double a, double *eta, double *D, double *D_prime){
   {
     using namespace error_handling;
     string error_message, warning_message;
@@ -77,7 +77,7 @@ void Matter::growth_of_DM_fluctuations_in_flat_matter_dominated_universe(double 
  * 
  */
 
-void Matter::growth_of_DM_fluctuations_in_flat_radiation_dominated_universe(double a, double *eta, double *D, double *D_prime){
+void FlatInhomogeneousUniverseLCDM::growth_of_DM_fluctuations_in_flat_radiation_dominated_universe(double a, double *eta, double *D, double *D_prime){
   {
     using namespace error_handling;
     string error_message, warning_message;
@@ -107,7 +107,7 @@ void Matter::growth_of_DM_fluctuations_in_flat_radiation_dominated_universe(doub
  * =>        t_phys = -ln(-eta) , since eta < 0
  * 
  */
-void Matter::growth_of_DM_fluctuations_in_flat_Lambda_dominated_universe(double a, double *eta, double *D, double *D_prime){
+void FlatInhomogeneousUniverseLCDM::growth_of_DM_fluctuations_in_flat_Lambda_dominated_universe(double a, double *eta, double *D, double *D_prime){
   {
     using namespace error_handling;
     string error_message, warning_message;

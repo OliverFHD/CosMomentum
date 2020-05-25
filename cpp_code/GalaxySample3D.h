@@ -1,11 +1,13 @@
-#include <gsl/gsl_sf_gamma.h>
+#ifndef _GalaxySample3D
+#define _GalaxySample3D
+#include "GalaxySample.h"
 
 
 class GalaxySample3D : public GalaxySample  {
 
  public:
 
-   GalaxySample3D(Matter* matter, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1);
+   GalaxySample3D(FlatInhomogeneousUniverseLCDM* universe, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1);
    ~GalaxySample3D();
    
    void set_parameters_3D(double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1);
@@ -22,3 +24,6 @@ class GalaxySample3D : public GalaxySample  {
    double redshift;
    
 };
+
+#include "GalaxySample3D.cpp"
+#endif

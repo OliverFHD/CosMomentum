@@ -4,12 +4,12 @@
 
 
 
-void skewness_of_matter_within_R_for_multithread(double R, double n_s, Matter* pointer_to_Matter, double f_NL_rescaling_factor, double alpha_1, double alpha_2, double alpha_3, double* skew){
+void skewness_of_matter_within_R_for_multithread(double R, double n_s, FlatInhomogeneousUniverseLCDM* pointer_to_Universe, double f_NL_rescaling_factor, double alpha_1, double alpha_2, double alpha_3, double* skew){
   
   integration_parameters params;
   params.top_hat_radius = R;
   params.n_s = n_s;
-  params.pointer_to_Matter = pointer_to_Matter;
+  params.pointer_to_Universe = pointer_to_Universe;
   params.alpha_1 = alpha_1;
   params.alpha_2 = alpha_2;
   params.alpha_3 = alpha_3;
@@ -23,12 +23,12 @@ void skewness_of_matter_within_R_for_multithread(double R, double n_s, Matter* p
 
 
 
-void dskewness_of_matter_within_R_dR_for_multithread(double R, double n_s, Matter* pointer_to_Matter, double f_NL_rescaling_factor, double alpha_1, double alpha_2, double alpha_3, double* dskew){
+void dskewness_of_matter_within_R_dR_for_multithread(double R, double n_s, FlatInhomogeneousUniverseLCDM* pointer_to_Universe, double f_NL_rescaling_factor, double alpha_1, double alpha_2, double alpha_3, double* dskew){
   
   integration_parameters params;
   params.top_hat_radius = R;
   params.n_s = n_s;
-  params.pointer_to_Matter = pointer_to_Matter;
+  params.pointer_to_Universe = pointer_to_Universe;
   params.alpha_1 = alpha_1;
   params.alpha_2 = alpha_2;
   params.alpha_3 = alpha_3;
@@ -41,12 +41,12 @@ void dskewness_of_matter_within_R_dR_for_multithread(double R, double n_s, Matte
 }
 
 
-void skewness_of_matter_within_R_2D_for_multithread(double R, double n_s, Matter* pointer_to_Matter, double f_NL_rescaling_factor, double alpha_1, double alpha_2, double alpha_3, double* skew){
+void skewness_of_matter_within_R_2D_for_multithread(double R, double n_s, FlatInhomogeneousUniverseLCDM* pointer_to_Universe, double f_NL_rescaling_factor, double alpha_1, double alpha_2, double alpha_3, double* skew){
   
   integration_parameters params;
   params.top_hat_radius = R;
   params.n_s = n_s;
-  params.pointer_to_Matter = pointer_to_Matter;
+  params.pointer_to_Universe = pointer_to_Universe;
   params.alpha_1 = alpha_1;
   params.alpha_2 = alpha_2;
   params.alpha_3 = alpha_3;
@@ -60,12 +60,12 @@ void skewness_of_matter_within_R_2D_for_multithread(double R, double n_s, Matter
 
 
 
-void dskewness_of_matter_within_R_dR_2D_for_multithread(double R, double n_s, Matter* pointer_to_Matter, double f_NL_rescaling_factor, double alpha_1, double alpha_2, double alpha_3, double* dskew){
+void dskewness_of_matter_within_R_dR_2D_for_multithread(double R, double n_s, FlatInhomogeneousUniverseLCDM* pointer_to_Universe, double f_NL_rescaling_factor, double alpha_1, double alpha_2, double alpha_3, double* dskew){
   
   integration_parameters params;
   params.top_hat_radius = R;
   params.n_s = n_s;
-  params.pointer_to_Matter = pointer_to_Matter;
+  params.pointer_to_Universe = pointer_to_Universe;
   params.alpha_1 = alpha_1;
   params.alpha_2 = alpha_2;
   params.alpha_3 = alpha_3;
@@ -86,7 +86,7 @@ void dskewness_of_matter_within_R_dR_2D_for_multithread(double R, double n_s, Ma
  * 
 *******************************************************************************************************************************************************/
 
-void Matter::set_sphere_variances(){
+void FlatInhomogeneousUniverseLCDM::set_sphere_variances(){
   
   int n = 512;
   
@@ -98,7 +98,7 @@ void Matter::set_sphere_variances(){
   this->log_top_hat_radii.resize(n, 0.0);
   this->top_hat_sphere_variances.resize(n, 0.0);
   this->dtop_hat_sphere_variances_dR.resize(n, 0.0);
-  this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
+  this->current_P_L = this->P_L(this->eta_at_a(1.0));
   
   for(int i = 0; i < n; i++){
     this->log_top_hat_radii[i] = log(radii_in_Mpc_over_h[i]/constants::c_over_e5);
@@ -120,17 +120,17 @@ void Matter::set_sphere_variances(){
  * 
 *******************************************************************************************************************************************************/
 
-void Matter::set_sphere_skewnesses(int PNG_modus){
+void FlatInhomogeneousUniverseLCDM::set_sphere_skewnesses(int PNG_modus){
   
   int n = this->log_top_hat_radii.size();
   this->log_top_hat_radii_for_skewnesses = this->log_top_hat_radii;
   
   this->top_hat_sphere_skewnesses.resize(n, 0.0);
   this->dtop_hat_sphere_skewnesses_dR.resize(n, 0.0);
-  this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
+  this->current_P_L = this->P_L(this->eta_at_a(1.0));
   
   // f_NL is now set in the ipython interface
-  double prefactor = 3.0*this->cosmology.Omega_m/pow(constants::pi2, 4);//*this->f_NL_rescaling_factor;
+  double prefactor = 3.0*this->return_Omega_m()/pow(constants::pi2, 4);//*this->f_NL_rescaling_factor;
   double skew_1, dskew_1;
   double skew_2, dskew_2;
   double skew_3, dskew_3;
@@ -145,15 +145,15 @@ void Matter::set_sphere_skewnesses(int PNG_modus){
   for(int i = 0; i < n; i++){
     R = exp(this->log_top_hat_radii[i]);
     
-    std::thread thread_1(skewness_of_matter_within_R_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &skew_1);
-    std::thread thread_4(dskewness_of_matter_within_R_dR_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &dskew_1);
+    std::thread thread_1(skewness_of_matter_within_R_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &skew_1);
+    std::thread thread_4(dskewness_of_matter_within_R_dR_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &dskew_1);
     
     if(PNG_modus != 1){
-      std::thread thread_2(skewness_of_matter_within_R_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &skew_2);
-      std::thread thread_5(dskewness_of_matter_within_R_dR_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &dskew_2);
+      std::thread thread_2(skewness_of_matter_within_R_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &skew_2);
+      std::thread thread_5(dskewness_of_matter_within_R_dR_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &dskew_2);
       
-      std::thread thread_3(skewness_of_matter_within_R_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &skew_3);
-      std::thread thread_6(dskewness_of_matter_within_R_dR_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &dskew_3);
+      std::thread thread_3(skewness_of_matter_within_R_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &skew_3);
+      std::thread thread_6(dskewness_of_matter_within_R_dR_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &dskew_3);
       
       thread_2.join();
       thread_5.join();
@@ -203,17 +203,17 @@ void Matter::set_sphere_skewnesses(int PNG_modus){
  * 
 *******************************************************************************************************************************************************/
 
-void Matter::set_cylinder_skewnesses(int PNG_modus){
+void FlatInhomogeneousUniverseLCDM::set_cylinder_skewnesses(int PNG_modus){
   
   int n = this->log_top_hat_radii.size();
   this->log_top_hat_cylinder_radii_for_skewnesses = this->log_top_hat_cylinder_radii;
   
   this->top_hat_cylinder_skewnesses.resize(n, 0.0);
   this->dtop_hat_cylinder_skewnesses_dR.resize(n, 0.0);
-  this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
+  this->current_P_L = this->P_L(this->eta_at_a(1.0));
   
   // f_NL is now set in the ipython interface
-  double prefactor = 3.0*this->cosmology.Omega_m/pow(constants::pi2, 5);//*this->f_NL_rescaling_factor;
+  double prefactor = 3.0*this->return_Omega_m()/pow(constants::pi2, 5);//*this->f_NL_rescaling_factor;
   double skew_1, dskew_1;
   double skew_2, dskew_2;
   double skew_3, dskew_3;
@@ -228,15 +228,15 @@ void Matter::set_cylinder_skewnesses(int PNG_modus){
   for(int i = 0; i < n; i++){
     R = exp(this->log_top_hat_cylinder_radii[i]);
     
-    std::thread thread_1(skewness_of_matter_within_R_2D_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &skew_1);
-    std::thread thread_4(dskewness_of_matter_within_R_dR_2D_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &dskew_1);
+    std::thread thread_1(skewness_of_matter_within_R_2D_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &skew_1);
+    std::thread thread_4(dskewness_of_matter_within_R_dR_2D_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &dskew_1);
     
     if(PNG_modus != 1){
-      std::thread thread_2(skewness_of_matter_within_R_2D_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &skew_2);
-      std::thread thread_5(dskewness_of_matter_within_R_dR_2D_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &dskew_2);
+      std::thread thread_2(skewness_of_matter_within_R_2D_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &skew_2);
+      std::thread thread_5(dskewness_of_matter_within_R_dR_2D_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &dskew_2);
       
-      std::thread thread_3(skewness_of_matter_within_R_2D_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &skew_3);
-      std::thread thread_6(dskewness_of_matter_within_R_dR_2D_for_multithread, R, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &dskew_3);
+      std::thread thread_3(skewness_of_matter_within_R_2D_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &skew_3);
+      std::thread thread_6(dskewness_of_matter_within_R_dR_2D_for_multithread, R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &dskew_3);
       
       thread_2.join();
       thread_5.join();
@@ -289,17 +289,17 @@ void Matter::set_cylinder_skewnesses(int PNG_modus){
  * 
 *******************************************************************************************************************************************************/
 
-void Matter::set_sphere_skewnesses_from_eps3_powerlaw_approximation(int PNG_modus, double R_0_in_Mpc_over_h){
+void FlatInhomogeneousUniverseLCDM::set_sphere_skewnesses_from_eps3_powerlaw_approximation(int PNG_modus, double R_0_in_Mpc_over_h){
   
   int n = this->log_top_hat_radii.size();
   this->log_top_hat_radii_for_skewnesses = this->log_top_hat_radii;
   
   this->top_hat_sphere_skewnesses.resize(n, 0.0);
   this->dtop_hat_sphere_skewnesses_dR.resize(n, 0.0);
-  this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
+  this->current_P_L = this->P_L(this->eta_at_a(1.0));
   
   // f_NL is now set in the ipython interface
-  double prefactor = 3.0*this->cosmology.Omega_m/pow(constants::pi2, 4);//*this->f_NL_rescaling_factor;
+  double prefactor = 3.0*this->return_Omega_m()/pow(constants::pi2, 4);//*this->f_NL_rescaling_factor;
   double skew_1, dskew_1;
   double skew_2, dskew_2;
   double skew_3, dskew_3;
@@ -311,15 +311,15 @@ void Matter::set_sphere_skewnesses_from_eps3_powerlaw_approximation(int PNG_modu
     exit(1);
   }
   
-  std::thread thread_1(skewness_of_matter_within_R_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &skew_1);
-  std::thread thread_4(dskewness_of_matter_within_R_dR_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &dskew_1);
+  std::thread thread_1(skewness_of_matter_within_R_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &skew_1);
+  std::thread thread_4(dskewness_of_matter_within_R_dR_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &dskew_1);
   
   if(PNG_modus != 1){
-    std::thread thread_2(skewness_of_matter_within_R_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &skew_2);
-    std::thread thread_5(dskewness_of_matter_within_R_dR_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &dskew_2);
+    std::thread thread_2(skewness_of_matter_within_R_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &skew_2);
+    std::thread thread_5(dskewness_of_matter_within_R_dR_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &dskew_2);
     
-    std::thread thread_3(skewness_of_matter_within_R_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &skew_3);
-    std::thread thread_6(dskewness_of_matter_within_R_dR_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &dskew_3);
+    std::thread thread_3(skewness_of_matter_within_R_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &skew_3);
+    std::thread thread_6(dskewness_of_matter_within_R_dR_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &dskew_3);
     
     thread_2.join();
     thread_5.join();
@@ -391,17 +391,17 @@ void Matter::set_sphere_skewnesses_from_eps3_powerlaw_approximation(int PNG_modu
  * 
 *******************************************************************************************************************************************************/
 
-void Matter::set_cylinder_skewnesses_from_eps3_powerlaw_approximation(int PNG_modus, double R_0_in_Mpc_over_h){
+void FlatInhomogeneousUniverseLCDM::set_cylinder_skewnesses_from_eps3_powerlaw_approximation(int PNG_modus, double R_0_in_Mpc_over_h){
   
   int n = this->log_top_hat_cylinder_radii.size();
   this->log_top_hat_cylinder_radii_for_skewnesses = this->log_top_hat_cylinder_radii;
   
   this->top_hat_cylinder_skewnesses.resize(n, 0.0);
   this->dtop_hat_cylinder_skewnesses_dR.resize(n, 0.0);
-  this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
+  this->current_P_L = this->P_L(this->eta_at_a(1.0));
   
   // f_NL is now set in the ipython interface
-  double prefactor = 3.0*this->cosmology.Omega_m/pow(constants::pi2, 3);//*this->f_NL_rescaling_factor;
+  double prefactor = 3.0*this->return_Omega_m()/pow(constants::pi2, 3);//*this->f_NL_rescaling_factor;
   double skew_1, dskew_1;
   double skew_2, dskew_2;
   double skew_3, dskew_3;
@@ -414,15 +414,15 @@ void Matter::set_cylinder_skewnesses_from_eps3_powerlaw_approximation(int PNG_mo
   }
   
   cout << "Starting jobs.\n";
-  std::thread thread_1(skewness_of_matter_within_R_2D_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &skew_1);
-  std::thread thread_4(dskewness_of_matter_within_R_dR_2D_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &dskew_1);
+  std::thread thread_1(skewness_of_matter_within_R_2D_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &skew_1);
+  std::thread thread_4(dskewness_of_matter_within_R_dR_2D_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &dskew_1);
   
   if(PNG_modus != 1){
-    std::thread thread_2(skewness_of_matter_within_R_2D_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &skew_2);
-    std::thread thread_5(dskewness_of_matter_within_R_dR_2D_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &dskew_2);
+    std::thread thread_2(skewness_of_matter_within_R_2D_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &skew_2);
+    std::thread thread_5(dskewness_of_matter_within_R_dR_2D_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &dskew_2);
     
-    std::thread thread_3(skewness_of_matter_within_R_2D_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &skew_3);
-    std::thread thread_6(dskewness_of_matter_within_R_dR_2D_for_multithread, R_0, this->cosmology.n_s, this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &dskew_3);
+    std::thread thread_3(skewness_of_matter_within_R_2D_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &skew_3);
+    std::thread thread_6(dskewness_of_matter_within_R_dR_2D_for_multithread, R_0, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &dskew_3);
     
     thread_2.join();
     thread_5.join();
@@ -468,8 +468,6 @@ void Matter::set_cylinder_skewnesses_from_eps3_powerlaw_approximation(int PNG_mo
   
   cout << "Variance computed.\n";
   
-  //double L = 200.0/constants::c_over_e5;
-  //skewness /= L*L;
   double A_eps3, n_eps3;
   double alpha = 2.0;
   A_eps3 = skewness/pow(var, alpha);
@@ -490,7 +488,7 @@ void Matter::set_cylinder_skewnesses_from_eps3_powerlaw_approximation(int PNG_mo
 }
 
 
-void Matter::set_sphere_skewnesses_from_file(string file_name){
+void FlatInhomogeneousUniverseLCDM::set_sphere_skewnesses_from_file(string file_name){
   
   fstream input_1, input_2;
   input_1.open(file_name);
@@ -510,7 +508,7 @@ void Matter::set_sphere_skewnesses_from_file(string file_name){
   
   this->top_hat_sphere_skewnesses.resize(n, 0.0);
   this->dtop_hat_sphere_skewnesses_dR.resize(n, 0.0);
-  this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
+  this->current_P_L = this->P_L(this->eta_at_a(1.0));
   
   for(int i = 0; i < n; i++){
     input_2 >> dummy_double;
@@ -537,9 +535,10 @@ void Matter::set_sphere_skewnesses_from_file(string file_name){
  * 
 *******************************************************************************************************************************************************/
 
-void Matter::set_cylinder_variances(){
+void FlatInhomogeneousUniverseLCDM::set_cylinder_variances(){
   
   int n = 128;
+  // ISSUE: this should not be hardcoded locally
   
   double R_min_in_Mpc_over_h = 0.1;
   double R_max_in_Mpc_over_h = 150.0;
@@ -549,15 +548,8 @@ void Matter::set_cylinder_variances(){
   this->log_top_hat_cylinder_radii.resize(n, 0.0);
   this->top_hat_cylinder_variances.resize(n, 0.0);
   this->dtop_hat_cylinder_variances_dR.resize(n, 0.0);
-  this->current_P_L = this->P_L(this->universe->eta_at_a(1.0));
-  this->current_P_NL = this->P_NL(this->universe->eta_at_a(1.0));
-  
-  double R = 15.0/constants::c_over_e5;
-  double L = 200.0/constants::c_over_e5;
-  //cout << variance_of_matter_within_R_2D(R, L) << "     HAHAHAHAHAHAHA\n";
-  //cout << variance_of_matter_within_R_2D_GaussianLOS(R, L) << "     HAHAHAHAHAHAHA\n";
-  //cout << variance_of_matter_within_R_2D(R)/L << " <-- P_L\n";
-  //cout << variance_of_matter_within_R_NL_2D(R, L) << " <-- P_NL\n";
+  this->current_P_L = this->P_L(this->eta_at_a(1.0));
+  this->current_P_NL = this->P_NL(this->eta_at_a(1.0));
   
   for(int i = 0; i < n; i++){
     this->log_top_hat_cylinder_radii[i] = log(radii_in_Mpc_over_h[i]/constants::c_over_e5);
@@ -584,15 +576,15 @@ void Matter::set_cylinder_variances(){
 *******************************************************************************************************************************************************/
 
 
-double Matter::variance_of_matter_within_R_before_norm_was_determined(double R_in_Mpc_over_h){
+double FlatInhomogeneousUniverseLCDM::variance_of_matter_within_R_before_norm_was_determined(double R_in_Mpc_over_h){
  
   double s_sq = 0;
   double prefactors;
   
   integration_parameters params;
   params.top_hat_radius = R_in_Mpc_over_h/c_over_e5;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
   integration_parameters * pointer_to_params = &params;
   
   s_sq = int_gsl_integrate_medium_precision(norm_derivs_before_norm_was_determined_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(high_k_cutoff_in_H0_units),NULL,1000);
@@ -600,14 +592,14 @@ double Matter::variance_of_matter_within_R_before_norm_was_determined(double R_i
   
 }
 
-double Matter::variance_of_matter_within_R(double R){
+double FlatInhomogeneousUniverseLCDM::variance_of_matter_within_R(double R){
  
   double s_sq = 0;
   
   integration_parameters params;
   params.top_hat_radius = R;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
   integration_parameters * pointer_to_params = &params;
   
   s_sq = int_gsl_integrate_medium_precision(norm_derivs_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(high_k_cutoff_in_H0_units),NULL,1000);
@@ -615,14 +607,14 @@ double Matter::variance_of_matter_within_R(double R){
   
 }
 
-double Matter::variance_of_matter_within_R_NL(double R){
+double FlatInhomogeneousUniverseLCDM::variance_of_matter_within_R_NL(double R){
  
   double s_sq = 0;
   
   integration_parameters params;
   params.top_hat_radius = R;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
   integration_parameters * pointer_to_params = &params;
   
   s_sq = int_gsl_integrate_medium_precision(norm_NL_derivs_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(high_k_cutoff_in_H0_units),NULL,1000);
@@ -630,54 +622,20 @@ double Matter::variance_of_matter_within_R_NL(double R){
   
 }
 
-double Matter::dvariance_of_matter_within_R_dR(double R){
+double FlatInhomogeneousUniverseLCDM::dvariance_of_matter_within_R_dR(double R){
  
   double s_sq = 0;
   
   integration_parameters params;
   params.top_hat_radius = R;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
   integration_parameters * pointer_to_params = &params;
   
   s_sq = int_gsl_integrate_medium_precision(dvar_dR_derivs_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(high_k_cutoff_in_H0_units),NULL,1000);
   return s_sq;
   
 }
-
-double Matter::skewness_of_matter_within_R(double R, double alpha_1, double alpha_2, double alpha_3){
-  
-  integration_parameters params;
-  params.top_hat_radius = R;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
-  params.alpha_1 = alpha_1;
-  params.alpha_2 = alpha_2;
-  params.alpha_3 = alpha_3;
-  integration_parameters * pointer_to_params = &params;
-  
-  double k_max = min(constants::product_of_kmax_and_R/R, maximal_wave_number_in_H0_units);
-  
-  return int_gsl_integrate_low_precision(skewness_integral_1_derivs_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(k_max),NULL,1000);
-  
-}
-
-double Matter::dskewness_of_matter_within_R_dR(double R, double alpha_1, double alpha_2, double alpha_3){
-  
-  integration_parameters params;
-  params.top_hat_radius = R;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
-  params.alpha_1 = alpha_1;
-  params.alpha_2 = alpha_2;
-  params.alpha_3 = alpha_3;
-  integration_parameters * pointer_to_params = &params;
-  
-  double k_max = min(constants::product_of_kmax_and_R/R, maximal_wave_number_in_H0_units);
-  return int_gsl_integrate_low_precision(dskewness_integral_1_derivs_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(k_max),NULL,1000);
-  
-}
-
 
 
 /*******************************************************************************************************************************************************
@@ -689,7 +647,7 @@ double Matter::dskewness_of_matter_within_R_dR(double R, double alpha_1, double 
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::variance_of_matter_within_R_2D(double R){
+double FlatInhomogeneousUniverseLCDM::variance_of_matter_within_R_2D(double R){
  
   double s_sq = 0.0;
   double prefactors;
@@ -697,8 +655,8 @@ double Matter::variance_of_matter_within_R_2D(double R){
   prefactors = 1.0/(2.0*constants::pi);
   integration_parameters params;
   params.top_hat_radius = R;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
   integration_parameters * pointer_to_params = &params;
 
   s_sq = int_gsl_integrate_medium_precision(var_derivs_2D_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
@@ -707,7 +665,7 @@ double Matter::variance_of_matter_within_R_2D(double R){
   
 }
 
-double Matter::variance_of_matter_within_R_NL_2D(double R){
+double FlatInhomogeneousUniverseLCDM::variance_of_matter_within_R_NL_2D(double R){
  
   double s_sq = 0.0;
   double prefactors;
@@ -715,8 +673,8 @@ double Matter::variance_of_matter_within_R_NL_2D(double R){
   prefactors = 1.0/(2.0*constants::pi);
   integration_parameters params;
   params.top_hat_radius = R;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
   integration_parameters * pointer_to_params = &params;
 
   s_sq = int_gsl_integrate_medium_precision(var_NL_derivs_2D_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
@@ -725,121 +683,8 @@ double Matter::variance_of_matter_within_R_NL_2D(double R){
   
 }
 
-double Matter::variance_of_matter_within_R_2D(double R, double L){
- 
-  double s_sq = 0.0;
-  double prefactors;
-  
-  prefactors = 1.0/(2.0*constants::pi_sq);
-  integration_parameters params;
-  params.top_hat_radius = R;
-  params.top_hat_length = L;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
-  integration_parameters * pointer_to_params = &params;
 
-  s_sq = int_gsl_integrate_low_precision(var_derivs_2D_1_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
-
-  return prefactors*s_sq;
-  
-}
-
-double Matter::variance_of_matter_within_R_NL_2D(double R, double L){
- 
-  double s_sq = 0.0;
-  double prefactors;
-  
-  prefactors = 1.0/(2.0*constants::pi_sq);
-  integration_parameters params;
-  params.top_hat_radius = R;
-  params.top_hat_length = L;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
-  integration_parameters * pointer_to_params = &params;
-
-  s_sq = int_gsl_integrate_low_precision(var_NL_derivs_2D_1_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
-
-  return prefactors*s_sq;
-  
-}
-
-double Matter::variance_of_matter_within_R_2D_GaussianLOS(double R, double L){
- 
-  double s_sq = 0.0;
-  double prefactors;
-  
-  prefactors = 1.0/(2.0*constants::pi_sq);
-  integration_parameters params;
-  params.top_hat_radius = R;
-  params.top_hat_length = L;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
-  integration_parameters * pointer_to_params = &params;
-
-  s_sq = int_gsl_integrate_low_precision(var_derivs_2D_GaussianLOS_1_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
-
-  return prefactors*s_sq;
-  
-}
-
-double Matter::variance_of_matter_within_R_NL_2D_GaussianLOS(double R, double L){
- 
-  double s_sq = 0.0;
-  double prefactors;
-  
-  prefactors = 1.0/(2.0*constants::pi_sq);
-  integration_parameters params;
-  params.top_hat_radius = R;
-  params.top_hat_length = L;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
-  integration_parameters * pointer_to_params = &params;
-
-  s_sq = int_gsl_integrate_low_precision(var_NL_derivs_2D_GaussianLOS_1_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
-
-  return prefactors*s_sq;
-  
-}
-
-double Matter::dvariance_of_matter_within_R_dR_2D(double R, double L){
- 
-  double s_sq = 0.0;
-  double prefactors;
-  
-  prefactors = 1.0/(2.0*constants::pi_sq);
-  integration_parameters params;
-  params.top_hat_radius = R;
-  params.top_hat_length = L;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
-  integration_parameters * pointer_to_params = &params;
-
-  s_sq = int_gsl_integrate_low_precision(dvar_dR_derivs_2D_1_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
-
-  return prefactors*s_sq;
-  
-}
-
-double Matter::dvariance_of_matter_within_R_dR_2D_GaussianLOS(double R, double L){
- 
-  double s_sq = 0.0;
-  double prefactors;
-  
-  prefactors = 1.0/(2.0*constants::pi_sq);
-  integration_parameters params;
-  params.top_hat_radius = R;
-  params.top_hat_length = L;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
-  integration_parameters * pointer_to_params = &params;
-
-  s_sq = int_gsl_integrate_low_precision(dvar_dR_derivs_2D_GaussianLOS_1_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
-
-  return prefactors*s_sq;
-  
-}
-
-double Matter::dvariance_of_matter_within_R_dR_2D(double R){
+double FlatInhomogeneousUniverseLCDM::dvariance_of_matter_within_R_dR_2D(double R){
  
   double s_sq = 0.0;
   double prefactors;
@@ -847,8 +692,8 @@ double Matter::dvariance_of_matter_within_R_dR_2D(double R){
   prefactors = 1.0/(2.0*constants::pi);
   integration_parameters params;
   params.top_hat_radius = R;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
   integration_parameters * pointer_to_params = &params;
 
   s_sq = int_gsl_integrate_medium_precision(dvar_dR_derivs_2D_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);

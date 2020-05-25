@@ -1,15 +1,17 @@
-#include <gsl/gsl_sf_gamma.h>
+#ifndef _GalaxySample
+#define _GalaxySample
 
+#include <gsl/gsl_sf_gamma.h>
 
 class GalaxySample {
 
  public:
 
-   GalaxySample(Matter* matter, double b1, double b2, double a0, double a1);
+   GalaxySample(FlatInhomogeneousUniverseLCDM* universe, double b1, double b2, double a0, double a1);
    ~GalaxySample();
    
    // setting class attributes
-   void set_matter_density_field(Matter* matter);
+   void set_universe(FlatInhomogeneousUniverseLCDM* universe);
    void set_parameters(double b1, double b2, double a0, double a1);
    void set_bias_model_from_br_parametrisation(double b_tilde, double r, double N_bar, double variance, double skewness);
    void set_error_flag_negative_density(int flag){this->error_flag_negative_density = flag;};
@@ -17,7 +19,7 @@ class GalaxySample {
    
    // returning (pointers to) class attributes
    int get_error_flag_negative_density(){return this->error_flag_negative_density;};
-   Matter* pointer_to_matter(){return this->matter;};
+   FlatInhomogeneousUniverseLCDM* pointer_to_universe(){return this->universe;};
    
    // class output
    int return_N_max(double N_bar, double variance);
@@ -34,10 +36,12 @@ class GalaxySample {
    // --> ISSUE: this pretends that quadratic_bias, alpha_0 and alpha_1 can be the same on all scales. That is 
    //            however not possible. Scale dependence should be made explicit in the future!
    
-   Universe* universe;
-   Matter* matter;
+   FlatInhomogeneousUniverseLCDM* universe;
    cosmological_model cosmology;
    
    int error_flag_negative_density = 0;
    
 };
+
+#include "GalaxySample.cpp"
+#endif

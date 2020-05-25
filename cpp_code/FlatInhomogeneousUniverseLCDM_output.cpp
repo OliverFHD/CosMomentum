@@ -6,7 +6,6 @@
  ********************************************** 
  *                                            *
  * ..... 5.1 print_Newtonian_growth_factor    *
- * ..... 5.2 return_wave_numbers              *
  * ..... 5.3 transfer_function_at             *
  *                                            *
  **********************************************
@@ -23,7 +22,7 @@
  * 
 *******************************************************************************************************************************************************/
 
-void Matter::print_Newtonian_growth_factor(string file_name){
+void FlatInhomogeneousUniverseLCDM::print_Newtonian_growth_factor(string file_name){
   
   double e;
   double scale;
@@ -43,34 +42,17 @@ void Matter::print_Newtonian_growth_factor(string file_name){
   
   output << setw(20) << "eta" << setw(20) << "a" << setw(20) << "H_conf" << setw(20) << "z" << setw(20) << "D(z)" << setw(20) << "D'(z)" << setw(20) << "D_phi(z)" << setw(20) << "D_phi'(z)" << '\n';
   
-  for(int i = 1; i < this->number_of_entries_Newton; i++){
-    e = this->eta_Newton[i];
-    d_eta = e - this->eta_Newton[i-1];
-    scale = this->universe->a_at_eta(e);
-    hubble = this->universe->H_at_eta(e);
+  for(int i = 0; i < this->return_number_of_time_steps(); i++){
+    e = this->eta[i];
+    scale = this->a[i];
+    hubble = this->H[i];
     z = 1.0/scale - 1.0;
     D = this->Newtonian_growth_factor_of_delta[i];
     D_prime = this->Newtonian_growth_factor_of_delta_prime[i];
-    dD = D - this->Newtonian_growth_factor_of_delta[i-1];
     output << setw(20) << e << setw(20) << scale << setw(20) << hubble << setw(20) << z << setw(20) << D << setw(20) << D_prime << setw(20) << D/scale << setw(20) << D_prime/scale - D/scale*hubble << '\n';
   }
   
 }
-
-/*******************************************************************************************************************************************************
- * 5.2 return_wave_numbers 
- * Description:
- *
- * Arguments:
- * 
- * 
-*******************************************************************************************************************************************************/
-
-vector<double> Matter::return_wave_numbers(){
-  return this->wave_numbers;
-}
-
-
 
 /*******************************************************************************************************************************************************
  * 5.3 transfer_function_at 
@@ -81,59 +63,61 @@ vector<double> Matter::return_wave_numbers(){
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::transfer_function_at(double k){
+double FlatInhomogeneousUniverseLCDM::transfer_function_at(double k){
   return interpolate_neville_aitken(log(k), &this->log_wave_numbers, &this->transfer_function, constants::order_of_interpolation);
 }
 
 
-void Matter::return_delta_NL_of_delta_L_and_dF_ddelta_3D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values){
+void FlatInhomogeneousUniverseLCDM::return_delta_NL_of_delta_L_and_dF_ddelta_3D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values){
   (*delta_L_values) = this->delta_values_for_spherical_collapse;
-  (*delta_NL_values) = this->delta_values_for_spherical_collapse;
-  (*delta_NL_prime_values) = this->delta_values_for_spherical_collapse;
-  for(int i = 0; i < this->delta_values_for_spherical_collapse.size(); i++){
-    (*delta_NL_values)[i] = interpolate_neville_aitken(eta, &this->eta_NL_for_spherical_collapse, &this->spherical_collapse_evolution_of_delta[i], constants::order_of_interpolation);
-    (*delta_NL_prime_values)[i] = interpolate_neville_aitken(eta, &this->eta_NL_for_spherical_collapse, &this->spherical_collapse_evolution_of_delta_ddelta[i], constants::order_of_interpolation);
+  int N_delta = this->delta_values_for_spherical_collapse.size();
+  (*delta_NL_values) = vector<double>(N_delta);
+  (*delta_NL_prime_values) = vector<double>(N_delta);
+  for(int i = 0; i < N_delta; i++){
+    (*delta_NL_values)[i] = interpolate_neville_aitken(eta, &this->eta, &this->spherical_collapse_evolution_of_delta[i], constants::order_of_interpolation);
+    (*delta_NL_prime_values)[i] = interpolate_neville_aitken(eta, &this->eta, &this->spherical_collapse_evolution_of_delta_ddelta[i], constants::order_of_interpolation);
   }
 }
 
 
-void Matter::return_delta_NL_of_delta_L_and_dF_ddelta_2D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values){
+void FlatInhomogeneousUniverseLCDM::return_delta_NL_of_delta_L_and_dF_ddelta_2D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values){
   (*delta_L_values) = this->delta_values_for_cylindrical_collapse;
-  (*delta_NL_values) = this->delta_values_for_cylindrical_collapse;
-  (*delta_NL_prime_values) = this->delta_values_for_cylindrical_collapse;
-  for(int i = 0; i < this->delta_values_for_cylindrical_collapse.size(); i++){
-    (*delta_NL_values)[i] = interpolate_neville_aitken(eta, &this->eta_NL_for_cylindrical_collapse, &this->cylindrical_collapse_evolution_of_delta[i], constants::order_of_interpolation);
-    (*delta_NL_prime_values)[i] = interpolate_neville_aitken(eta, &this->eta_NL_for_cylindrical_collapse, &this->cylindrical_collapse_evolution_of_delta_ddelta[i], constants::order_of_interpolation);
+  int N_delta = this->delta_values_for_cylindrical_collapse.size();
+  (*delta_NL_values) = vector<double>(N_delta);
+  (*delta_NL_prime_values) = vector<double>(N_delta);
+  for(int i = 0; i < N_delta; i++){
+    (*delta_NL_values)[i] = interpolate_neville_aitken(eta, &this->eta, &this->cylindrical_collapse_evolution_of_delta[i], constants::order_of_interpolation);
+    (*delta_NL_prime_values)[i] = interpolate_neville_aitken(eta, &this->eta, &this->cylindrical_collapse_evolution_of_delta_ddelta[i], constants::order_of_interpolation);
   }
 }
 
 
-double Matter::return_D_of_z(double z){
+double FlatInhomogeneousUniverseLCDM::return_D_of_z(double z){
   
-  double eta = this->universe->eta_at_a(1.0/(1.0+z));
-  return interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
-  
-}
-
-double Matter::return_D_of_eta(double eta){
-  
-  return interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
+  double e = this->eta_at_a(1.0/(1.0+z));
+  return interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
   
 }
 
-vector<vector<double> > Matter::return_linear_growth_history(int conformal_time_steps){
+double FlatInhomogeneousUniverseLCDM::return_D_of_eta(double e){
+  
+  return interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
+  
+}
+
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_linear_growth_history(int conformal_time_steps){
   
   int n_column = 4;
   vector<vector<double> > linear_growth_history(n_column, vector<double>(conformal_time_steps, 0.0));
   
-  double e_max = this->eta_Newton[this->eta_Newton.size()-1];
-  double e_min = this->eta_Newton[0];
+  double e_max = this->return_eta_final();
+  double e_min = this->return_eta_initial();
   double de = (e_max - e_min)/double(conformal_time_steps-1);
   double e, a;
   
   for(int i = 0; i < conformal_time_steps; i++){
     e = e_min + double(i)*de;
-    a = this->universe->a_at_eta(e);
+    a = this->a_at_eta(e);
     linear_growth_history[0][i] = e;
     linear_growth_history[1][i] = a;
     linear_growth_history[2][i] = this->return_D_of_eta(e);
@@ -144,19 +128,19 @@ vector<vector<double> > Matter::return_linear_growth_history(int conformal_time_
   
 }
 
-double Matter::return_D_prime_of_eta(double eta){
+double FlatInhomogeneousUniverseLCDM::return_D_prime_of_eta(double e){
   
-  return interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta_prime, constants::order_of_interpolation);
+  return interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta_prime, constants::order_of_interpolation);
   
 }
 
-vector<vector<double> > Matter::return_power_spectra(double eta, double R){
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_power_spectra(double e, double R){
   
-  double D = this->return_D_of_eta(eta);
+  double D = this->return_D_of_eta(e);
   double k;
   
-  this->current_P_L = this->P_L(eta);
-  this->current_P_NL = this->P_NL(eta);
+  this->current_P_L = this->P_L(e);
+  this->current_P_NL = this->P_NL(e);
   vector<vector<double> > power_spectra(3, vector<double>(constants::number_of_k,0.0));
   
   for(int i = 0; i < constants::number_of_k; i++){
@@ -170,23 +154,23 @@ vector<vector<double> > Matter::return_power_spectra(double eta, double R){
   
 }
 
-void Matter::return_2nd_moment_and_derivative(double R, double *variance, double *dvariance_dR){
+void FlatInhomogeneousUniverseLCDM::return_2nd_moment_and_derivative(double R, double *variance, double *dvariance_dR){
   
   (*variance) = interpolate_neville_aitken(log(R), &this->log_top_hat_radii, &this->top_hat_sphere_variances, constants::order_of_interpolation);
   (*dvariance_dR) = interpolate_neville_aitken(log(R), &this->log_top_hat_radii, &this->dtop_hat_sphere_variances_dR, constants::order_of_interpolation);
   
 }
 
-void Matter::return_2nd_moment_and_derivative_2D(double R, double *variance, double *dvariance_dR){
+void FlatInhomogeneousUniverseLCDM::return_2nd_moment_and_derivative_2D(double R, double *variance, double *dvariance_dR){
   
   (*variance) = interpolate_neville_aitken(log(R), &this->log_top_hat_cylinder_radii, &this->top_hat_cylinder_variances, constants::order_of_interpolation);
   (*dvariance_dR) = interpolate_neville_aitken(log(R), &this->log_top_hat_cylinder_radii, &this->dtop_hat_cylinder_variances_dR, constants::order_of_interpolation);
   
 }
 
-double Matter::return_non_linear_variance(double z, double R_in_Mpc_over_h){
+double FlatInhomogeneousUniverseLCDM::return_non_linear_variance(double z, double R_in_Mpc_over_h){
   
-  double eta = this->universe->eta_at_a(1.0/(1.0+z));
+  double eta = this->eta_at_a(1.0/(1.0+z));
   double R = R_in_Mpc_over_h/constants::c_over_e5;
   
   this->current_P_NL = this->P_NL(eta);
@@ -196,21 +180,9 @@ double Matter::return_non_linear_variance(double z, double R_in_Mpc_over_h){
   
 }
 
-void Matter::return_2D_non_linear_variance(double *var_deltaLOS, double *var_GaussLOS, double *var_tophatLOS, double z, double R_in_Mpc_over_h, double L_in_Mpc_over_h){
-  double eta = this->universe->eta_at_a(1.0/(1.0+z));
-  double R = R_in_Mpc_over_h/constants::c_over_e5;
-  double L = L_in_Mpc_over_h/constants::c_over_e5;
+double FlatInhomogeneousUniverseLCDM::return_linear_variance(double z, double R_in_Mpc_over_h){
   
-  this->current_P_NL = this->P_NL(eta);
-  
-  (*var_deltaLOS) = variance_of_matter_within_R_NL_2D(R)/L;
-  (*var_GaussLOS) = variance_of_matter_within_R_NL_2D_GaussianLOS(R, L);
-  (*var_tophatLOS) = variance_of_matter_within_R_NL_2D(R, L);
-}
-
-double Matter::return_linear_variance(double z, double R_in_Mpc_over_h){
-  
-  double eta = this->universe->eta_at_a(1.0/(1.0+z));
+  double eta = this->eta_at_a(1.0/(1.0+z));
   double R = R_in_Mpc_over_h/constants::c_over_e5;
   
   this->current_P_L = this->P_L(eta);
@@ -221,12 +193,12 @@ double Matter::return_linear_variance(double z, double R_in_Mpc_over_h){
 }
 
 
-void Matter::print_growth_history(string file_name){
+void FlatInhomogeneousUniverseLCDM::print_growth_history(string file_name){
   
-  double Om_m = this->cosmology.Omega_m;
-  double Om_l = this->cosmology.Omega_L;
-  double Om_r = this->cosmology.Omega_r;
-  double a, e;
+  double Om_m = this->return_Omega_m();
+  double Om_l = this->return_Omega_L();
+  double Om_r = this->return_Omega_r();
+  double scale, e;
   fstream growth_stream;
   
   remove(file_name.c_str());
@@ -238,13 +210,13 @@ void Matter::print_growth_history(string file_name){
   growth_stream << "#Cosmological Parameters: Om_m = " << Om_m << ", Om_l = " << Om_l << ", Om_r = " << Om_r << '\n';
   growth_stream << "#a_max = " << this->a_final << '\n';
   growth_stream << "#eta(t)" << setw(20) << "w(eta)" << setw(20) << "z(eta)" << setw(20) << "a(eta)" << setw(20) << "D(eta)" << setw(20) << "D_prime(eta)\n";
-  for(int i = 0; i < this->eta_Newton.size(); i++){
-    e = this->eta_Newton[i];
-    a = this->universe->a_at_eta(e);
+  for(int i = 0; i < this->return_number_of_time_steps(); i++){
+    e = this->eta[i];
+    scale = this->a[i];
     growth_stream << setw(20) << e;
-    growth_stream << setw(20) << this->universe->eta_at_a(1.0)-e;
-    growth_stream << setw(20) << 1.0/a - 1.0;
-    growth_stream << setw(20) << a;
+    growth_stream << setw(20) << this->eta_at_a(1.0)-e;
+    growth_stream << setw(20) << 1.0/scale - 1.0;
+    growth_stream << setw(20) << scale;
     growth_stream << setw(20) << this->Newtonian_growth_factor_of_delta[i];
     growth_stream << setw(20) << this->Newtonian_growth_factor_of_delta_prime[i] << '\n';
   }
@@ -262,7 +234,7 @@ void Matter::print_growth_history(string file_name){
  * 
 *******************************************************************************************************************************************************/
 
-vector<vector<double> > Matter::return_LOS_integrated_phi_of_lambda(double theta, double f_NL, vector<double> z_values, vector<double> n_of_z_values){
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda(double theta, double f_NL, vector<double> z_values, vector<double> n_of_z_values){
   
   int n_lambda = this->delta_values_for_cylindrical_collapse.size();
   int n_time = z_values.size()-1;
@@ -274,14 +246,14 @@ vector<vector<double> > Matter::return_LOS_integrated_phi_of_lambda(double theta
   vector<double> n_of_w_values(n_time, 0.0);
   
   double z, a, eta, eta_0, w, w_last_scattering, R;
-  eta_0 = this->universe->eta_at_a(1.0);
-  w_last_scattering = eta_0-this->universe->eta_at_a(1.0/(1.0+constants::z_last_scattering));
+  eta_0 = this->eta_at_a(1.0);
+  w_last_scattering = eta_0-this->eta_at_a(1.0/(1.0+constants::z_last_scattering));
   
   cout << "normalising pofz data\n";
   
   for(int i = 0; i < n_time+1; i++){
     a = 1.0/(1.0+z_values[i]);
-    w_values[i] = eta_0 - this->universe->eta_at_a(a);
+    w_values[i] = eta_0 - this->eta_at_a(a);
   }
   for(int i = 0; i < n_time; i++){
     dz_values[i] = z_values[i+1]-z_values[i];
@@ -302,7 +274,7 @@ vector<vector<double> > Matter::return_LOS_integrated_phi_of_lambda(double theta
   double norm = 0.0;
   for(int i = 0; i < n_time_refined; i++){
     w = (double(i)+0.5)*constants::maximal_dw;
-    a = this->universe->a_at_eta(eta_0-w);
+    a = this->a_at_eta(eta_0-w);
     w_values_refined[i] = w;
     if(w > w_min && w < w_max){
       n_of_w_values_refined[i] = interpolate_neville_aitken(w, &w_values_bin_center, &n_of_w_values, constants::order_of_interpolation);
@@ -316,7 +288,7 @@ vector<vector<double> > Matter::return_LOS_integrated_phi_of_lambda(double theta
       indeces_of_zero_nofw.push_back(i);
     }
     norm += n_of_w_values_refined[i]*constants::maximal_dw;
-    lensing_kernel[i] = 1.5*this->cosmology.Omega_m*w*(w_last_scattering-w)/w_last_scattering/a;
+    lensing_kernel[i] = 1.5*this->return_Omega_m()*w*(w_last_scattering-w)/w_last_scattering/a;
   }
   
   for(int i = 0; i < n_time_refined; i++){
@@ -345,7 +317,7 @@ vector<vector<double> > Matter::return_LOS_integrated_phi_of_lambda(double theta
     cout << i << " /  ";
     w = w_values_refined[i];
     eta = eta_0-w;
-    z = 1.0/this->universe->a_at_eta(eta)-1.0;
+    z = 1.0/this->a_at_eta(eta)-1.0;
     R = w*theta;
     cout << t << " / ";
     cout << z << " / ";
@@ -427,7 +399,7 @@ vector<vector<double> > Matter::return_LOS_integrated_phi_of_lambda(double theta
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::return_LOS_integrated_variance(double theta, vector<double> z_values, vector<double> n_of_z_values){
+double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_variance(double theta, vector<double> z_values, vector<double> n_of_z_values){
   
   int n_time = z_values.size()-1;
   
@@ -438,13 +410,13 @@ double Matter::return_LOS_integrated_variance(double theta, vector<double> z_val
   vector<int> indeces_of_nonzero_nofw(0,0);
   
   double a, eta, eta_0, w, R;
-  eta_0 = this->universe->eta_at_a(1.0);
+  eta_0 = this->eta_at_a(1.0);
   
   cout << "normalising pofz data\n";
   
   for(int i = 0; i < n_time+1; i++){
     a = 1.0/(1.0+z_values[i]);
-    w_values[i] = eta_0 - this->universe->eta_at_a(a);
+    w_values[i] = eta_0 - this->eta_at_a(a);
   }
   
   double norm = 0.0;
@@ -490,7 +462,7 @@ double Matter::return_LOS_integrated_variance(double theta, vector<double> z_val
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::return_LOS_integrated_skewness(double theta, double f_NL, vector<double> z_values, vector<double> n_of_z_values){
+double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_skewness(double theta, double f_NL, vector<double> z_values, vector<double> n_of_z_values){
   
   if(f_NL != 0.0){
     cerr << "CAREFUL: f_NL != 0 not yet implemented in return_LOS_integrated_skewness.\n";
@@ -504,14 +476,14 @@ double Matter::return_LOS_integrated_skewness(double theta, double f_NL, vector<
   vector<double> n_of_w_values(n_time, 0.0);
   vector<int> indeces_of_nonzero_nofw(0,0);
   
-  double a, eta, eta_0, w, R;
-  eta_0 = this->universe->eta_at_a(1.0);
+  double a, e, eta_0, w, R;
+  eta_0 = this->eta_at_a(1.0);
   
   cout << "normalising pofz data\n";
   
   for(int i = 0; i < n_time+1; i++){
     a = 1.0/(1.0+z_values[i]);
-    w_values[i] = eta_0 - this->universe->eta_at_a(a);
+    w_values[i] = eta_0 - this->eta_at_a(a);
   }
   
   double norm = 0.0;
@@ -532,10 +504,10 @@ double Matter::return_LOS_integrated_skewness(double theta, double f_NL, vector<
   int n_time_of_nonzero_nofw = indeces_of_nonzero_nofw.size();
   double skewness_projected = 0.0;
   
-  double D_11 = interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
-  double D_22 = interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_second_order, constants::order_of_interpolation);
-  double mu = 1.0 - D_22/D_11/D_11;
-  double one_plus_mu = (1.0+mu);
+  double D_11;
+  double D_22;
+  double mu;
+  double one_plus_mu;
   double vNL, vL, dlnvL_dlnR, S_3;
   
   cout << "computing CGF grid & cutting out 1st branch\n";
@@ -543,13 +515,19 @@ double Matter::return_LOS_integrated_skewness(double theta, double f_NL, vector<
   for(int t = 0; t < n_time_of_nonzero_nofw; t++){
     int i = indeces_of_nonzero_nofw[t];
     w = 0.5*(w_values[i+1]+w_values[i]);
-    eta = eta_0-w;
+    e = eta_0-w;
     R = w*theta;
-    this->current_P_L = this->P_L(eta);
-    this->current_P_NL = this->P_NL(eta);
+    this->current_P_L = this->P_L(e);
+    this->current_P_NL = this->P_NL(e);
     vNL = variance_of_matter_within_R_NL_2D(R);
     vL = this->variance_of_matter_within_R_2D(R);
     dlnvL_dlnR = this->dvariance_of_matter_within_R_dR_2D(R)/vL*R;
+    
+    D_11 = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
+    D_22 = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_second_order, constants::order_of_interpolation);
+    mu = 1.0 - D_22/D_11/D_11;
+    one_plus_mu = (1.0+mu);
+    
     S_3 = 3.0*one_plus_mu + 1.5*dlnvL_dlnR;
     skewness_projected += S_3*vNL*vNL*pow(n_of_w_values[i], 3)*dw_values[i];
     cout << t << "   ";
@@ -561,7 +539,7 @@ double Matter::return_LOS_integrated_skewness(double theta, double f_NL, vector<
   
 }
 
-double Matter::return_3D_skewness(double z, double R_in_Mpc_over_h, double f_NL){
+double FlatInhomogeneousUniverseLCDM::return_3D_skewness(double z, double R_in_Mpc_over_h, double f_NL){
   
   if(f_NL != 0.0){
     cerr << "CAREFUL: f_NL != 0 not yet implemented in return_3D_skewness.\n";
@@ -569,15 +547,15 @@ double Matter::return_3D_skewness(double z, double R_in_Mpc_over_h, double f_NL)
   cerr << "CAREFUL: return_3D_skewness still uses EdS S_3.\n";
   
   double R = R_in_Mpc_over_h/constants::c_over_e5;
-  double eta = this->universe->eta_at_a(1.0/(1.0+z));
+  double e = this->eta_at_a(1.0/(1.0+z));
   
-  double D_11 = interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
-  double D_22 = interpolate_neville_aitken(eta, &this->eta_Newton, &this->Newtonian_growth_factor_second_order, constants::order_of_interpolation);
+  double D_11 = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
+  double D_22 = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_second_order, constants::order_of_interpolation);
   double mu = 1.0 - D_22/D_11/D_11;
   double one_plus_mu = (1.0+mu);
   
-  this->current_P_L = this->P_L(eta);
-  this->current_P_NL = this->P_NL(eta);
+  this->current_P_L = this->P_L(e);
+  this->current_P_NL = this->P_NL(e);
   
   double vNL = variance_of_matter_within_R_NL(R);
   double vL = this->variance_of_matter_within_R(R);
@@ -595,7 +573,7 @@ double Matter::return_3D_skewness(double z, double R_in_Mpc_over_h, double f_NL)
 
 
 /*
- * Matter::compute_LOS_projected_PDF
+ * FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
  * 
  * Returns PDF of line-of-sight projected matter density contrast with projection kernel specified by the input arrays z_values and n_of_z_values. z_values should store the lower-redshift edge of each histogram bin and n_of_z_values should contain the redshift histrogram (the histogram doesn't need to be normalised, since normalisation is enforced later on in the code). First column of the returned array is \delta smoothed with a spherical top-hat of R_in_Mpc_over_h, while 2nd column is p(\delta).
  * 
@@ -603,7 +581,7 @@ double Matter::return_3D_skewness(double z, double R_in_Mpc_over_h, double f_NL)
 
 
 
-vector<vector<double> > Matter::compute_LOS_projected_PDF(vector<double> z_values, vector<double> n_of_z_values, double theta, double f_NL, double var_NL_rescale){
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF(vector<double> z_values, vector<double> n_of_z_values, double theta, double f_NL, double var_NL_rescale){
   
   cout << "Computing projected phi_data:\n";
   cout.flush();
@@ -803,7 +781,7 @@ vector<vector<double> > Matter::compute_LOS_projected_PDF(vector<double> z_value
  * 
 *******************************************************************************************************************************************************/
 
-vector<vector<vector<double> > > Matter::return_LOS_integrated_CGF_of_delta_and_kappa(double theta, double f_NL, vector<double> z_values, vector<double> n_of_z_values){
+vector<vector<vector<double> > > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_CGF_of_delta_and_kappa(double theta, double f_NL, vector<double> z_values, vector<double> n_of_z_values){
   
   int n_lambda = this->delta_values_for_cylindrical_collapse.size();
   int n_time = z_values.size()-1;
@@ -815,14 +793,14 @@ vector<vector<vector<double> > > Matter::return_LOS_integrated_CGF_of_delta_and_
   vector<double> n_of_w_values(n_time, 0.0);
   
   double z, a, eta, eta_0, w, w_last_scattering, R;
-  eta_0 = this->universe->eta_at_a(1.0);
-  w_last_scattering = eta_0-this->universe->eta_at_a(1.0/(1.0+constants::z_last_scattering));
+  eta_0 = this->eta_at_a(1.0);
+  w_last_scattering = eta_0-this->eta_at_a(1.0/(1.0+constants::z_last_scattering));
   
   cout << "normalising pofz data\n";
   
   for(int i = 0; i < n_time+1; i++){
     a = 1.0/(1.0+z_values[i]);
-    w_values[i] = eta_0 - this->universe->eta_at_a(a);
+    w_values[i] = eta_0 - this->eta_at_a(a);
   }
   for(int i = 0; i < n_time; i++){
     dz_values[i] = z_values[i+1]-z_values[i];
@@ -843,7 +821,7 @@ vector<vector<vector<double> > > Matter::return_LOS_integrated_CGF_of_delta_and_
   double norm = 0.0;
   for(int i = 0; i < n_time_refined; i++){
     w = (double(i)+0.5)*constants::maximal_dw;
-    a = this->universe->a_at_eta(eta_0-w);
+    a = this->a_at_eta(eta_0-w);
     w_values_refined[i] = w;
     if(w > w_min && w < w_max){
       n_of_w_values_refined[i] = interpolate_neville_aitken(w, &w_values_bin_center, &n_of_w_values, constants::order_of_interpolation);
@@ -857,7 +835,7 @@ vector<vector<vector<double> > > Matter::return_LOS_integrated_CGF_of_delta_and_
       indeces_of_zero_nofw.push_back(i);
     }
     norm += n_of_w_values_refined[i]*constants::maximal_dw;
-    lensing_kernel[i] = 1.5*this->cosmology.Omega_m*w*(w_last_scattering-w)/w_last_scattering/a;
+    lensing_kernel[i] = 1.5*this->return_Omega_m()*w*(w_last_scattering-w)/w_last_scattering/a;
   }
   
   for(int i = 0; i < n_time_refined; i++){
@@ -895,7 +873,7 @@ vector<vector<vector<double> > > Matter::return_LOS_integrated_CGF_of_delta_and_
   for(int t = 0; t < n_time_refined; t++){
     w = w_values_refined[t];
     eta = eta_0-w;
-    z = 1.0/this->universe->a_at_eta(eta)-1.0;
+    z = 1.0/this->a_at_eta(eta)-1.0;
     R = w*theta;
     cout.flush();
     compute_phi_tilde_of_lambda_2D(eta, R, f_NL, &y_values_kappa[t], &phi_values[t], &phi_prime_values[t]);

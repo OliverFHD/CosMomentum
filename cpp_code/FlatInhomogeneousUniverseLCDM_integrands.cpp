@@ -20,8 +20,7 @@ struct integration_parameters{
   
   double alpha_1, alpha_2, alpha_3;
   
-  Universe* pointer_to_Universe;
-  Matter* pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe;
   
 };
 
@@ -80,12 +79,12 @@ double int_gsl_integrate_low_precision(double (*func)(double, void*),void *arg,d
 double norm_derivs_before_norm_was_determined_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double index = 3.0+integration_params->n_s;
   double WR = w_R(k, integration_params->top_hat_radius);
-  double T_sq = pointer_to_Matter->transfer_function_at(k); T_sq *= T_sq;
+  double T_sq = pointer_to_Universe->transfer_function_at(k); T_sq *= T_sq;
   
   return one_over_2_pi_sq*pow(k,index)*T_sq*WR*WR;
   
@@ -95,12 +94,12 @@ double norm_derivs_before_norm_was_determined_gsl(double lnk, void *params){
 double norm_derivs_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double index = 3.0;
   double WR = w_R(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
   
   return one_over_2_pi_sq*pow(k,index)*P*WR*WR;
   
@@ -109,12 +108,12 @@ double norm_derivs_gsl(double lnk, void *params){
 double norm_NL_derivs_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double index = 3.0;
   double WR = w_R(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_NL_at(lnk);
+  double P = pointer_to_Universe->current_P_NL_at(lnk);
   
   return one_over_2_pi_sq*pow(k,index)*P*WR*WR;
   
@@ -123,13 +122,13 @@ double norm_NL_derivs_gsl(double lnk, void *params){
 double dvar_dR_derivs_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double index = 3.0;
   double WR = w_R(k, integration_params->top_hat_radius);
   double dWR = deriv_of_w_R(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
   
   return 2.0*one_over_2_pi_sq*pow(k,index)*P*dWR*WR;
   
@@ -140,12 +139,12 @@ double dvar_dR_derivs_gsl(double lnk, void *params){
 double var_derivs_2D_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double index = 2.0;
   double WR = w_R_2D(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
   
   return pow(k,index)*P*WR*WR;
   
@@ -154,12 +153,12 @@ double var_derivs_2D_gsl(double lnk, void *params){
 double var_NL_derivs_2D_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double index = 2.0;
   double WR = w_R_2D(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_NL_at(lnk);
+  double P = pointer_to_Universe->current_P_NL_at(lnk);
   
   return pow(k,index)*P*WR*WR;
   
@@ -168,13 +167,13 @@ double var_NL_derivs_2D_gsl(double lnk, void *params){
 double var_NL_derivs_2D_2_gsl(double lnk_2D, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k_2D = exp(lnk_2D);
   double lnk = 0.5*log(k_2D*k_2D+pow(integration_params->k,2));
   double index = 2.0;
   double WR = w_R_2D(k_2D, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_NL_at(lnk);
+  double P = pointer_to_Universe->current_P_NL_at(lnk);
   
   return pow(k_2D,index)*P*WR*WR;
   
@@ -183,7 +182,7 @@ double var_NL_derivs_2D_2_gsl(double lnk_2D, void *params){
 double var_NL_derivs_2D_1_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double index = 1.0;
@@ -197,13 +196,13 @@ double var_NL_derivs_2D_1_gsl(double lnk, void *params){
 double var_derivs_2D_2_gsl(double lnk_2D, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k_2D = exp(lnk_2D);
   double lnk = 0.5*log(k_2D*k_2D+pow(integration_params->k,2));
   double index = 2.0;
   double WR = w_R_2D(k_2D, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
   
   return pow(k_2D,index)*P*WR*WR;
   
@@ -212,7 +211,7 @@ double var_derivs_2D_2_gsl(double lnk_2D, void *params){
 double var_derivs_2D_1_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double index = 1.0;
@@ -223,47 +222,16 @@ double var_derivs_2D_1_gsl(double lnk, void *params){
   
 }
 
-
-double var_derivs_2D_GaussianLOS_1_gsl(double lnk, void *params){
- 
-  integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
-  
-  double k = exp(lnk);
-  double index = 1.0;
-  double WL = w_L_1D_Gauss(k, integration_params->top_hat_length);
-  integration_params->k = k;
-  
-  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(var_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);;
-  
-}
-
-double var_NL_derivs_2D_GaussianLOS_1_gsl(double lnk, void *params){
- 
-  integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
-  
-  double k = exp(lnk);
-  double index = 1.0;
-  double WL = w_L_1D_Gauss(k, integration_params->top_hat_length);
-  integration_params->k = k;
-  
-  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(var_NL_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);;
-  
-}
-
-
-
 double dvar_dR_derivs_2D_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double index = 2.0;
   double WR = w_R_2D(k, integration_params->top_hat_radius);
   double dWR_dR = deriv_of_w_R_2D(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
   
   return pow(k,index)*P*2.0*dWR_dR*WR;
   
@@ -272,14 +240,14 @@ double dvar_dR_derivs_2D_gsl(double lnk, void *params){
 double dvar_dR_derivs_2D_2_gsl(double lnk_2D, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k_2D = exp(lnk_2D);
   double lnk = 0.5*log(k_2D*k_2D+pow(integration_params->k,2));
   double index = 2.0;
   double WR = w_R_2D(k_2D, integration_params->top_hat_radius);
   double dWR_dR = deriv_of_w_R_2D(k_2D, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
   
   return pow(k_2D,index)*P*2.0*WR*dWR_dR;
   
@@ -288,7 +256,7 @@ double dvar_dR_derivs_2D_2_gsl(double lnk_2D, void *params){
 double dvar_dR_derivs_2D_1_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double index = 1.0;
@@ -299,31 +267,15 @@ double dvar_dR_derivs_2D_1_gsl(double lnk, void *params){
   
 }
 
-double dvar_dR_derivs_2D_GaussianLOS_1_gsl(double lnk, void *params){
- 
-  integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
-  
-  double k = exp(lnk);
-  double index = 1.0;
-  double WL = w_L_1D_Gauss(k, integration_params->top_hat_length);
-  integration_params->k = k;
-  
-  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(dvar_dR_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
-  
-}
-
-
-
 double skewness_integral_3_derivs_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double WR = w_R(k, integration_params->top_hat_radius);
-  double T = pointer_to_Matter->transfer_function_at(k);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double T = pointer_to_Universe->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
   double alpha = integration_params->alpha_3;
   
   return pow(k, 4.0-4.0*alpha)*pow(T, 1.0-2.0*alpha)*WR*pow(P, alpha);
@@ -333,12 +285,12 @@ double skewness_integral_3_derivs_gsl(double lnk, void *params){
 double skewness_integral_2_derivs_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   double WR = w_R(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
-  double T = pointer_to_Matter->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  double T = pointer_to_Universe->transfer_function_at(k);
   double alpha = integration_params->alpha_2;
   
   double q_min;
@@ -360,13 +312,13 @@ double skewness_integral_2_derivs_gsl(double lnk, void *params){
 double skewness_integral_1_derivs_gsl(double lnk, void *params){
   
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   integration_params->k = k;
   double WR = w_R(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
-  double T = pointer_to_Matter->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  double T = pointer_to_Universe->transfer_function_at(k);
   double P_phi = P;
   
   double log_k_max = min(constants::product_of_kmax_and_R/integration_params->top_hat_radius, maximal_wave_number_in_H0_units);
@@ -387,13 +339,13 @@ double skewness_integral_1_derivs_gsl(double lnk, void *params){
 double dskewness_integral_3_derivs_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   integration_params->WR_3 = w_R(k, integration_params->top_hat_radius);
   integration_params->dWR_3 = deriv_of_w_R(k, integration_params->top_hat_radius);
-  double T = pointer_to_Matter->transfer_function_at(k);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
+  double T = pointer_to_Universe->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
   double alpha = integration_params->alpha_3;
   
   double W_dervis = 0.0;
@@ -408,13 +360,13 @@ double dskewness_integral_3_derivs_gsl(double lnk, void *params){
 double dskewness_integral_2_derivs_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   integration_params->WR_2 = w_R(k, integration_params->top_hat_radius);
   integration_params->dWR_2 = deriv_of_w_R(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
-  double T = pointer_to_Matter->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  double T = pointer_to_Universe->transfer_function_at(k);
   double alpha = integration_params->alpha_2;
   
   double q_min;
@@ -436,14 +388,14 @@ double dskewness_integral_2_derivs_gsl(double lnk, void *params){
 double dskewness_integral_1_derivs_gsl(double lnk, void *params){
   
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   integration_params->k = k;
   integration_params->WR_1 = w_R(k, integration_params->top_hat_radius);
   integration_params->dWR_1 = deriv_of_w_R(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
-  double T = pointer_to_Matter->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  double T = pointer_to_Universe->transfer_function_at(k);
   double P_phi = P;
   
   double log_k_max = min(constants::product_of_kmax_and_R/integration_params->top_hat_radius, maximal_wave_number_in_H0_units);
@@ -471,7 +423,7 @@ double dskewness_integral_1_derivs_gsl(double lnk, void *params){
 double skewness_integral_2D_3_derivs_gsl(double phi, void *params){
   
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k_1 = integration_params->k_1;
   double k_2 = integration_params->k_2;
@@ -489,8 +441,8 @@ double skewness_integral_2D_3_derivs_gsl(double phi, void *params){
     return 0.0;
   
   double WR = w_R_2D(k, integration_params->top_hat_radius);
-  double T = pointer_to_Matter->transfer_function_at(k);
-  double P = pointer_to_Matter->current_P_L_at(log(k));
+  double T = pointer_to_Universe->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(log(k));
   double alpha = integration_params->alpha_3;
   
   return pow(k, 2.0-4.0*alpha)*pow(T, 1.0-2.0*alpha)*WR*pow(P, alpha);
@@ -500,13 +452,13 @@ double skewness_integral_2D_3_derivs_gsl(double phi, void *params){
 double skewness_integral_2D_2_derivs_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   integration_params->k_2 = k;
   double WR = w_R_2D(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
-  double T = pointer_to_Matter->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  double T = pointer_to_Universe->transfer_function_at(k);
   double alpha = integration_params->alpha_2;
   
   double integral = int_gsl_integrate_low_precision(skewness_integral_2D_3_derivs_gsl,params,0.0,constants::pi,NULL,1000);
@@ -519,13 +471,13 @@ double skewness_integral_2D_2_derivs_gsl(double lnk, void *params){
 double skewness_integral_2D_1_derivs_gsl(double lnk, void *params){
   
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   integration_params->k_1 = k;
   double WR = w_R_2D(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
-  double T = pointer_to_Matter->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  double T = pointer_to_Universe->transfer_function_at(k);
   double P_phi = P;
   
   double log_k_max = min(constants::product_of_kmax_and_R/integration_params->top_hat_radius, maximal_wave_number_in_H0_units);
@@ -546,7 +498,7 @@ double skewness_integral_2D_1_derivs_gsl(double lnk, void *params){
 double dskewness_integral_2D_3_derivs_gsl(double phi, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k_1 = integration_params->k_1;
   double k_2 = integration_params->k_2;
@@ -566,8 +518,8 @@ double dskewness_integral_2D_3_derivs_gsl(double phi, void *params){
   
   integration_params->WR_3 = w_R_2D(k, integration_params->top_hat_radius);
   integration_params->dWR_3 = deriv_of_w_R_2D(k, integration_params->top_hat_radius);
-  double T = pointer_to_Matter->transfer_function_at(k);
-  double P = pointer_to_Matter->current_P_L_at(log(k));
+  double T = pointer_to_Universe->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(log(k));
   double alpha = integration_params->alpha_3;
   
   double W_dervis = 0.0;
@@ -582,14 +534,14 @@ double dskewness_integral_2D_3_derivs_gsl(double phi, void *params){
 double dskewness_integral_2D_2_derivs_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   integration_params->k_2 = k;
   integration_params->WR_2 = w_R_2D(k, integration_params->top_hat_radius);
   integration_params->dWR_2 = deriv_of_w_R_2D(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
-  double T = pointer_to_Matter->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  double T = pointer_to_Universe->transfer_function_at(k);
   double alpha = integration_params->alpha_2;
   
   double integral = int_gsl_integrate_low_precision(dskewness_integral_2D_3_derivs_gsl,params,0.0,constants::pi,NULL,1000);
@@ -602,14 +554,14 @@ double dskewness_integral_2D_2_derivs_gsl(double lnk, void *params){
 double dskewness_integral_2D_1_derivs_gsl(double lnk, void *params){
   
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double k = exp(lnk);
   integration_params->k_1 = k;
   integration_params->WR_1 = w_R_2D(k, integration_params->top_hat_radius);
   integration_params->dWR_1 = deriv_of_w_R_2D(k, integration_params->top_hat_radius);
-  double P = pointer_to_Matter->current_P_L_at(lnk);
-  double T = pointer_to_Matter->transfer_function_at(k);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  double T = pointer_to_Universe->transfer_function_at(k);
   double P_phi = P;
   
   double log_k_max = min(constants::product_of_kmax_and_R/integration_params->top_hat_radius, maximal_wave_number_in_H0_units);
@@ -639,13 +591,13 @@ double dskewness_integral_2D_1_derivs_gsl(double lnk, void *params){
 double halofit_sig_sq_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double index = 3.0+integration_params->n_s;
   
   double k = exp(lnk);
   double y_sq = pow(integration_params->top_hat_radius*k, 2);
-  double T_sq = pointer_to_Matter->transfer_function_at(k); T_sq *= T_sq;
+  double T_sq = pointer_to_Universe->transfer_function_at(k); T_sq *= T_sq;
   
 
   return pow(k,index)*T_sq*exp(-y_sq);
@@ -656,13 +608,13 @@ double halofit_sig_sq_gsl(double lnk, void *params){
 double halofit_C_gsl(double lnk, void *params){
   
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double index = 3.0+integration_params->n_s;
   double k = exp(lnk);
   double k_sq = k*k;
   double y_sq = pow(integration_params->top_hat_radius*k, 2);
-  double T_sq = pointer_to_Matter->transfer_function_at(k); T_sq *= T_sq;
+  double T_sq = pointer_to_Universe->transfer_function_at(k); T_sq *= T_sq;
   double integrand = pow(k,index)*T_sq*exp(-y_sq)*y_sq;
     
   return integrand;
@@ -673,13 +625,13 @@ double halofit_C_gsl(double lnk, void *params){
 double halofit_n_gsl(double lnk, void *params){
   
   integration_parameters *integration_params = (integration_parameters *) params;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double index = 3.0+integration_params->n_s;
   double k = exp(lnk);
   double k_sq = k*k;
   double y_sq = pow(integration_params->top_hat_radius*k, 2);
-  double T_sq = pointer_to_Matter->transfer_function_at(k); T_sq *= T_sq;
+  double T_sq = pointer_to_Universe->transfer_function_at(k); T_sq *= T_sq;
   double integrand = pow(k,index)*T_sq*exp(-y_sq)*y_sq;
     
   return (1-y_sq)*integrand;
@@ -689,7 +641,7 @@ double halofit_n_gsl(double lnk, void *params){
 int growth_factor_gsl(double e, const double D[], double dDde[], void *params){
   
   integration_parameters *integration_params = (integration_parameters *) params;
-  Universe* pointer_to_Universe = integration_params->pointer_to_Universe;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double Om_m = integration_params->Omega_m;
   
@@ -708,8 +660,7 @@ int growth_factor_gsl(double e, const double D[], double dDde[], void *params){
 int growth_factor_to_second_order_gsl(double e, const double D[], double dDde[], void *params){
   
   integration_parameters *integration_params = (integration_parameters *) params;
-  Universe* pointer_to_Universe = integration_params->pointer_to_Universe;
-  Matter* pointer_to_Matter = integration_params->pointer_to_Matter;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double Om_m = integration_params->Omega_m;
   
@@ -718,7 +669,7 @@ int growth_factor_to_second_order_gsl(double e, const double D[], double dDde[],
 
   double scale = pointer_to_Universe->a_at_eta(e);
   double H = pointer_to_Universe->H_at_eta(e);
-  double D_lin_prime = pointer_to_Matter->return_D_prime_of_eta(e);
+  double D_lin_prime = pointer_to_Universe->return_D_prime_of_eta(e);
 
   dDde[0] = D1;
   dDde[1] = -H*D1+3.0/2.0*Om_m/scale*D0 + D_lin_prime*D_lin_prime;
@@ -731,7 +682,7 @@ int growth_factor_to_second_order_gsl(double e, const double D[], double dDde[],
 int growth_factor_gsl_jac(double e, const double D[], double *dfdD, double dDde[], void *params){
 
   integration_parameters *integration_params = (integration_parameters *) params;
-  Universe* pointer_to_Universe = integration_params->pointer_to_Universe;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double Om_m = integration_params->Omega_m;
   
@@ -760,7 +711,7 @@ int growth_factor_gsl_jac(double e, const double D[], double *dfdD, double dDde[
 int growth_factor_to_second_order_gsl_jac(double e, const double D[], double *dfdD, double dDde[], void *params){
 
   integration_parameters *integration_params = (integration_parameters *) params;
-  Universe* pointer_to_Universe = integration_params->pointer_to_Universe;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double Om_m = integration_params->Omega_m;
   
@@ -801,7 +752,7 @@ int growth_factor_to_second_order_gsl_jac(double e, const double D[], double *df
 int F_dF_ddF_spherical_wrt_delta_gsl(double e, const double y[], double dfde[], void *params){
 
   integration_parameters *integration_params = (integration_parameters *) params;
-  Universe* pointer_to_Universe = integration_params->pointer_to_Universe;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double F = y[0];
   double F_prime = y[1];
@@ -827,7 +778,7 @@ int F_dF_ddF_spherical_wrt_delta_gsl(double e, const double y[], double dfde[], 
 int F_dF_ddF_spherical_wrt_delta_jac(double e, const double y[], double *dfdy, double dfde[], void *params){
 
   integration_parameters *integration_params = (integration_parameters *) params;
-  Universe* pointer_to_Universe = integration_params->pointer_to_Universe;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
 
   double F = y[0];
   double F_prime = y[1];
@@ -928,7 +879,7 @@ int F_dF_ddF_spherical_wrt_delta_jac(double e, const double y[], double *dfdy, d
 int F_dF_ddF_cylindrical_wrt_delta_gsl(double e, const double y[], double dfde[], void *params){
 
   integration_parameters *integration_params = (integration_parameters *) params;
-  Universe* pointer_to_Universe = integration_params->pointer_to_Universe;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
   
   double F = y[0];
   double F_prime = y[1];
@@ -954,7 +905,7 @@ int F_dF_ddF_cylindrical_wrt_delta_gsl(double e, const double y[], double dfde[]
 int F_dF_ddF_cylindrical_wrt_delta_jac(double e, const double y[], double *dfdy, double dfde[], void *params){
 
   integration_parameters *integration_params = (integration_parameters *) params;
-  Universe* pointer_to_Universe = integration_params->pointer_to_Universe;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
 
   double F = y[0];
   double F_prime = y[1];

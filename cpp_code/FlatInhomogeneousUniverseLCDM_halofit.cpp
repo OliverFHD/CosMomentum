@@ -42,20 +42,20 @@
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::sig_sq(double R, double e){
+double FlatInhomogeneousUniverseLCDM::sig_sq(double R, double e){
 
 	double s_sq = 0;
   double prefactors;
-  double D_sq = interpolate_neville_aitken(e, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
+  double D_sq = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
+  D_sq *= D_sq;
   
 	integration_parameters params;
   integration_parameters * pointer_to_params = &params;
 	
-  D_sq *= D_sq;
-  prefactors = D_sq/(2.0*constants::pi_sq)*pow(this->cosmology.sigma_8, 2)/this->norm;
+  prefactors = D_sq/(2.0*constants::pi_sq)*pow(this->return_sigma_8(), 2)/this->norm;
   params.top_hat_radius = R;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
   
   s_sq = int_gsl_integrate_medium_precision(halofit_sig_sq_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
   return prefactors*s_sq;
@@ -71,23 +71,22 @@ double Matter::sig_sq(double R, double e){
  * 
 *******************************************************************************************************************************************************/
 
-vector<double> Matter::c_and_n_NL(double R, double e){
+vector<double> FlatInhomogeneousUniverseLCDM::c_and_n_NL(double R, double e){
   
   double lnk_max = log(maximal_wave_number_in_H0_units);
   double prefactors;
-  double D_sq = interpolate_neville_aitken(e, &this->eta_Newton, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);  
-
+  double D_sq = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);  
+  D_sq *= D_sq;
+  
 	integration_parameters params;
   integration_parameters * pointer_to_params = &params;
 
   vector<double> integral(2, 0.0);
   
-	
-  D_sq *= D_sq;
-  prefactors = D_sq/(2*pi_sq)*pow(this->cosmology.sigma_8, 2)/this->norm;
+  prefactors = D_sq/(2*pi_sq)*pow(this->return_sigma_8(), 2)/this->norm;
   params.top_hat_radius = R;
-  params.n_s = this->cosmology.n_s;
-  params.pointer_to_Matter = this;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
 	
 	integral[0] = 2.0*prefactors*int_gsl_integrate_medium_precision(halofit_C_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
   integral[1] = 4.0*prefactors*int_gsl_integrate_medium_precision(halofit_n_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
@@ -106,7 +105,7 @@ vector<double> Matter::c_and_n_NL(double R, double e){
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::k_NL(double k_min, double k_max, double e){
+double FlatInhomogeneousUniverseLCDM::k_NL(double k_min, double k_max, double e){
   
   double k = (k_max + k_min)/2.0;
   double s = this->sig_sq(1.0/k, e);  
@@ -139,11 +138,11 @@ double Matter::k_NL(double k_min, double k_max, double e){
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::Delta_Q_sq(double k, double e){
+double FlatInhomogeneousUniverseLCDM::Delta_Q_sq(double k, double e){
   
-  double h = this->cosmology.h_100;
+  double h = this->return_h_100();
 
-  double n = this->cosmology.n_s;
+  double n = this->return_n_s();
   double k_s = this->current_k_non_linear;
   double y = k/k_s;
   
@@ -170,7 +169,7 @@ double Matter::Delta_Q_sq(double k, double e){
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::Delta_H_sq(double k){
+double FlatInhomogeneousUniverseLCDM::Delta_H_sq(double k){
   
   double n = this->current_n_eff;
   double k_s = this->current_k_non_linear;
@@ -195,14 +194,14 @@ double Matter::Delta_H_sq(double k){
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::Delta_H_prime_sq(double k){
+double FlatInhomogeneousUniverseLCDM::Delta_H_prime_sq(double k){
 
   double n = this->current_n_eff;
   double k_s = this->current_k_non_linear;
   double y = k/k_s;
   double C_sm = this->current_C_sm;
-  double Om_l = this->universe->rho_L_of_a(this->current_scale);
-  double w = this->universe->w_L_of_a(this->current_scale);
+  double Om_l = this->rho_L_of_a(this->current_scale);
+  double w = this->w_L_of_a(this->current_scale);
   
   double result = 1.0;
   
@@ -225,7 +224,7 @@ double Matter::Delta_H_prime_sq(double k){
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::P_NL_at(double k, double e){
+double FlatInhomogeneousUniverseLCDM::P_NL_at(double k, double e){
 
   double q = this->Delta_Q_sq(k, e);
   double h = this->Delta_H_sq(k);
@@ -244,7 +243,7 @@ double Matter::P_NL_at(double k, double e){
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::current_P_NL_at(double ln_k){
+double FlatInhomogeneousUniverseLCDM::current_P_NL_at(double ln_k){
   
   return interpolate_neville_aitken(ln_k, &this->log_wave_numbers, &this->current_P_NL, constants::order_of_interpolation);
   
@@ -260,7 +259,7 @@ double Matter::current_P_NL_at(double ln_k){
  * 
 *******************************************************************************************************************************************************/
 
-double Matter::current_P_L_at(double ln_k){
+double FlatInhomogeneousUniverseLCDM::current_P_L_at(double ln_k){
 
   return interpolate_neville_aitken(ln_k, &this->log_wave_numbers, &this->current_P_L, constants::order_of_interpolation);
   
@@ -276,11 +275,11 @@ double Matter::current_P_L_at(double ln_k){
 *******************************************************************************************************************************************************/
 
 
-vector<double> Matter::P_NL(double e){
+vector<double> FlatInhomogeneousUniverseLCDM::P_NL(double e){
   
   int n = this->wave_numbers.size();
   vector<double> P(n, 0.0);
-  double scale = this->universe->a_at_eta(e);
+  double scale = this->a_at_eta(e);
   double D = return_D_of_eta(e);
 
   double k;
@@ -296,11 +295,11 @@ vector<double> Matter::P_NL(double e){
   vector<double> c_and_n_eff = this->c_and_n_NL(1.0/k_s, e);
   
   this->current_scale = scale;
-  hubble = this->universe->H_at_eta(e);
-  Om_m = this->universe->rho_m_of_a(scale)*scale*scale/(hubble*hubble);
-  Om_l = this->universe->rho_L_of_a(scale)*scale*scale/(hubble*hubble);
+  hubble = this->H_at_eta(e);
+  Om_m = this->rho_m_of_a(scale)*scale*scale/(hubble*hubble);
+  Om_l = this->rho_L_of_a(scale)*scale*scale/(hubble*hubble);
   interpol = Om_l/(1.0-Om_m);
-  double w = this->universe->w_L_of_a(scale);
+  double w = this->w_L_of_a(scale);
   w = interpol*w + (1.0 - interpol)*(-1.0/3.0);
   interpol = -(3.0*w+1.0)/2.0;
   
@@ -345,7 +344,7 @@ vector<double> Matter::P_NL(double e){
  * 
 *******************************************************************************************************************************************************/
 
-vector<double> Matter::P_L(double e){
+vector<double> FlatInhomogeneousUniverseLCDM::P_L(double e){
 
   int n = this->wave_numbers.size();
 

@@ -19,13 +19,15 @@ class GalaxySample {
    
    // returning (pointers to) class attributes
    int get_error_flag_negative_density(){return this->error_flag_negative_density;};
-   FlatInhomogeneousUniverseLCDM* pointer_to_universe(){return this->universe;};
    
    // class output
    int return_N_max(double N_bar, double variance);
    double return_P_of_N_given_delta(int N, double N_bar, double delta, double variance); // variance only used when quadratic_bias != 0
    vector<double> return_CIC_from_matter_density_PDF(double N_bar, vector<vector<double> > PDF_data);
    
+ protected:
+   
+   FlatInhomogeneousUniverseLCDM* pointer_to_universe(){return this->universe;};
    
  private:
    

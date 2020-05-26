@@ -632,7 +632,11 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
   // --> ISSUE: choosing delta_max to be 6*sigma may not be 100% reasonable for very skewed PDFs
   //            Maybe choose it by some quantile in a log-normal PDF that approximates the real PDF?
   
-  double ddelta = (delta_max-delta_min)/double(n_delta-1);
+  
+  /*
+   * ISSUE: sometimes at delta=delta_max the code outputs PDF[i] = nan! Why is this? OF preliminarily fixed this by replacing "/double(n_delta-1)" with "/double(n_delta)" (hence avoiding delta=delta_max).
+   */
+  double ddelta = (delta_max-delta_min)/double(n_delta);
   double delta;
   double tau_0, lambda_0;
   double dr;

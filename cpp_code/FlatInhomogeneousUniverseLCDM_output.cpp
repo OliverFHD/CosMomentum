@@ -234,34 +234,19 @@ void FlatInhomogeneousUniverseLCDM::print_growth_history(string file_name){
  * 
 *******************************************************************************************************************************************************/
 
-vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda(double theta, double f_NL, vector<double> z_values, vector<double> n_of_z_values){
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values){
   
   int n_lambda = this->delta_values_for_cylindrical_collapse.size();
-  int n_time = z_values.size()-1;
+  int n_time = w_values.size()-1;
   
-  vector<double> w_values(n_time+1, 0.0);
-  vector<double> dw_values(n_time, 0.0);
   vector<double> w_values_bin_center(n_time, 0.0);
-  vector<double> dz_values(n_time, 0.0);
-  vector<double> n_of_w_values(n_time, 0.0);
+  for(int i = 0; i < n_time; i++){
+    w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
+  }
   
   double z, a, eta, eta_0, w, w_last_scattering, R;
   eta_0 = this->eta_at_a(1.0);
   w_last_scattering = eta_0-this->eta_at_a(1.0/(1.0+constants::z_last_scattering));
-  
-  cout << "normalising pofz data\n";
-  
-  for(int i = 0; i < n_time+1; i++){
-    a = 1.0/(1.0+z_values[i]);
-    w_values[i] = eta_0 - this->eta_at_a(a);
-  }
-  for(int i = 0; i < n_time; i++){
-    dz_values[i] = z_values[i+1]-z_values[i];
-    dw_values[i] = w_values[i+1]-w_values[i];
-    w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
-    n_of_w_values[i] = n_of_z_values[i]*dz_values[i]/dw_values[i];
-  }
-  
   
   double n_time_refined = int(w_last_scattering/constants::maximal_dw);
   vector<double> w_values_refined(n_time_refined, 0.0);
@@ -399,40 +384,22 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi
  * 
 *******************************************************************************************************************************************************/
 
-double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_variance(double theta, vector<double> z_values, vector<double> n_of_z_values){
+double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_variance(double theta, vector<double> w_values, vector<double> n_of_w_values){
   
-  int n_time = z_values.size()-1;
+  int n_time = w_values.size()-1;
   
-  vector<double> w_values(n_time+1, 0.0);
   vector<double> dw_values(n_time, 0.0);
-  vector<double> dz_values(n_time, 0.0);
-  vector<double> n_of_w_values(n_time, 0.0);
   vector<int> indeces_of_nonzero_nofw(0,0);
   
   double a, eta, eta_0, w, R;
   eta_0 = this->eta_at_a(1.0);
   
-  cout << "normalising pofz data\n";
-  
-  for(int i = 0; i < n_time+1; i++){
-    a = 1.0/(1.0+z_values[i]);
-    w_values[i] = eta_0 - this->eta_at_a(a);
-  }
-  
-  double norm = 0.0;
   for(int i = 0; i < n_time; i++){
-    dz_values[i] = z_values[i+1]-z_values[i];
     dw_values[i] = w_values[i+1]-w_values[i];
-    n_of_w_values[i] = n_of_z_values[i]*dz_values[i]/dw_values[i];
-    norm += n_of_z_values[i]*dz_values[i];
     if(n_of_w_values[i] > 0.0){
       indeces_of_nonzero_nofw.push_back(i);
     }
   }
-  for(int i = 0; i < n_time; i++){
-    n_of_w_values[i] /= norm;
-  }
-  // ISSUE --> if n_of_w_values is supposed to represent a lensing kernel, then it shouldn't be normalised.
   
   int n_time_of_nonzero_nofw = indeces_of_nonzero_nofw.size();
   double var_projected = 0.0;
@@ -462,44 +429,26 @@ double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_variance(double thet
  * 
 *******************************************************************************************************************************************************/
 
-double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_skewness(double theta, double f_NL, vector<double> z_values, vector<double> n_of_z_values){
+double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_skewness(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values){
   
   if(f_NL != 0.0){
     cerr << "CAREFUL: f_NL != 0 not yet implemented in return_LOS_integrated_skewness.\n";
   }
   
-  int n_time = z_values.size()-1;
+  int n_time = w_values.size()-1;
   
-  vector<double> w_values(n_time+1, 0.0);
   vector<double> dw_values(n_time, 0.0);
-  vector<double> dz_values(n_time, 0.0);
-  vector<double> n_of_w_values(n_time, 0.0);
   vector<int> indeces_of_nonzero_nofw(0,0);
   
   double a, e, eta_0, w, R;
   eta_0 = this->eta_at_a(1.0);
   
-  cout << "normalising pofz data\n";
-  
-  for(int i = 0; i < n_time+1; i++){
-    a = 1.0/(1.0+z_values[i]);
-    w_values[i] = eta_0 - this->eta_at_a(a);
-  }
-  
-  double norm = 0.0;
   for(int i = 0; i < n_time; i++){
-    dz_values[i] = z_values[i+1]-z_values[i];
     dw_values[i] = w_values[i+1]-w_values[i];
-    n_of_w_values[i] = n_of_z_values[i]*dz_values[i]/dw_values[i];
-    norm += n_of_z_values[i]*dz_values[i];
     if(n_of_w_values[i] > 0.0){
       indeces_of_nonzero_nofw.push_back(i);
     }
   }
-  for(int i = 0; i < n_time; i++){
-    n_of_w_values[i] /= norm;
-  }
-  // ISSUE --> if n_of_w_values is supposed to represent a lensing kernel, then it shouldn't be normalised.
   
   int n_time_of_nonzero_nofw = indeces_of_nonzero_nofw.size();
   double skewness_projected = 0.0;
@@ -575,18 +524,18 @@ double FlatInhomogeneousUniverseLCDM::return_3D_skewness(double z, double R_in_M
 /*
  * FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
  * 
- * Returns PDF of line-of-sight projected matter density contrast with projection kernel specified by the input arrays z_values and n_of_z_values. z_values should store the lower-redshift edge of each histogram bin and n_of_z_values should contain the redshift histrogram (the histogram doesn't need to be normalised, since normalisation is enforced later on in the code). First column of the returned array is \delta smoothed with a spherical top-hat of R_in_Mpc_over_h, while 2nd column is p(\delta).
+ * Returns PDF of line-of-sight projected matter density contrast with projection kernel specified by the input arrays w_values and n_of_w_values. w_values should store the lower-redshift edge of each histogram bin and n_of_w_values should contain the redshift histrogram (the histogram doesn't need to be normalised, since normalisation is enforced later on in the code). First column of the returned array is \delta smoothed with a spherical top-hat of R_in_Mpc_over_h, while 2nd column is p(\delta).
  * 
  */
 
 
 
-vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF(vector<double> z_values, vector<double> n_of_z_values, double theta, double f_NL, double var_NL_rescale){
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF(vector<double> w_values, vector<double> n_of_w_values, double theta, double f_NL, double var_NL_rescale){
   
   cout << "Computing projected phi_data:\n";
   cout.flush();
     
-  vector<vector<double> > phi_data = this->return_LOS_integrated_phi_of_lambda(theta, f_NL, z_values, n_of_z_values);
+  vector<vector<double> > phi_data = this->return_LOS_integrated_phi_of_lambda(theta, f_NL, w_values, n_of_w_values);
   
   /*
    * Determine critical point, where phi(lambda) splits into two branches on the complex plane. 
@@ -699,13 +648,17 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
    */
   
   int n_delta = constants::N_delta_values_for_PDFs;
-  double var = this->return_LOS_integrated_variance(theta, z_values, n_of_z_values);
+  double var = this->return_LOS_integrated_variance(theta, w_values, n_of_w_values);
   double delta_min = interpolate_neville_aitken(tau_min, &tau_values, &delta_NL_values, constants::order_of_interpolation);
   double delta_max = max(delta_c, 6.0*sqrt(var));
   // --> ISSUE: choosing delta_max to be 6*sigma may not be 100% reasonable for very skewed PDFs
   //            Maybe choose it by some quantile in a log-normal PDF that approximates the real PDF?
   
-  double ddelta = (delta_max-delta_min)/double(n_delta-1);
+  
+  /*
+   * ISSUE: sometimes at delta=delta_max the code outputs PDF[i] = nan! Why is this? OF preliminarily fixed this by replacing "/double(n_delta-1)" with "/double(n_delta)" (hence avoiding delta=delta_max).
+   */
+  double ddelta = (delta_max-delta_min)/double(n_delta);
   double delta;
   double tau_0, lambda_0;
   double dr;
@@ -789,34 +742,22 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
  * 
 *******************************************************************************************************************************************************/
 
-vector<vector<vector<double> > > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_CGF_of_delta_and_kappa(double theta, double f_NL, vector<double> z_values, vector<double> n_of_z_values){
+vector<vector<vector<double> > > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_CGF_of_delta_and_kappa(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values){
   
   int n_lambda = this->delta_values_for_cylindrical_collapse.size();
-  int n_time = z_values.size()-1;
+  int n_time = w_values.size()-1;
   
-  vector<double> w_values(n_time+1, 0.0);
   vector<double> dw_values(n_time, 0.0);
   vector<double> w_values_bin_center(n_time, 0.0);
-  vector<double> dz_values(n_time, 0.0);
-  vector<double> n_of_w_values(n_time, 0.0);
   
   double z, a, eta, eta_0, w, w_last_scattering, R;
   eta_0 = this->eta_at_a(1.0);
   w_last_scattering = eta_0-this->eta_at_a(1.0/(1.0+constants::z_last_scattering));
   
-  cout << "normalising pofz data\n";
-  
-  for(int i = 0; i < n_time+1; i++){
-    a = 1.0/(1.0+z_values[i]);
-    w_values[i] = eta_0 - this->eta_at_a(a);
-  }
   for(int i = 0; i < n_time; i++){
-    dz_values[i] = z_values[i+1]-z_values[i];
     dw_values[i] = w_values[i+1]-w_values[i];
     w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
-    n_of_w_values[i] = n_of_z_values[i]*dz_values[i]/dw_values[i];
   }
-  
   
   double n_time_refined = int(w_last_scattering/constants::maximal_dw);
   vector<double> w_values_refined(n_time_refined, 0.0);

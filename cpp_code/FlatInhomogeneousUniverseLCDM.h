@@ -1,5 +1,6 @@
 #ifndef _FlatInhomogeneousUniverseLCDM
 #define _FlatInhomogeneousUniverseLCDM
+#include <algorithm>    // std::min_element, std::max_element
 #include <thread>
 #include <random>
 #include <stdio.h>

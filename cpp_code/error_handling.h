@@ -1,4 +1,4 @@
-
+#include "assert.h"
 using namespace std;
 
 namespace error_handling{

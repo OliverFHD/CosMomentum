@@ -531,7 +531,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
   vector<double> R_L_values(n_lambda, 0.0);
   vector<double> tau_values(n_lambda, 0.0);
   
-  for(int i = 0; i < tau_values.size(); i++){
+  for(int i = 0; i < n_lambda; i++){
     delta_L_values[i] = phi_data[0][i];
     delta_NL_values[i] = phi_data[1][i];
     lambda_values[i] = phi_data[2][i];
@@ -571,6 +571,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
   lambda_c = interpolate_neville_aitken(tau_max, &tau_values, &lambda_values, constants::order_of_interpolation);
   
   int n_tau = 4*constants::generating_function_coeff_order + 1; // has to be odd number in order to include tau=0 exactly.
+  // ISSUE: this shouldn't be hardcoded!
   
   vector<double> tau_for_fit(n_tau,0.0);
   vector<double> lambda_for_fit(n_tau,0.0);
@@ -825,7 +826,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_of_lambda_3D(
   
 }
 
-void FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lambda_2D(double e, double R, double f_NL, vector<double> * lambda_of_delta, vector<double> * phi_of_delta, vector<double> * phi_prime_of_delta){
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lambda_2D(double e, double R, double f_NL){
   
   double log_R = log(R);
   double RL, log_RL;
@@ -845,10 +846,9 @@ void FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lambda_2D(double e, dou
   
   this->return_delta_NL_of_delta_L_and_dF_ddelta_2D(e, &delta_L_values, &delta_NL_values, &delta_NL_prime_values);
   
-  if(lambda_of_delta->size()!=delta_L_values.size()) (*lambda_of_delta) = delta_L_values;
-  if(phi_of_delta->size()!=delta_L_values.size()) (*phi_of_delta) = delta_L_values;
-  (*phi_prime_of_delta) = delta_NL_values;
-  
+  vector<vector<double> > data(7, vector<double>(delta_L_values.size(), 0.0));
+  vector<double> lambda_of_delta = delta_L_values;
+  vector<double> phi_of_delta = delta_L_values;
   vector<double> j_values = delta_L_values;
   vector<double> j_values_Gauss = delta_L_values;
   
@@ -898,23 +898,33 @@ void FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lambda_2D(double e, dou
       else
         j_values[d] -= sqrt(pow(var_L_RL/skew_L_RL,2) + 2.0*delta_L_values[d]/skew_L_RL);
       
-      (*lambda_of_delta)[d] = j_values[d]/delta_NL_prime_values[d];
-      (*lambda_of_delta)[d] -= RL/(2.0*(1.0+delta_NL_values[d]))*(dvar_L_RL_dR/2.0*pow(j_values[d],2) + dskew_L_RL_dR/6.0*pow(j_values[d],3));
+      lambda_of_delta[d] = j_values[d]/delta_NL_prime_values[d];
+      lambda_of_delta[d] -= RL/(2.0*(1.0+delta_NL_values[d]))*(dvar_L_RL_dR/2.0*pow(j_values[d],2) + dskew_L_RL_dR/6.0*pow(j_values[d],3));
       
-      (*phi_of_delta)[d] = -(*lambda_of_delta)[d]*delta_NL_values[d]+delta_L_values[d]*j_values[d] - (var_L_RL/2.0*pow(j_values[d],2) + skew_L_RL/6.0*pow(j_values[d],3));
-      (*phi_of_delta)[d] *= -1.0;
+      phi_of_delta[d] = -lambda_of_delta[d]*delta_NL_values[d]+delta_L_values[d]*j_values[d] - (var_L_RL/2.0*pow(j_values[d],2) + skew_L_RL/6.0*pow(j_values[d],3));
+      phi_of_delta[d] *= -1.0;
     }
     else{
       j_values[d] = delta_L_values[d]/var_L_RL;
-      (*lambda_of_delta)[d] = j_values[d]/delta_NL_prime_values[d];
-      (*lambda_of_delta)[d] -= RL/(2.0*(1.0+delta_NL_values[d]))*dvar_L_RL_dR/2.0*pow(j_values[d],2);
-      (*phi_of_delta)[d] = (*lambda_of_delta)[d]*delta_NL_values[d]-delta_L_values[d]*j_values[d] + var_L_RL/2.0*pow(j_values[d],2);
+      lambda_of_delta[d] = j_values[d]/delta_NL_prime_values[d];
+      lambda_of_delta[d] -= RL/(2.0*(1.0+delta_NL_values[d]))*dvar_L_RL_dR/2.0*pow(j_values[d],2);
+      phi_of_delta[d] = lambda_of_delta[d]*delta_NL_values[d]-delta_L_values[d]*j_values[d] + var_L_RL/2.0*pow(j_values[d],2);
     }
     
-    (*phi_of_delta)[d] *= D_sq*var_L_R/var_NL_R;
-    (*lambda_of_delta)[d] *= D_sq*var_L_R/var_NL_R;
+    phi_of_delta[d] *= D_sq*var_L_R/var_NL_R;
+    lambda_of_delta[d] *= D_sq*var_L_R/var_NL_R;
     
-  }  
+    data[0][d] = delta_L_values[d];
+    data[1][d] = delta_NL_values[d];
+    data[2][d] = lambda_of_delta[d];
+    data[3][d] = phi_of_delta[d];
+    data[4][d] = var_L_RL;
+    data[5][d] = skew_L_RL;
+    data[6][d] = RL*constants::c_over_e5;
+    
+  }
+  
+  return data;
   
 }
 

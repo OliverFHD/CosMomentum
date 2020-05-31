@@ -288,6 +288,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi
   vector<vector<double> > y_values(n_time_of_nonzero_nofw, vector<double>(n_lambda, 0.0));
   vector<vector<double> > phi_values(n_time_of_nonzero_nofw, vector<double>(n_lambda, 0.0));
   vector<vector<double> > phi_prime_values(n_time_of_nonzero_nofw, vector<double>(n_lambda, 0.0));
+  vector<vector<double> > dummy_data;
   
   double y_min = 0.0;
   double y_max = 0.0;
@@ -308,7 +309,11 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi
     cout << z << " / ";
     cout << R*constants::c_over_e5 << " / ";
     cout.flush();
-    compute_phi_tilde_of_lambda_2D(eta, R, f_NL, &y_values[t], &phi_values[t], &phi_prime_values[t]);
+    dummy_data = compute_phi_tilde_of_lambda_2D(eta, R, f_NL);
+    // ISSUE: this order of indeces in confusing.
+    y_values[t] = dummy_data[2];
+    phi_values[t] = dummy_data[3];
+    phi_prime_values[t] = dummy_data[1];
     for(int l = 0; l < n_lambda; l++){
       y_values[t][l] /= n_of_w_values_refined[i];
     }
@@ -732,32 +737,108 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
   
 }
 
+/*
+ * FlatInhomogeneousUniverseLCDM::compute_polynomial_coefficients_from_CGF
+ * 
+ * Extract polynomial coefficients approximating the cumulant generating function. The problem here is: just fitting a polynomial to phi(lambda) is usually highly nummerically unstable. Instead, phi(tau) and lambda(tau) should be fitted by polynomials. From those polynomial coefficients one can then compute the polynomial coefficients of phi(lambda) (cf. section 4.6 of https://arxiv.org/pdf/1912.06621.pdf ).
+ * 
+ * Note: the nth polynomial coefficient a_n is connect to the nth cumulant c_n via
+ * 
+ * a_n = c_n / n!  .
+ * 
+ */
+
+void FlatInhomogeneousUniverseLCDM::compute_polynomial_coefficients_from_CGF(vector<double> lambda_values, vector<double> tau_values, vector<double> phi_values, vector<double> phi_prime_values, vector<double> *coeffs_phi_of_lambda, vector<double> *coeffs_phi_prime_of_lambda){
+  
+  int n_lambda = lambda_values.size();
+  
+  int tau_c = tau_values[0];
+  for(int i = 0; i < n_lambda-1; i++){
+    if(lambda_values[i] < lambda_values[i+1]){
+      tau_c = tau_values[i];
+    }
+  }
+  
+  
+  double tau_max = 0.9*tau_c;
+  double tau_min = 0.9*tau_values[0];
+  int n_tau = 4*constants::generating_function_coeff_order + 1; // has to be odd number in order to include tau=0 exactly.
+  // ISSUE: this shouldn't be hardcoded!
+  
+  vector<double> tau_for_fit(n_tau,0.0);
+  vector<double> lambda_for_fit(n_tau,0.0);
+  vector<double> phi_for_fit(n_tau,0.0);
+  vector<double> phi_prime_for_fit(n_tau,0.0);
+  
+  // ISSUE: this only works as long as C++ doesn't change its treatment of integer division.
+  double dt = -tau_min/double(n_tau/2);
+  for(int i = 0; i < n_tau/2; i++){
+    tau_for_fit[i] = tau_min+double(i)*dt;
+  }
+  tau_for_fit[n_tau/2] = 0.0;
+  dt = tau_max/double(n_tau/2);
+  for(int i = 0; i < n_tau/2; i++){
+    tau_for_fit[i+n_tau/2+1] = double(i+1)*dt;
+  }
+  
+  for(int i = 0; i < n_tau; i++){
+    lambda_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &lambda_values, constants::order_of_interpolation);
+    phi_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &phi_values, constants::order_of_interpolation);
+    phi_prime_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &phi_prime_values, constants::order_of_interpolation);
+  }
+  
+  // polynomial coefficients approximating lambda(tau)
+  vector<double> coeffs_lambda_of_tau = return_coefficients(&tau_for_fit, &lambda_for_fit, constants::generating_function_coeff_order);
+  int N_coeffs = coeffs_lambda_of_tau.size();
+  
+  // Bell matrices for translating coefficients interms of tau to coefficients in terms of lambda
+  vector<vector<double> > Bell_matrix(0, vector<double>(0, 0.0));
+  vector<vector<double> > inverse_Bell_matrix(0, vector<double>(0, 0.0));
+  return_Bell_matrix(&Bell_matrix, &inverse_Bell_matrix, &coeffs_lambda_of_tau);
+  
+  
+  vector<double> coeffs_phi_prime_of_tau = return_coefficients(&tau_for_fit, &phi_prime_for_fit, constants::order_of_interpolation);
+  (*coeffs_phi_of_lambda) = vector<double>(N_coeffs,0.0);
+  (*coeffs_phi_prime_of_lambda) = vector<double>(N_coeffs,0.0);
+  vector<double> fact = factoria(N_coeffs);
+  
+  for(int i = 0; i < N_coeffs; i++){
+    for(int j = 0; j <= i; j++){
+      (*coeffs_phi_prime_of_lambda)[i] += inverse_Bell_matrix[i][j]*coeffs_phi_prime_of_tau[j]*fact[j];
+    }
+    (*coeffs_phi_prime_of_lambda)[i] /= fact[i];
+  }
+  
+  
+  for(int i = N_coeffs-1; i > 0; i--){
+    (*coeffs_phi_of_lambda)[i] = (*coeffs_phi_prime_of_lambda)[i-1]/double(i);
+  }
+  
+}
+
+
+
+
 
 /*******************************************************************************************************************************************************
- * return_LOS_integrated_CGF_of_delta_and_kappa
- * Description:
- * - set phi(delta, eta) and lambda(delta, eta) on a 2D grid. This grid is used when computing the LOS-projected CGF in Limber approximation
- * Arguments:
- * - double theta: angular top-hat radius with which LOS-integrated field is smoothed
+ * return_LOS_integrated_polynomial_coefficients
+ * 
  * 
 *******************************************************************************************************************************************************/
 
-vector<vector<vector<double> > > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_CGF_of_delta_and_kappa(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values){
+void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficients(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values, vector<double> *coeffs_phi_of_lambda, vector<double> *coeffs_phi_prime_of_lambda){
   
   int n_lambda = this->delta_values_for_cylindrical_collapse.size();
   int n_time = w_values.size()-1;
   
-  vector<double> dw_values(n_time, 0.0);
   vector<double> w_values_bin_center(n_time, 0.0);
+  for(int i = 0; i < n_time; i++){
+    w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
+  }
   
   double z, a, eta, eta_0, w, w_last_scattering, R;
   eta_0 = this->eta_at_a(1.0);
   w_last_scattering = eta_0-this->eta_at_a(1.0/(1.0+constants::z_last_scattering));
-  
-  for(int i = 0; i < n_time; i++){
-    dw_values[i] = w_values[i+1]-w_values[i];
-    w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
-  }
   
   double n_time_refined = int(w_last_scattering/constants::maximal_dw);
   vector<double> w_values_refined(n_time_refined, 0.0);
@@ -789,101 +870,154 @@ vector<vector<vector<double> > > FlatInhomogeneousUniverseLCDM::return_LOS_integ
   
   for(int i = 0; i < n_time_refined; i++){
     n_of_w_values_refined[i] /= norm;
+    cout << i << "   ";
+    cout << w_values_refined[i] << "   ";
+    cout << n_of_w_values_refined[i] << "\n";
   }
   // ISSUE --> if n_of_w_values is supposed to represent a lensing kernel, then it shouldn't be normalised.
   
-  
-  /****************************************************************************
-   ****************************************************************************
-   * 
-   * CGF computation begins here.
-   * 
-   ****************************************************************************
-   ****************************************************************************/
-  
-  
-  
   int n_time_of_nonzero_nofw = indeces_of_nonzero_nofw.size();
-  vector<vector<double> > y_values(n_time_refined, vector<double>(n_lambda, 0.0));
-  vector<vector<double> > y_values_delta(n_time_refined, vector<double>(n_lambda, 0.0));
-  vector<vector<double> > y_values_kappa(n_time_refined, vector<double>(n_lambda, 0.0));
-  vector<vector<double> > phi_values(n_time_refined, vector<double>(n_lambda, 0.0));
-  vector<vector<double> > phi_prime_values(n_time_refined, vector<double>(n_lambda, 0.0));
-  
-  double y_min_delta = 0.0, y_min_kappa = 0.0;
-  double y_max_delta = 0.0, y_max_kappa = 0.0;
-  vector<double>::iterator y_min_iterator;
-  vector<double>::iterator y_max_iterator;
-  int time_index_y_max_delta, lambda_index_y_max_delta, lambda_index_y_min_delta;
-  int time_index_y_max_kappa, lambda_index_y_max_kappa, lambda_index_y_min_kappa;
+  vector<vector<double> > coefficients_phi_of_lambda(n_time_of_nonzero_nofw);
+  vector<vector<double> > coefficients_phi_prime_of_lambda(n_time_of_nonzero_nofw);
+  vector<vector<double> > CGF_data;
+  vector<double> tau_values;
   
   cout << "computing CGF grid & cutting out 1st branch\n";
-  /*
+  
+  for(int t = 0; t < n_time_of_nonzero_nofw; t++){
+    int i = indeces_of_nonzero_nofw[t];
+    w = w_values_refined[i];
+    eta = eta_0-w;
+    R = w*theta;
+    
+    CGF_data = this->compute_phi_tilde_of_lambda_2D(eta, R, f_NL);
+    tau_values = CGF_data[0];
+    for(int d = 0; d < tau_values.size(); d++){
+      tau_values[d] /= sqrt(CGF_data[4][d]);
+    }
+    this->compute_polynomial_coefficients_from_CGF(CGF_data[2], tau_values, CGF_data[3], CGF_data[1], &coefficients_phi_of_lambda[t], &coefficients_phi_prime_of_lambda[t]);
+    coefficients_phi_prime_of_lambda[t][0] = 0.0;
+    // ISSUE: you can do this because current non-linear P(k) has been computed in "compute_phi_tilde_of_lambda_2D".
+    // But this kind of flow seems very prone to error!
+    coefficients_phi_prime_of_lambda[t][1] = variance_of_matter_within_R_NL_2D(R);
+    coefficients_phi_of_lambda[t][0] = 0.0;
+    coefficients_phi_of_lambda[t][1] = 0.0;
+    coefficients_phi_of_lambda[t][2] = 0.5*coefficients_phi_prime_of_lambda[t][1];
+  }
+  
+  int N_coeff = coefficients_phi_of_lambda[0].size();
+  (*coeffs_phi_of_lambda) = vector<double>(N_coeff,0.0);
+  (*coeffs_phi_prime_of_lambda) = vector<double>(N_coeff,0.0);
+  
+  for(int c = 0; c < N_coeff; c++){
+    for(int t = 0; t < n_time_of_nonzero_nofw; t++){
+      int i = indeces_of_nonzero_nofw[t];
+      (*coeffs_phi_of_lambda)[c] += constants::maximal_dw*coefficients_phi_of_lambda[t][c]*pow(n_of_w_values_refined[i], c);
+      (*coeffs_phi_prime_of_lambda)[c] += constants::maximal_dw*coefficients_phi_prime_of_lambda[t][c]*pow(n_of_w_values_refined[i], c+1);
+    }
+  }
+  
+}
+
+
+
+/*******************************************************************************************************************************************************
+ * return_LOS_integrated_polynomial_coefficients_incl_CMB_kappa
+ * 
+ * 
+*******************************************************************************************************************************************************/
+
+void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficients_incl_CMB_kappa(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values, vector<vector<double> > *coeffs_phi, vector<vector<double> > *coeffs_dphi_dlambda_delta, vector<vector<double> > *coeffs_dphi_dlambda_kappa){
+  
+  int n_lambda = this->delta_values_for_cylindrical_collapse.size();
+  int n_time = w_values.size()-1;
+  
+  vector<double> w_values_bin_center(n_time, 0.0);
+  for(int i = 0; i < n_time; i++){
+    w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
+  }
+  
+  double z, a, eta, eta_0, w, w_last_scattering, R;
+  eta_0 = this->eta_at_a(1.0);
+  w_last_scattering = eta_0-this->eta_at_a(1.0/(1.0+constants::z_last_scattering));
+  
+  double n_time_refined = int(w_last_scattering/constants::maximal_dw);
+  vector<double> w_values_refined(n_time_refined, 0.0);
+  vector<double> n_of_w_values_refined(n_time_refined, 0.0);
+  vector<double> lensing_kernel(n_time_refined, 0.0);
+  double w_min = w_values[0];
+  double w_max = w_values[n_time];
+  double norm = 0.0;
+  for(int i = 0; i < n_time_refined; i++){
+    w = (double(i)+0.5)*constants::maximal_dw;
+    a = this->a_at_eta(eta_0-w);
+    w_values_refined[i] = w;
+    if(w > w_min && w < w_max){
+      n_of_w_values_refined[i] = interpolate_neville_aitken(w, &w_values_bin_center, &n_of_w_values, constants::order_of_interpolation);
+    }
+    if(n_of_w_values_refined[i] < 0.0){
+      n_of_w_values_refined[i] = 0.0;
+    }
+    norm += n_of_w_values_refined[i]*constants::maximal_dw;
+    lensing_kernel[i] = 1.5*this->return_Omega_m()*w*(w_last_scattering-w)/w_last_scattering/a;
+  }
+  
+  for(int i = 0; i < n_time_refined; i++){
+    n_of_w_values_refined[i] /= norm;
+    cout << i << "   ";
+    cout << w_values_refined[i] << "   ";
+    cout << n_of_w_values_refined[i] << "\n";
+  }
+  // ISSUE --> if n_of_w_values is supposed to represent a lensing kernel, then it shouldn't be normalised.
+  
+  vector<vector<double> > coefficients_phi_of_lambda(n_time_refined);
+  vector<vector<double> > coefficients_phi_prime_of_lambda(n_time_refined);
+  vector<vector<double> > CGF_data;
+  vector<double> tau_values;
+  
+  cout << "computing CGF grid & cutting out 1st branch\n";
+  
   for(int t = 0; t < n_time_refined; t++){
     w = w_values_refined[t];
     eta = eta_0-w;
-    z = 1.0/this->a_at_eta(eta)-1.0;
     R = w*theta;
-    cout.flush();
-    compute_phi_tilde_of_lambda_2D(eta, R, f_NL, &y_values_kappa[t], &phi_values[t], &phi_prime_values[t]);
-    if(n_of_w_values_refined[t] > 0.0){
-      
-      y_values_delta[t] = y_values_kappa[t];
-      for(int l = 0; l < n_lambda; l++){
-        y_values_delta[t][l] /= n_of_w_values_refined[t];
+    
+    CGF_data = this->compute_phi_tilde_of_lambda_2D(eta, R, f_NL);
+    tau_values = CGF_data[0];
+    for(int d = 0; d < tau_values.size(); d++){
+      tau_values[d] /= sqrt(CGF_data[4][d]);
+    }
+    this->compute_polynomial_coefficients_from_CGF(CGF_data[2], tau_values, CGF_data[3], CGF_data[1], &coefficients_phi_of_lambda[t], &coefficients_phi_prime_of_lambda[t]);
+    coefficients_phi_prime_of_lambda[t][0] = 0.0;
+    // ISSUE: you can do this because current non-linear P(k) has been computed in "compute_phi_tilde_of_lambda_2D".
+    // But this kind of flow seems very prone to error!
+    coefficients_phi_prime_of_lambda[t][1] = variance_of_matter_within_R_NL_2D(R);
+    coefficients_phi_of_lambda[t][0] = 0.0;
+    coefficients_phi_of_lambda[t][1] = 0.0;
+    coefficients_phi_of_lambda[t][2] = 0.5*coefficients_phi_prime_of_lambda[t][1];
+  }
+  
+  int N_coeff = coefficients_phi_of_lambda[0].size();
+  (*coeffs_phi) = vector<vector<double> >(N_coeff,vector<double>(N_coeff, 0.0));
+  (*coeffs_dphi_dlambda_delta) = vector<vector<double> >(N_coeff,vector<double>(N_coeff, 0.0));
+  (*coeffs_dphi_dlambda_kappa) = vector<vector<double> >(N_coeff,vector<double>(N_coeff, 0.0));
+  
+  for(int c_delta = 0; c_delta < N_coeff; c_delta++){
+    for(int c_kappa = 0; c_kappa < N_coeff; c_kappa++){
+      for(int t = 0; t < n_time_refined; t++){
+        if(c_delta + c_kappa < N_coeff){
+          (*coeffs_phi)[c_delta][c_kappa] += constants::maximal_dw*coefficients_phi_of_lambda[t][c_delta+c_kappa]*pow(n_of_w_values_refined[t], c_delta)*pow(lensing_kernel[t], c_kappa);
+          (*coeffs_dphi_dlambda_delta)[c_delta][c_kappa] += constants::maximal_dw*coefficients_phi_prime_of_lambda[t][c_delta+c_kappa]*pow(n_of_w_values_refined[t], c_delta+1)*pow(lensing_kernel[t], c_kappa);
+          (*coeffs_dphi_dlambda_kappa)[c_delta][c_kappa] += constants::maximal_dw*coefficients_phi_prime_of_lambda[t][c_delta+c_kappa]*pow(n_of_w_values_refined[t], c_delta)*pow(lensing_kernel[t], c_kappa+1);
+        }
       }
-      
-      y_max_iterator = std::max_element(y_values_delta[t].begin(), y_values_delta[t].end());
-      if(t == 0){y_max_delta=*y_max_iterator; time_index_y_max_delta = t;}
-      else if(*y_max_iterator<y_max_delta){y_max_delta=*y_max_iterator; time_index_y_max_delta = t;}
-      lambda_index_y_max_delta = std::distance(y_values_delta[t].begin(), y_max_iterator);
-      
-      y_min_iterator = std::min_element(y_values_delta[t].begin(), y_values_delta[t].end());
-      if(t == 0) y_min_delta=*y_min_iterator;
-      else if(*y_min_iterator>y_min_delta) y_min_delta=*y_min_iterator;
     }
-    
-    for(int l = 0; l < n_lambda; l++){
-      y_values_kappa[t][l] /= lensing_kernel[t];
-    }
-    
-    y_values_kappa[t] = vector<double>(&y_values_kappa[t][0], &y_values_kappa[t][lambda_index_y_max]+1);
-    phi_values[t] = vector<double>(&phi_values[t][0], &phi_values[t][lambda_index_y_max]+1);
-    phi_prime_values[t] = vector<double>(&phi_prime_values[t][0], &phi_prime_values[t][lambda_index_y_max]+1);
-    
   }
-  
-  lambda_index_y_min = 0;
-  lambda_index_y_max = y_values[time_index_y_max].size()-1;
-  while(y_values[time_index_y_max][lambda_index_y_min] < y_min){
-    lambda_index_y_min++;
-  }
-  
-  int n_lambda_1st_branch = 1 + lambda_index_y_max - lambda_index_y_min;
-  vector<vector<double> > projected_phi_data(4, vector<double>(n_lambda_1st_branch, 0.0));
-  projected_phi_data[0] = vector<double>(&y_values[time_index_y_max][lambda_index_y_min], &y_values[time_index_y_max][lambda_index_y_max]+1);
-  
-  cout << "projecting CGF\n";
-  cout << "projecting CGF\n";
-  
-  for(int y = 0; y < n_lambda_1st_branch; y++){
-    for(int t = 0; t < n_time_of_nonzero_nofw; t++){
-      int i = indeces_of_nonzero_nofw[t];
-      projected_phi_data[1][y] += interpolate_neville_aitken(projected_phi_data[0][y], &y_values[t], &phi_values[t], constants::order_of_interpolation)*constants::maximal_dw;
-      projected_phi_data[2][y] += interpolate_neville_aitken(projected_phi_data[0][y], &y_values[t], &phi_prime_values[t], constants::order_of_interpolation)*n_of_w_values_refined[i]*constants::maximal_dw;
-      projected_phi_data[3][y] += interpolate_neville_aitken_derivative(projected_phi_data[0][y], &y_values[t], &phi_prime_values[t], constants::order_of_interpolation)*pow(n_of_w_values_refined[i], 2)*constants::maximal_dw;
-    }
-    cout << y << "    ";
-    cout << projected_phi_data[0][y] << "    ";
-    cout << projected_phi_data[1][y] << "    ";
-    cout << projected_phi_data[2][y] << "    ";
-    cout << projected_phi_data[3][y] << "\n";
-  }
-  
-  cout << "delta_min = " << projected_phi_data[2][0] << '\n';
-  cout << "delta_max = " << projected_phi_data[2][n_lambda_1st_branch-1] << '\n';
-  */
-  return vector<vector<vector<double> > >(0);
   
 }
+
+
+
+
+
 

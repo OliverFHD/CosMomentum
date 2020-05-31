@@ -1,0 +1,35 @@
+All contributors to CosMomentum are asked to follow the following coding guidelines.
+For comments / suggestions to improve these guidelines, please contact Oliver Friedrich (of259@ast.cam.ac.uk).
+
+
+****** Units ******
+
+- The c++ of the CosMomentum code should use units where c/H_0 = 1
+
+- The only exceptions are:
+-- the c++-to-python interface in "python_interfaces.cpp"
+-- analytic fitting functions taken from the literature (such as halofit, Eisenstein&Hu transfer function etc), which usually use units of Mpc/h
+
+- The python part of the CosMomentum code should use units where Mpc/h = 1
+
+
+
+****** Code documentation ******
+
+- if you spot an issue in the code that you cannot sustainably fix right away, please document it with a comment line starting with the word "ISSUE"
+
+- above every function definition there should be multi-line comment like
+
+/* 
+ * (ClassOfFunction::)FunctionName
+ *
+ * text describing the purpose of the function
+ *
+ */
+
+- if a function is more that ~ 20 lines long, than there should be comment lines in the function body that divide it into meaningful parts of the computation flow
+
+
+****** Constants ******
+
+- constants regulating the precision of computations should all be defined in the "constants" namespace in constants.h

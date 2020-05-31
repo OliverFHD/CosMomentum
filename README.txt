@@ -27,7 +27,7 @@
 - Please post issues or bug reports on https://github.com/OliverFHD/CosMomentum .
 
 <---> Contributors
-- the code has been designed by Oliver Friedrich, Daniel Gruen, Elisabeth Krause, Tom McClintock
+- the code has been designed by Oliver Friedrich, Daniel Gruen, Anik Halder, Elisabeth Krause, Tom McClintock
 - we'd like to thank Cora Uhlemann for helpful discussions
 
 <---> Acknowledgement

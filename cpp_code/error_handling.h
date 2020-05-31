@@ -1,6 +1,4 @@
 
-
-
 using namespace std;
 
 namespace error_handling{

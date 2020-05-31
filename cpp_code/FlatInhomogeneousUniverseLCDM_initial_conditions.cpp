@@ -51,9 +51,11 @@ void FlatInhomogeneousUniverseLCDM::set_initial_conditions_for_growth(){
       break;
     case LAMBDA_DOMINATED:
       error_handling::general_error_message("ERROR in FlatInhomogeneousUniverseLCDM::set_initial_conditions(): universe has no energy density content besides Lambda!");
+      exit(1);
       break;
     case UNDEFINED:
       error_handling::general_error_message("ERROR in FlatInhomogeneousUniverseLCDM::set_initial_conditions(): universe has no energy density content besides Lambda!");
+      exit(1);
       break;
   }
   

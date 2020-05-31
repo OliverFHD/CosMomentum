@@ -55,21 +55,36 @@ class FlatInhomogeneousUniverseLCDM : public FlatHomogeneousUniverseLCDM {
   
   vector<vector<double> > return_power_spectra(double eta, double R);
   
+  /*
+   * Computing generating functions
+   * 
+   */
   vector<vector<double> > compute_phi_of_lambda_3D(double z, double R, double f_NL, double var_NL_rescale);
-  void compute_phi_tilde_of_lambda_2D(double z, double R, double f_NL, vector<double> * lambda_of_delta, vector<double> * phi_of_delta, vector<double> * phi_prime_of_delta);
+  vector<vector<double> > compute_phi_tilde_of_lambda_2D(double z, double R, double f_NL);
   vector<vector<double> > return_LOS_integrated_phi_of_lambda(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values);
-  vector<vector<vector<double> > > return_LOS_integrated_CGF_of_delta_and_kappa(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values);
   
+  /*
+   * Computing PDFs
+   * 
+   */
   vector<vector<double> > compute_PDF_3D(double z, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale);
   vector<vector<double> > compute_LOS_projected_PDF(vector<double> w_values, vector<double> n_of_w_values, double theta, double f_NL, double var_NL_rescale);
   
-  int return_N_of_lambda(){return this->delta_values_for_spherical_collapse.size();};
-  int return_N_of_lambda_2D(){return this->delta_values_for_cylindrical_collapse.size();};
+  /*
+   * Computing moments and cumulants
+   * 
+   */
   void return_2nd_moment_and_derivative(double R, double *variance, double *dvariance_dR);
   void return_2nd_moment_and_derivative_2D(double R, double *variance, double *dvariance_dR);
-  double return_LOS_integrated_variance(double theta, vector<double> w_values, vector<double> n_of_w_values);
   double return_3D_skewness(double z, double R_in_Mpc_over_h, double f_NL);
+  double return_LOS_integrated_variance(double theta, vector<double> w_values, vector<double> n_of_w_values);
   double return_LOS_integrated_skewness(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values);
+  void compute_polynomial_coefficients_from_CGF(vector<double> lambda_values, vector<double> tau_values, vector<double> phi_values, vector<double> phi_prime_values, vector<double> *coeffs_phi_of_lambda, vector<double> *coeffs_phi_prime_of_lambda);
+  void return_LOS_integrated_polynomial_coefficients(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values, vector<double> *coeffs_phi_of_lambda, vector<double> *coeffs_phi_prime_of_lambda);
+  void return_LOS_integrated_polynomial_coefficients_incl_CMB_kappa(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values, vector<vector<double> > *coeffs_phi, vector<vector<double> > *coeffs_dphi_dlambda_delta, vector<vector<double> > *coeffs_dphi_dlambda_kappa);
+  
+  int return_N_of_lambda(){return this->delta_values_for_spherical_collapse.size();};
+  int return_N_of_lambda_2D(){return this->delta_values_for_cylindrical_collapse.size();};
   
   void set_sphere_skewnesses(int PNG_modus);
   void set_sphere_skewnesses_from_eps3_powerlaw_approximation(int PNG_modus, double R_0_in_Mpc_over_h);

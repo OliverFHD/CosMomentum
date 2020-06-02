@@ -11,8 +11,7 @@
 - statistics of biased & stochastic tracers (e.g. galaxies)
 
 <---> Features that will be added in the near future are
--- statistics of biased & stochastic tracers (e.g. galaxies)
--- density split statistics (cf. Gruen&Friedrich++2018, Friedrich&Gruen++2018)
+- density split statistics (cf. Gruen&Friedrich++2018, Friedrich&Gruen++2018)
 
 <---> Installation & running:
 - The notebook "compute_PDF_and_CGF.ipynb" containts examples on how to run CosMomentum.

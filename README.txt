@@ -12,6 +12,7 @@
 
 <---> Features that will be added in the near future are
 - density split statistics (cf. Gruen&Friedrich++2018, Friedrich&Gruen++2018)
+- joint PDFs of pairs of cosmic random fields
 
 <---> Installation & running:
 - The notebook "compute_PDF_and_CGF.ipynb" containts examples on how to run CosMomentum.

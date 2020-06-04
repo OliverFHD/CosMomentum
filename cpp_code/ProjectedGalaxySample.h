@@ -22,6 +22,7 @@ class ProjectedGalaxySample : public GalaxySample {
    
    vector<double> w_values;
    vector<double> n_of_w_values;
+   vector<double> lensing_kernel_values;
    
    double density; // in radians
    

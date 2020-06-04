@@ -46,7 +46,11 @@ void GalaxySample::set_bias_model_from_br_parametrisation(double b_tilde, double
   
   this->alpha_0 = lognormal_tools::return_alpha_0(r, b_tilde, N_bar, variance, delta_m0);
   this->alpha_1 = lognormal_tools::return_alpha_1(r, b_tilde, N_bar, variance, delta_m0);
-  
+  cout << this->alpha_0 << '\n';
+  cout << this->alpha_1 << '\n';
+  cout << variance << '\n';
+  cout << skewness << '\n';
+  cout << delta_m0 << '\n';
 }
 
 

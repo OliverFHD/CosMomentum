@@ -234,60 +234,31 @@ void FlatInhomogeneousUniverseLCDM::print_growth_history(string file_name){
  * 
 *******************************************************************************************************************************************************/
 
-vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values){
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda(double theta, double f_NL, vector<double> w_values, vector<double> kernel_values){
   
   int n_lambda = this->delta_values_for_cylindrical_collapse.size();
-  int n_time = w_values.size()-1;
+  int n_time = w_values.size() - 1;
+  double eta;
+  double eta_0 = this->eta_at_a(1.0);
+  double w;
+  double dw;
+  double R;
   
   vector<double> w_values_bin_center(n_time, 0.0);
   for(int i = 0; i < n_time; i++){
     w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
   }
-  
-  double z, a, eta, eta_0, w, w_last_scattering, R;
-  eta_0 = this->eta_at_a(1.0);
-  w_last_scattering = eta_0-this->eta_at_a(1.0/(1.0+constants::z_last_scattering));
-  
-  double n_time_refined = int(w_last_scattering/constants::maximal_dw);
-  vector<double> w_values_refined(n_time_refined, 0.0);
-  vector<double> n_of_w_values_refined(n_time_refined, 0.0);
-  vector<double> lensing_kernel(n_time_refined, 0.0);
-  vector<int> indeces_of_nonzero_nofw(0,0);
-  vector<int> indeces_of_zero_nofw(0,0);
-  double w_min = w_values[0];
-  double w_max = w_values[n_time];
-  double norm = 0.0;
-  for(int i = 0; i < n_time_refined; i++){
-    w = (double(i)+0.5)*constants::maximal_dw;
-    a = this->a_at_eta(eta_0-w);
-    w_values_refined[i] = w;
-    if(w > w_min && w < w_max){
-      n_of_w_values_refined[i] = interpolate_neville_aitken(w, &w_values_bin_center, &n_of_w_values, constants::order_of_interpolation);
+  vector<int> indeces_of_nonzero_kernel(0,0);
+  for(int i = 0; i < n_time; i++){
+    if(kernel_values[i] != 0.0){
+      indeces_of_nonzero_kernel.push_back(i);
     }
-    
-    if(n_of_w_values_refined[i] > 0.0){
-      indeces_of_nonzero_nofw.push_back(i);
-    }
-    else{
-      n_of_w_values_refined[i] = 0.0;
-      indeces_of_zero_nofw.push_back(i);
-    }
-    norm += n_of_w_values_refined[i]*constants::maximal_dw;
-    lensing_kernel[i] = 1.5*this->return_Omega_m()*w*(w_last_scattering-w)/w_last_scattering/a;
   }
   
-  for(int i = 0; i < n_time_refined; i++){
-    n_of_w_values_refined[i] /= norm;
-    cout << i << "   ";
-    cout << w_values_refined[i] << "   ";
-    cout << n_of_w_values_refined[i] << "\n";
-  }
-  // ISSUE --> if n_of_w_values is supposed to represent a lensing kernel, then it shouldn't be normalised.
-  
-  int n_time_of_nonzero_nofw = indeces_of_nonzero_nofw.size();
-  vector<vector<double> > y_values(n_time_of_nonzero_nofw, vector<double>(n_lambda, 0.0));
-  vector<vector<double> > phi_values(n_time_of_nonzero_nofw, vector<double>(n_lambda, 0.0));
-  vector<vector<double> > phi_prime_values(n_time_of_nonzero_nofw, vector<double>(n_lambda, 0.0));
+  int n_time_of_nonzero_kernel = indeces_of_nonzero_kernel.size();
+  vector<vector<double> > y_values(n_time_of_nonzero_kernel, vector<double>(n_lambda, 0.0));
+  vector<vector<double> > phi_values(n_time_of_nonzero_kernel, vector<double>(n_lambda, 0.0));
+  vector<vector<double> > phi_prime_values(n_time_of_nonzero_kernel, vector<double>(n_lambda, 0.0));
   vector<vector<double> > dummy_data;
   
   double y_min = 0.0;
@@ -298,16 +269,11 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi
   
   cout << "computing CGF grid & cutting out 1st branch\n";
   
-  for(int t = 0; t < n_time_of_nonzero_nofw; t++){
-    int i = indeces_of_nonzero_nofw[t];
-    cout << i << " /  ";
-    w = w_values_refined[i];
+  for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+    int i = indeces_of_nonzero_kernel[t];
+    w = w_values_bin_center[i];
     eta = eta_0-w;
-    z = 1.0/this->a_at_eta(eta)-1.0;
     R = w*theta;
-    cout << t << " / ";
-    cout << z << " / ";
-    cout << R*constants::c_over_e5 << " / ";
     cout.flush();
     dummy_data = compute_phi_tilde_of_lambda_2D(eta, R, f_NL);
     // ISSUE: this order of indeces in confusing.
@@ -315,7 +281,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi
     phi_values[t] = dummy_data[3];
     phi_prime_values[t] = dummy_data[1];
     for(int l = 0; l < n_lambda; l++){
-      y_values[t][l] /= n_of_w_values_refined[i];
+      y_values[t][l] /= kernel_values[i];
     }
     
     // Determining the boundaries of y over which we can perform the projection intergral.
@@ -329,7 +295,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi
       y_max=*y_max_iterator;
       time_index_y_max = t;
     }
-    cout << y_max << " / ";
     
     y_min_iterator = std::min_element(y_values[t].begin(), y_values[t].end());
     if(t == 0)
@@ -356,20 +321,15 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi
   projected_phi_data[0] = vector<double>(&y_values[time_index_y_max][lambda_index_y_min], &y_values[time_index_y_max][lambda_index_y_max]+1);
   
   cout << "projecting CGF\n";
-  cout << "projecting CGF\n";
   
   for(int y = 0; y < n_lambda_1st_branch; y++){
-    for(int t = 0; t < n_time_of_nonzero_nofw; t++){
-      int i = indeces_of_nonzero_nofw[t];
-      projected_phi_data[1][y] += interpolate_neville_aitken(projected_phi_data[0][y], &y_values[t], &phi_values[t], constants::order_of_interpolation)*constants::maximal_dw;
-      projected_phi_data[2][y] += interpolate_neville_aitken(projected_phi_data[0][y], &y_values[t], &phi_prime_values[t], constants::order_of_interpolation)*n_of_w_values_refined[i]*constants::maximal_dw;
-      projected_phi_data[3][y] += interpolate_neville_aitken_derivative(projected_phi_data[0][y], &y_values[t], &phi_prime_values[t], constants::order_of_interpolation)*pow(n_of_w_values_refined[i], 2)*constants::maximal_dw;
+    for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+      int i = indeces_of_nonzero_kernel[t];
+      dw = w_values[i+1]-w_values[i];
+      projected_phi_data[1][y] += interpolate_neville_aitken(projected_phi_data[0][y], &y_values[t], &phi_values[t], constants::order_of_interpolation)*dw;
+      projected_phi_data[2][y] += interpolate_neville_aitken(projected_phi_data[0][y], &y_values[t], &phi_prime_values[t], constants::order_of_interpolation)*kernel_values[i]*dw;
+      projected_phi_data[3][y] += interpolate_neville_aitken_derivative(projected_phi_data[0][y], &y_values[t], &phi_prime_values[t], constants::order_of_interpolation)*pow(kernel_values[i], 2)*dw;
     }
-    cout << y << "    ";
-    cout << projected_phi_data[0][y] << "    ";
-    cout << projected_phi_data[1][y] << "    ";
-    cout << projected_phi_data[2][y] << "    ";
-    cout << projected_phi_data[3][y] << "\n";
   }
   
   cout << "delta_min = " << projected_phi_data[2][0] << '\n';
@@ -389,35 +349,34 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi
  * 
 *******************************************************************************************************************************************************/
 
-double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_variance(double theta, vector<double> w_values, vector<double> n_of_w_values){
+double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_variance(double theta, vector<double> w_values, vector<double> kernel_values){
   
   int n_time = w_values.size()-1;
   
-  vector<double> dw_values(n_time, 0.0);
-  vector<int> indeces_of_nonzero_nofw(0,0);
+  vector<int> indeces_of_nonzero_kernel(0,0);
   
-  double a, eta, eta_0, w, R;
+  double a, eta, eta_0, w, dw, R;
   eta_0 = this->eta_at_a(1.0);
   
   for(int i = 0; i < n_time; i++){
-    dw_values[i] = w_values[i+1]-w_values[i];
-    if(n_of_w_values[i] > 0.0){
-      indeces_of_nonzero_nofw.push_back(i);
+    if(kernel_values[i] > 0.0){
+      indeces_of_nonzero_kernel.push_back(i);
     }
   }
   
-  int n_time_of_nonzero_nofw = indeces_of_nonzero_nofw.size();
+  int n_time_of_nonzero_kernel = indeces_of_nonzero_kernel.size();
   double var_projected = 0.0;
   
   cout << "computing CGF grid & cutting out 1st branch\n";
   
-  for(int t = 0; t < n_time_of_nonzero_nofw; t++){
-    int i = indeces_of_nonzero_nofw[t];
+  for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+    int i = indeces_of_nonzero_kernel[t];
     w = 0.5*(w_values[i+1]+w_values[i]);
+    dw = w_values[i+1]-w_values[i];
     eta = eta_0-w;
     R = w*theta;
     this->current_P_NL = this->P_NL(eta);
-    var_projected += variance_of_matter_within_R_NL_2D(R)*pow(n_of_w_values[i], 2)*dw_values[i];
+    var_projected += variance_of_matter_within_R_NL_2D(R)*pow(kernel_values[i], 2)*dw;
   }
   
   return var_projected;
@@ -434,28 +393,24 @@ double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_variance(double thet
  * 
 *******************************************************************************************************************************************************/
 
-double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_skewness(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values){
+double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_skewness(double theta, double f_NL, vector<double> w_values, vector<double> kernel_values){
   
   if(f_NL != 0.0){
     cerr << "CAREFUL: f_NL != 0 not yet implemented in return_LOS_integrated_skewness.\n";
   }
   
   int n_time = w_values.size()-1;
-  
-  vector<double> dw_values(n_time, 0.0);
-  vector<int> indeces_of_nonzero_nofw(0,0);
-  
-  double a, e, eta_0, w, R;
+  double a, e, eta_0, w, dw, R;
   eta_0 = this->eta_at_a(1.0);
   
+  vector<int> indeces_of_nonzero_kernel(0,0);
   for(int i = 0; i < n_time; i++){
-    dw_values[i] = w_values[i+1]-w_values[i];
-    if(n_of_w_values[i] > 0.0){
-      indeces_of_nonzero_nofw.push_back(i);
+    if(kernel_values[i] > 0.0){
+      indeces_of_nonzero_kernel.push_back(i);
     }
   }
   
-  int n_time_of_nonzero_nofw = indeces_of_nonzero_nofw.size();
+  int n_time_of_nonzero_kernel = indeces_of_nonzero_kernel.size();
   double skewness_projected = 0.0;
   
   double D_11;
@@ -466,9 +421,10 @@ double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_skewness(double thet
   
   cout << "computing CGF grid & cutting out 1st branch\n";
   
-  for(int t = 0; t < n_time_of_nonzero_nofw; t++){
-    int i = indeces_of_nonzero_nofw[t];
+  for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+    int i = indeces_of_nonzero_kernel[t];
     w = 0.5*(w_values[i+1]+w_values[i]);
+    dw = w_values[i+1]-w_values[i];
     e = eta_0-w;
     R = w*theta;
     this->current_P_L = this->P_L(e);
@@ -483,10 +439,7 @@ double FlatInhomogeneousUniverseLCDM::return_LOS_integrated_skewness(double thet
     one_plus_mu = (1.0+mu);
     
     S_3 = 3.0*one_plus_mu + 1.5*dlnvL_dlnR;
-    skewness_projected += S_3*vNL*vNL*pow(n_of_w_values[i], 3)*dw_values[i];
-    cout << t << "   ";
-    cout << w << "   ";
-    cout << S_3 << "\n";
+    skewness_projected += S_3*vNL*vNL*pow(kernel_values[i], 3)*dw;
   }
   
   return skewness_projected;
@@ -529,18 +482,18 @@ double FlatInhomogeneousUniverseLCDM::return_3D_skewness(double z, double R_in_M
 /*
  * FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
  * 
- * Returns PDF of line-of-sight projected matter density contrast with projection kernel specified by the input arrays w_values and n_of_w_values. w_values should store the lower-redshift edge of each histogram bin and n_of_w_values should contain the redshift histrogram (the histogram doesn't need to be normalised, since normalisation is enforced later on in the code). First column of the returned array is \delta smoothed with a spherical top-hat of R_in_Mpc_over_h, while 2nd column is p(\delta).
+ * Returns PDF of line-of-sight projected matter density contrast with projection kernel specified by the input arrays w_values and kernel_values. w_values should store the lower-redshift edge of each histogram bin and n_of_w_values should contain the redshift histrogram (the histogram doesn't need to be normalised, since normalisation is enforced later on in the code). First column of the returned array is \delta smoothed with a spherical top-hat of R_in_Mpc_over_h, while 2nd column is p(\delta).
  * 
  */
 
 
 
-vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF(vector<double> w_values, vector<double> n_of_w_values, double theta, double f_NL, double var_NL_rescale){
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF(vector<double> w_values, vector<double> kernel_values, double theta, double f_NL, double var_NL_rescale){
   
   cout << "Computing projected phi_data:\n";
   cout.flush();
     
-  vector<vector<double> > phi_data = this->return_LOS_integrated_phi_of_lambda(theta, f_NL, w_values, n_of_w_values);
+  vector<vector<double> > phi_data = this->return_LOS_integrated_phi_of_lambda(theta, f_NL, w_values, kernel_values);
   
   /*
    * Determine critical point, where phi(lambda) splits into two branches on the complex plane. 
@@ -653,7 +606,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
    */
   
   int n_delta = constants::N_delta_values_for_PDFs;
-  double var = this->return_LOS_integrated_variance(theta, w_values, n_of_w_values);
+  double var = this->return_LOS_integrated_variance(theta, w_values, kernel_values);
   double delta_min = interpolate_neville_aitken(tau_min, &tau_values, &delta_NL_values, constants::order_of_interpolation);
   double delta_max = max(delta_c, 6.0*sqrt(var));
   // --> ISSUE: choosing delta_max to be 6*sigma may not be 100% reasonable for very skewed PDFs
@@ -823,70 +776,43 @@ void FlatInhomogeneousUniverseLCDM::compute_polynomial_coefficients_from_CGF(vec
 /*******************************************************************************************************************************************************
  * return_LOS_integrated_polynomial_coefficients
  * 
+ * Returns polynomial coefficients of the cumulant generating function, projected along the line-of-sight kernel kernel_values.
+ * NOTE: this function does not check whether the binning of w_values is too coarse for accurate integration.
+ *       (The binning is instead set and controlled by ProjectedGalaxySample::set_n_of_w_data)
  * 
 *******************************************************************************************************************************************************/
 
-void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficients(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values, vector<double> *coeffs_phi_of_lambda, vector<double> *coeffs_phi_prime_of_lambda){
+void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficients(double theta, double f_NL, vector<double> w_values, vector<double> kernel_values, vector<double> *coeffs_phi_of_lambda, vector<double> *coeffs_phi_prime_of_lambda){
   
-  int n_lambda = this->delta_values_for_cylindrical_collapse.size();
   int n_time = w_values.size()-1;
+  double eta;
+  double eta_0 = this->eta_at_a(1.0);
+  double w;
+  double dw;
+  double R;
   
   vector<double> w_values_bin_center(n_time, 0.0);
   for(int i = 0; i < n_time; i++){
     w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
   }
-  
-  double z, a, eta, eta_0, w, w_last_scattering, R;
-  eta_0 = this->eta_at_a(1.0);
-  w_last_scattering = eta_0-this->eta_at_a(1.0/(1.0+constants::z_last_scattering));
-  
-  double n_time_refined = int(w_last_scattering/constants::maximal_dw);
-  vector<double> w_values_refined(n_time_refined, 0.0);
-  vector<double> n_of_w_values_refined(n_time_refined, 0.0);
-  vector<double> lensing_kernel(n_time_refined, 0.0);
-  vector<int> indeces_of_nonzero_nofw(0,0);
-  vector<int> indeces_of_zero_nofw(0,0);
-  double w_min = w_values[0];
-  double w_max = w_values[n_time];
-  double norm = 0.0;
-  for(int i = 0; i < n_time_refined; i++){
-    w = (double(i)+0.5)*constants::maximal_dw;
-    a = this->a_at_eta(eta_0-w);
-    w_values_refined[i] = w;
-    if(w > w_min && w < w_max){
-      n_of_w_values_refined[i] = interpolate_neville_aitken(w, &w_values_bin_center, &n_of_w_values, constants::order_of_interpolation);
+  vector<int> indeces_of_nonzero_kernel(0,0);
+  for(int i = 0; i < n_time; i++){
+    if(kernel_values[i] != 0.0){
+      indeces_of_nonzero_kernel.push_back(i);
     }
-    
-    if(n_of_w_values_refined[i] > 0.0){
-      indeces_of_nonzero_nofw.push_back(i);
-    }
-    else{
-      n_of_w_values_refined[i] = 0.0;
-      indeces_of_zero_nofw.push_back(i);
-    }
-    norm += n_of_w_values_refined[i]*constants::maximal_dw;
-    lensing_kernel[i] = 1.5*this->return_Omega_m()*w*(w_last_scattering-w)/w_last_scattering/a;
   }
   
-  for(int i = 0; i < n_time_refined; i++){
-    n_of_w_values_refined[i] /= norm;
-    cout << i << "   ";
-    cout << w_values_refined[i] << "   ";
-    cout << n_of_w_values_refined[i] << "\n";
-  }
-  // ISSUE --> if n_of_w_values is supposed to represent a lensing kernel, then it shouldn't be normalised.
-  
-  int n_time_of_nonzero_nofw = indeces_of_nonzero_nofw.size();
-  vector<vector<double> > coefficients_phi_of_lambda(n_time_of_nonzero_nofw);
-  vector<vector<double> > coefficients_phi_prime_of_lambda(n_time_of_nonzero_nofw);
+  int n_time_of_nonzero_kernel = indeces_of_nonzero_kernel.size();
+  vector<vector<double> > coefficients_phi_of_lambda(n_time_of_nonzero_kernel);
+  vector<vector<double> > coefficients_phi_prime_of_lambda(n_time_of_nonzero_kernel);
   vector<vector<double> > CGF_data;
   vector<double> tau_values;
   
   cout << "computing CGF grid & cutting out 1st branch\n";
   
-  for(int t = 0; t < n_time_of_nonzero_nofw; t++){
-    int i = indeces_of_nonzero_nofw[t];
-    w = w_values_refined[i];
+  for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+    int i = indeces_of_nonzero_kernel[t];
+    w = w_values_bin_center[i];
     eta = eta_0-w;
     R = w*theta;
     
@@ -910,10 +836,11 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficient
   (*coeffs_phi_prime_of_lambda) = vector<double>(N_coeff,0.0);
   
   for(int c = 0; c < N_coeff; c++){
-    for(int t = 0; t < n_time_of_nonzero_nofw; t++){
-      int i = indeces_of_nonzero_nofw[t];
-      (*coeffs_phi_of_lambda)[c] += constants::maximal_dw*coefficients_phi_of_lambda[t][c]*pow(n_of_w_values_refined[i], c);
-      (*coeffs_phi_prime_of_lambda)[c] += constants::maximal_dw*coefficients_phi_prime_of_lambda[t][c]*pow(n_of_w_values_refined[i], c+1);
+    for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+      int i = indeces_of_nonzero_kernel[t];
+      dw = (w_values[i+1]-w_values[i]);
+      (*coeffs_phi_of_lambda)[c] += dw*coefficients_phi_of_lambda[t][c]*pow(kernel_values[i], c);
+      (*coeffs_phi_prime_of_lambda)[c] += dw*coefficients_phi_prime_of_lambda[t][c]*pow(kernel_values[i], c+1);
     }
   }
   
@@ -927,58 +854,53 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficient
  * 
 *******************************************************************************************************************************************************/
 
-void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficients_incl_CMB_kappa(double theta, double f_NL, vector<double> w_values, vector<double> n_of_w_values, vector<vector<double> > *coeffs_phi, vector<vector<double> > *coeffs_dphi_dlambda_delta, vector<vector<double> > *coeffs_dphi_dlambda_kappa){
+void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficients_incl_CMB_kappa(double theta, double f_NL, vector<double> w_values, vector<double> kernel_values, vector<vector<double> > *coeffs_phi, vector<vector<double> > *coeffs_dphi_dlambda_delta, vector<vector<double> > *coeffs_dphi_dlambda_kappa){
   
   int n_lambda = this->delta_values_for_cylindrical_collapse.size();
   int n_time = w_values.size()-1;
-  
-  vector<double> w_values_bin_center(n_time, 0.0);
-  for(int i = 0; i < n_time; i++){
-    w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
-  }
-  
-  double z, a, eta, eta_0, w, w_last_scattering, R;
+  double z, a, eta, eta_0, w, dw, w_last_scattering, R;
   eta_0 = this->eta_at_a(1.0);
   w_last_scattering = eta_0-this->eta_at_a(1.0/(1.0+constants::z_last_scattering));
   
-  double n_time_refined = int(w_last_scattering/constants::maximal_dw);
-  vector<double> w_values_refined(n_time_refined, 0.0);
-  vector<double> n_of_w_values_refined(n_time_refined, 0.0);
-  vector<double> lensing_kernel(n_time_refined, 0.0);
-  double w_min = w_values[0];
-  double w_max = w_values[n_time];
+  // need to extend projection kernel to surface of last scattering:
+  vector<double> w_values_extended_to_last_scattering = w_values;
+  vector<double> kernel_values_extended_to_last_scattering = kernel_values;
+  dw = min(constants::maximal_dw, w_last_scattering - w_values_extended_to_last_scattering[n_time]);
+  w = w_values_extended_to_last_scattering[n_time] + dw;
+  while(w < w_last_scattering){
+    w_values_extended_to_last_scattering.push_back(w);
+    kernel_values_extended_to_last_scattering.push_back(0.0);
+    n_time = w_values_extended_to_last_scattering.size()-1;
+    dw = min(constants::maximal_dw, w_last_scattering - w);
+    w = w + dw;
+  }
+  w_values_extended_to_last_scattering.push_back(w);
+  kernel_values_extended_to_last_scattering.push_back(0.0);
+  n_time = w_values_extended_to_last_scattering.size()-1;
+  
+  vector<double> w_values_bin_center(n_time, 0.0);
+  for(int i = 0; i < n_time; i++){
+    w_values_bin_center[i] = 0.5*(w_values_extended_to_last_scattering[i+1]+w_values_extended_to_last_scattering[i]);
+  }
+  vector<double> CMB_lensing_kernel(n_time, 0.0);
+  double w_min = w_values_extended_to_last_scattering[0];
+  double w_max = w_values_extended_to_last_scattering[n_time];
   double norm = 0.0;
-  for(int i = 0; i < n_time_refined; i++){
-    w = (double(i)+0.5)*constants::maximal_dw;
+  for(int i = 0; i < n_time; i++){
+    w = w_values_bin_center[i];
     a = this->a_at_eta(eta_0-w);
-    w_values_refined[i] = w;
-    if(w > w_min && w < w_max){
-      n_of_w_values_refined[i] = interpolate_neville_aitken(w, &w_values_bin_center, &n_of_w_values, constants::order_of_interpolation);
-    }
-    if(n_of_w_values_refined[i] < 0.0){
-      n_of_w_values_refined[i] = 0.0;
-    }
-    norm += n_of_w_values_refined[i]*constants::maximal_dw;
-    lensing_kernel[i] = 1.5*this->return_Omega_m()*w*(w_last_scattering-w)/w_last_scattering/a;
+    CMB_lensing_kernel[i] = 1.5*this->return_Omega_m()*w*(w_last_scattering-w)/w_last_scattering/a;
   }
   
-  for(int i = 0; i < n_time_refined; i++){
-    n_of_w_values_refined[i] /= norm;
-    cout << i << "   ";
-    cout << w_values_refined[i] << "   ";
-    cout << n_of_w_values_refined[i] << "\n";
-  }
-  // ISSUE --> if n_of_w_values is supposed to represent a lensing kernel, then it shouldn't be normalised.
-  
-  vector<vector<double> > coefficients_phi_of_lambda(n_time_refined);
-  vector<vector<double> > coefficients_phi_prime_of_lambda(n_time_refined);
+  vector<vector<double> > coefficients_phi_of_lambda(n_time);
+  vector<vector<double> > coefficients_phi_prime_of_lambda(n_time);
   vector<vector<double> > CGF_data;
   vector<double> tau_values;
   
   cout << "computing CGF grid & cutting out 1st branch\n";
   
-  for(int t = 0; t < n_time_refined; t++){
-    w = w_values_refined[t];
+  for(int t = 0; t < n_time; t++){
+    w = w_values_bin_center[t];
     eta = eta_0-w;
     R = w*theta;
     
@@ -1004,11 +926,12 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficient
   
   for(int c_delta = 0; c_delta < N_coeff; c_delta++){
     for(int c_kappa = 0; c_kappa < N_coeff; c_kappa++){
-      for(int t = 0; t < n_time_refined; t++){
+      for(int t = 0; t < n_time; t++){
         if(c_delta + c_kappa < N_coeff){
-          (*coeffs_phi)[c_delta][c_kappa] += constants::maximal_dw*coefficients_phi_of_lambda[t][c_delta+c_kappa]*pow(n_of_w_values_refined[t], c_delta)*pow(lensing_kernel[t], c_kappa);
-          (*coeffs_dphi_dlambda_delta)[c_delta][c_kappa] += constants::maximal_dw*coefficients_phi_prime_of_lambda[t][c_delta+c_kappa]*pow(n_of_w_values_refined[t], c_delta+1)*pow(lensing_kernel[t], c_kappa);
-          (*coeffs_dphi_dlambda_kappa)[c_delta][c_kappa] += constants::maximal_dw*coefficients_phi_prime_of_lambda[t][c_delta+c_kappa]*pow(n_of_w_values_refined[t], c_delta)*pow(lensing_kernel[t], c_kappa+1);
+          dw = w_values_extended_to_last_scattering[t+1]-w_values_extended_to_last_scattering[t];
+          (*coeffs_phi)[c_delta][c_kappa] += dw*coefficients_phi_of_lambda[t][c_delta+c_kappa]*pow(kernel_values[t], c_delta)*pow(CMB_lensing_kernel[t], c_kappa);
+          (*coeffs_dphi_dlambda_delta)[c_delta][c_kappa] += dw*coefficients_phi_prime_of_lambda[t][c_delta+c_kappa]*pow(kernel_values[t], c_delta+1)*pow(CMB_lensing_kernel[t], c_kappa);
+          (*coeffs_dphi_dlambda_kappa)[c_delta][c_kappa] += dw*coefficients_phi_prime_of_lambda[t][c_delta+c_kappa]*pow(kernel_values[t], c_delta)*pow(CMB_lensing_kernel[t], c_kappa+1);
         }
       }
     }

@@ -28,30 +28,79 @@ void ProjectedGalaxySample::set_n_of_w_data(string n_of_z_input_file){
   
   vector<vector<double> > nofz_data = read_table_double(n_of_z_input_file);
   
-  int Nz = nofz_data.size();
-  this->w_values = vector<double>(Nz, 0.0);
-  this->n_of_w_values = vector<double>(Nz, 0.0);
   double eta_0 = this->pointer_to_universe()->eta_at_a(1.0);
-  double scale, dz, dw;
+  double w_last_scattering = eta_0 - this->pointer_to_universe()->eta_at_a(1.0/(1.0+constants::z_last_scattering));
+  int Nz = nofz_data.size();
+  double scale_factor;
+  double w = 0.0;
+  double dw = 0.0;
+  double w_input = 0.0;
+  double dw_input = 0.0;
+  double dz_input = 0.0;
+  double n_of_w_input = 0.0;
   
+  vector<double> w_dummies(0, 0.0);
+  vector<double> n_of_w_dummies(0, 0.0);
+  
+  // refining the binning of the input file so that dw <= constants::maximal_dw;
+  // also, starting the new array at z=0=w, as needed for computation of lensing kernel.
   for(int i = 0; i < Nz; i++){
-    scale = 1.0/(1.0+nofz_data[i][0]);
-    this->w_values[i] = eta_0 - this->pointer_to_universe()->eta_at_a(scale);
+    dw_input = -w_input; // this line makes sense; do not delete
+    scale_factor = 1.0/(1.0+nofz_data[i][0]);
+    w_input = eta_0 - this->pointer_to_universe()->eta_at_a(scale_factor);
+    if(i > 0){
+      dw_input += w_input;
+      dz_input = nofz_data[i][0] - nofz_data[i-1][0];
+      error_handling::test_value_of_double(dw_input, 0.0, error_handling::LARGER, "nofz_data on n_of_z_input_file not monotonically increasing in z - see ProjectedGalaxySample::set_n_of_w_data(string n_of_z_input_file).");
+      n_of_w_input = nofz_data[i-1][1]*dz_input/dw_input;
+    }
+    while(w < w_input){
+      w_dummies.push_back(w);
+      if(i == 0)
+        n_of_w_dummies.push_back(0.0);
+      else
+        n_of_w_dummies.push_back(min(constants::maximal_dw, w_input-w)/dw_input*n_of_w_input);
+      w += constants::maximal_dw;
+    }
+    w = w_input;
   }
+  w_dummies.push_back(w);
+  n_of_w_dummies.push_back(0.0); // n_of_w_dummies[i] is density between w_dummies[i] and w_dummies[i+1], so last value is zero.
   
+  Nz = n_of_w_dummies.size();
   double norm = 0.0;
   for(int i = 0; i < Nz-1; i++){
-    dz = nofz_data[i+1][0]-nofz_data[i][0];
-    dw = this->w_values[i+1]-this->w_values[i];
-    this->n_of_w_values[i] = nofz_data[i][1]*dz/dw;
-    norm += nofz_data[i][1]*dz;
-    cout << i <<  "  ";
-    cout << this->w_values[i] <<  "  ";
-    cout << this->n_of_w_values[i] <<  "\n";
+    norm += n_of_w_dummies[i]*(w_dummies[i+1]-w_dummies[i]);
+  }
+  for(int i = 0; i < Nz; i++){
+    n_of_w_dummies[i] /= norm;
   }
   
-  for(int i = 0; i < Nz-1; i++) this->n_of_w_values[i] /= norm;
   
+  // copy the new vectors into Class attributes
+  // (w_dummies and n_of_w_dummies were needed because vector::push_back can be unefficient in storage, i.e. it can be better to allocate required space in one badge)
+  this->w_values = w_dummies;
+  this->n_of_w_values = n_of_w_dummies;
+  this->lensing_kernel_values = vector<double>(Nz, 0.0);
+  
+  double a_1, a_2;
+  double w_1, w_2;
+  double w_final = this->w_values[Nz-1];
+  
+  // now calculating the lensing kernel (if ProjectedGalaxySample is used as source galaxy sample)
+  for(int i = 0; i < Nz; i++){
+    for(int j = i; j < Nz-1; j++){
+      w_1 = this->w_values[j];
+      w_2 = this->w_values[j+1];
+      dw = w_2 - w_1;
+      a_1 = this->pointer_to_universe()->a_at_eta(eta_0 - w_1);
+      a_2 = this->pointer_to_universe()->a_at_eta(eta_0 - w_2);
+      //w*(w_final-w)/w_final/a
+      this->lensing_kernel_values[i] += dw*0.5*(w_1*(w_final-w_1)/a_1);
+      this->lensing_kernel_values[i] += dw*0.5*(w_2*(w_final-w_2)/a_2);
+    }
+    this->lensing_kernel_values[i] *= 1.5*this->pointer_to_universe()->return_Omega_m()/w_final;
+  }
 }
 
 

@@ -1,5 +1,7 @@
 
 #include <gsl/gsl_poly.h>
+#include <iostream>
+using namespace std;
 
 
 
@@ -203,9 +205,15 @@ double dg_given_dm_equals_0(double r, double bias, double variance, double delta
   double var_Gauss = log(1.0+variance/delta_m0/delta_m0);
   double rho = log(1.0+r*variance/delta_m0/delta_m0)/var_Gauss;
   
-  double dg_given_nm = exp(0.5*var_Gauss*rho*(1.0 - rho));
+  double ng_given_nm = exp(0.5*var_Gauss*rho*(1.0 - rho));
+  cout << bias << "<--- bias\n";
+  cout << r << "<--- r\n";
+  cout << variance << "<--- variance\n";
+  cout << delta_m0 << "<--- delta_m0\n";
+  cout << var_Gauss << "<--- var_Gauss\n";
+  cout << rho << "<--- rho\n";
   
-  return bias*delta_m0*(dg_given_nm - 1.0);
+  return bias*delta_m0*(ng_given_nm - 1.0);
     
 }
 
@@ -225,8 +233,9 @@ double Var_ng_given_dm_equals_0(double r, double bias, double variance, double d
   
   double var_Gauss = log(1.0+variance/delta_m0/delta_m0);
   double rho = log(1.0+r*variance/delta_m0/delta_m0)/var_Gauss;
+  double ng_given_nm = exp(0.5*var_Gauss*rho*(1.0 - rho));
   
-  return (exp(var_Gauss*(1.0-rho*rho))-1.0)*exp(var_Gauss*rho*(1.0 - rho));
+  return (exp(var_Gauss*(1.0-rho*rho))-1.0)*ng_given_nm*ng_given_nm;
     
 }
 
@@ -234,17 +243,21 @@ double Var_ng_given_dm_equals_0_deriv(double r, double bias, double variance, do
   
   double var_Gauss = log(1.0+variance/delta_m0/delta_m0);
   double rho = log(1.0+r*variance/delta_m0/delta_m0)/var_Gauss;
+  double ng_given_nm = exp(0.5*var_Gauss*rho*(1.0 - rho));
   
-  return 2.0*rho/delta_m0*(exp(var_Gauss*(1.0-rho*rho))-1.0)*exp(var_Gauss*rho*(1.0 - rho));
+  return 2.0*rho/delta_m0*(exp(var_Gauss*(1.0-rho*rho))-1.0)*ng_given_nm*ng_given_nm;
     
 }
 
 double return_alpha_0(double r, double bias, double N_bar, double variance, double delta_m0){
   
   double dg_given_dm = dg_given_dm_equals_0(r, bias, variance, delta_m0);
-  double Var_dg_given_dm = Var_ng_given_dm_equals_0(r, bias, variance, delta_m0);
+  double Var_ng_given_dm = Var_ng_given_dm_equals_0(r, bias, variance, delta_m0);
   
-  return 1.0+N_bar*bias*bias*delta_m0*delta_m0*Var_dg_given_dm/(1.0+dg_given_dm);
+  cout << dg_given_dm << "<---\n";
+  cout << Var_ng_given_dm << "<---\n";
+  
+  return 1.0+N_bar*bias*bias*delta_m0*delta_m0*Var_ng_given_dm/(1.0+dg_given_dm);
   
 }
 
@@ -255,7 +268,7 @@ double return_alpha_1(double r, double bias, double N_bar, double variance, doub
   double Var_dg_given_dm = Var_ng_given_dm_equals_0(r, bias, variance, delta_m0);
   double Var_dg_given_dm_deriv = Var_ng_given_dm_equals_0_deriv(r, bias, variance, delta_m0);
   
-  return N_bar*bias*bias*delta_m0*delta_m0*Var_dg_given_dm_deriv/(1.0+dg_given_dm) - N_bar*bias*bias*delta_m0*delta_m0*Var_dg_given_dm/(1.0+dg_given_dm)/(1.0+dg_given_dm)*dg_given_dm_deriv;
+  return N_bar*bias*bias*delta_m0*delta_m0*Var_dg_given_dm_deriv/(1.0+dg_given_dm) - N_bar*bias*bias*delta_m0*delta_m0*Var_dg_given_dm/pow(1.0+dg_given_dm, 2)*dg_given_dm_deriv;
   
 }
 

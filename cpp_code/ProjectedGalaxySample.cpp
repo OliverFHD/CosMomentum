@@ -21,7 +21,16 @@ void ProjectedGalaxySample::set_parameters_projected(double density_in_arcmin_sq
 /*
  * ProjectedGalaxySample::set_n_of_w_data
  * 
- * Read in the redshift distribution of the galaxy sample and turn it into a co-moving distance distribution. The textfile "n_of_z_input_file" should have two columns, where column 1 contains the lower-redshift edge of each histogram bin and column 2 contains the redshift histrogram (the histogram doesn't need to be normalised, since normalisation is enforced later on in the code).
+ * Read in the redshift distribution of the galaxy sample and turn it into a co-moving
+ * distance distribution. The textfile "n_of_z_input_file" should have two columns, where
+ * column 1 contains the lower-redshift edge of each histogram bin and column 2 contains
+ * the redshift histrogram (the histogram doesn't need to be normalised, since normalisation
+ * is enforced later on in the code).
+ * 
+ * ISSUE: there is a potential ambiguity here: the second column of n_of_z_input_file is
+ * supposed to be (propotional to) the redshift-density within the redshift bins given by
+ * the first column. However, some users might think that the second column should contain
+ * the probability within each redshift bin.
  * 
  */
 void ProjectedGalaxySample::set_n_of_w_data(string n_of_z_input_file){
@@ -59,7 +68,7 @@ void ProjectedGalaxySample::set_n_of_w_data(string n_of_z_input_file){
       if(i == 0)
         n_of_w_dummies.push_back(0.0);
       else
-        n_of_w_dummies.push_back(min(constants::maximal_dw, w_input-w)/dw_input*n_of_w_input);
+        n_of_w_dummies.push_back(n_of_w_input);
       w += constants::maximal_dw;
     }
     w = w_input;

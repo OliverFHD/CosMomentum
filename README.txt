@@ -7,11 +7,12 @@
 - the cumulant generating function (CGF) of the 3D matter density field,
 - individual cumulants of the 3D matter density field,
 - all of this for Gaussian and 3 types of non-Gaussian initial conditions.
+- all of this for line-of-sight projections of the matter density field
+- statistics of biased & stochastic tracers (e.g. galaxies)
 
 <---> Features that will be added in the near future are
--- statistics of 2D projections of the density field,
--- statistics of biased & stochastic tracers (e.g. galaxies)
--- density split statistics (cf. Gruen&Friedrich++2018, Friedrich&Gruen++2018)
+- density split statistics (cf. Gruen&Friedrich++2018, Friedrich&Gruen++2018)
+- joint PDFs of pairs of cosmic random fields
 
 <---> Installation & running:
 - The notebook "compute_PDF_and_CGF.ipynb" containts examples on how to run CosMomentum.

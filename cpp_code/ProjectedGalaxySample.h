@@ -17,6 +17,8 @@ class ProjectedGalaxySample : public GalaxySample {
    
    int return_N_max_in_angular_tophat(double theta_in_arcmin, double var_NL_rescale);
    vector<double> return_CiC_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale);
+   vector<double> return_CiC_saddle_point_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale);
+   void return_LOS_data(vector<double> *w_vals, vector<double> *n_of_w_vals, vector<double> *lensing_kernel_vals);
    
  private:
    

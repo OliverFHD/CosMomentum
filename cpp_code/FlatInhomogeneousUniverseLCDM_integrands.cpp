@@ -237,6 +237,22 @@ double dvar_dR_derivs_2D_gsl(double lnk, void *params){
   
 }
 
+double d2var_dR2_derivs_2D_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
+  
+  double k = exp(lnk);
+  double index = 2.0;
+  double WR = w_R_2D(k, integration_params->top_hat_radius);
+  double dWR_dR = deriv_of_w_R_2D(k, integration_params->top_hat_radius);
+  double d2WR_dR2 = second_deriv_of_w_R_2D(k, integration_params->top_hat_radius);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  
+  return pow(k,index)*P*2.0*(d2WR_dR2*WR + dWR_dR*dWR_dR);
+  
+}
+
 double dvar_dR_derivs_2D_2_gsl(double lnk_2D, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;

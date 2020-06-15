@@ -63,7 +63,8 @@ static int ell_max = 20000;
 
 /***** Variable controlling the order of interpolation polynomials *****/
 
-static int order_of_interpolation = 5;
+//static int order_of_interpolation = 5;
+static int order_of_interpolation = 3;
 
 
 /***** Variable controlling maximal stepsize when integration expansion history *****/
@@ -73,8 +74,10 @@ static double maximal_da = 0.001;
 
 /***** Variable controlling the order of interpolating polynomials for generating functions *****/
 
+static int generating_function_coeff_order = 19;
 //static int generating_function_coeff_order = 15;
-static int generating_function_coeff_order = 10;
+//static int generating_function_coeff_order = 10;
+//static int generating_function_coeff_order = 7;
 
 /***** Variable controlling for how many delta values the PDF is computed *****/
 

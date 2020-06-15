@@ -534,27 +534,60 @@ void FlatInhomogeneousUniverseLCDM::set_sphere_skewnesses_from_file(string file_
  * 
  * 
 *******************************************************************************************************************************************************/
-
+/*
 void FlatInhomogeneousUniverseLCDM::set_cylinder_variances(){
   
-  int n = 128;
+  //int n = 128;
+  int n = 512;
   // ISSUE: this should not be hardcoded locally
   
-  double R_min_in_Mpc_over_h = 0.1;
-  double R_max_in_Mpc_over_h = 150.0;
+  //double R_min_in_Mpc_over_h = 0.1;
+  //double R_max_in_Mpc_over_h = 150.0;
+  double R_min_in_Mpc_over_h = 0.01;
+  double R_max_in_Mpc_over_h = 500.0;
+  //double R_min_in_Mpc_over_h = 1.0/0.518697E+02;
+  //double R_max_in_Mpc_over_h = 1.0/0.158671E-04;
   vector<double> radii_in_Mpc_over_h(0, 0.0);
   log_binning(R_min_in_Mpc_over_h, R_max_in_Mpc_over_h, n-1, &radii_in_Mpc_over_h);
   
   this->log_top_hat_cylinder_radii.resize(n, 0.0);
   this->top_hat_cylinder_variances.resize(n, 0.0);
   this->dtop_hat_cylinder_variances_dR.resize(n, 0.0);
+  this->d2top_hat_cylinder_variances_dR2.resize(n, 0.0);
   this->current_P_L = this->P_L(this->eta_at_a(1.0));
-  this->current_P_NL = this->P_NL(this->eta_at_a(1.0));
   
   for(int i = 0; i < n; i++){
     this->log_top_hat_cylinder_radii[i] = log(radii_in_Mpc_over_h[i]/constants::c_over_e5);
     this->top_hat_cylinder_variances[i] = this->variance_of_matter_within_R_2D(radii_in_Mpc_over_h[i]/constants::c_over_e5);
     this->dtop_hat_cylinder_variances_dR[i] = this->dvariance_of_matter_within_R_dR_2D(radii_in_Mpc_over_h[i]/constants::c_over_e5);
+  }
+  
+}
+*/
+
+
+void FlatInhomogeneousUniverseLCDM::set_cylinder_variances(){
+  
+  int n = this->wave_numbers.size()/8;
+  
+  this->log_top_hat_cylinder_radii.resize(n, 0.0);
+  this->top_hat_cylinder_variances.resize(n, 0.0);
+  this->dtop_hat_cylinder_variances_dR.resize(n, 0.0);
+  this->d2top_hat_cylinder_variances_dR2.resize(n, 0.0);
+  this->current_P_L = this->P_L(this->eta_at_a(1.0));
+  vector<double> R_values(n, 0.0);
+  
+  for(int i = 0; i < n; i++){
+    R_values[i] = 1.0/wave_numbers[8*(n-1-i)];
+    this->log_top_hat_cylinder_radii[i] = -log(wave_numbers[8*(n-1-i)]);
+    this->top_hat_cylinder_variances[i] = this->variance_of_matter_within_R_2D(1.0/wave_numbers[8*(n-1-i)]);
+    this->dtop_hat_cylinder_variances_dR[i] = this->dvariance_of_matter_within_R_dR_2D(1.0/wave_numbers[8*(n-1-i)]);
+    //this->d2top_hat_cylinder_variances_dR2[i] = this->d2variance_of_matter_within_R_dR2_2D(1.0/wave_numbers[8*(n-1-i)]);
+  }
+  
+  
+  for(int i = 0; i < n; i++){
+    this->d2top_hat_cylinder_variances_dR2[i] = interpolate_neville_aitken_derivative(R_values[i], &R_values, &this->dtop_hat_cylinder_variances_dR, constants::order_of_interpolation);
   }
   
 }
@@ -697,6 +730,25 @@ double FlatInhomogeneousUniverseLCDM::dvariance_of_matter_within_R_dR_2D(double 
   integration_parameters * pointer_to_params = &params;
 
   s_sq = int_gsl_integrate_medium_precision(dvar_dR_derivs_2D_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
+
+  return prefactors*s_sq;
+  
+}
+
+
+double FlatInhomogeneousUniverseLCDM::d2variance_of_matter_within_R_dR2_2D(double R){
+ 
+  double s_sq = 0.0;
+  double prefactors;
+  
+  prefactors = 1.0/(2.0*constants::pi);
+  integration_parameters params;
+  params.top_hat_radius = R;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
+  integration_parameters * pointer_to_params = &params;
+
+  s_sq = int_gsl_integrate_medium_precision(d2var_dR2_derivs_2D_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
 
   return prefactors*s_sq;
   

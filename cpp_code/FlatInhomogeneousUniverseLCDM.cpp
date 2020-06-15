@@ -436,9 +436,12 @@ void FlatInhomogeneousUniverseLCDM::set_spherical_collapse_evolution_of_delta(){
 
 void FlatInhomogeneousUniverseLCDM::set_cylindrical_collapse_evolution_of_delta(){
 
-  double delta_min = -10.0;
+  //double delta_min = -10.0;
+  double delta_min = -5.0;
   double delta_max = 1.45;
-  double ddelta = 0.01;
+  //double delta_max = 1.4;
+  double ddelta = 0.003;
+  //double ddelta = 0.02;
   double delta = delta_min-ddelta;
   
   /* ISSUE: THIS HARDCODING IS REALLY BAD!! */
@@ -627,7 +630,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
    */
   
   int n_delta = constants::N_delta_values_for_PDFs;
-  double var = this->return_non_linear_variance(z, R_in_Mpc_over_h);
+  double var = this->return_non_linear_variance(z, R_in_Mpc_over_h, var_NL_rescale);
   double delta_min = interpolate_neville_aitken(tau_min, &tau_values, &delta_NL_values, constants::order_of_interpolation);
   double delta_max = max(delta_c, 6.0*sqrt(var));
   // --> ISSUE: choosing delta_max to be 6*sigma may not be 100% reasonable for very skewed PDFs
@@ -826,41 +829,45 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_of_lambda_3D(
   
 }
 
-vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lambda_2D(double e, double R, double f_NL){
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lambda_2D(double e, double R, double f_NL, double var_NL_rescale){
   
   double log_R = log(R);
   double RL, log_RL;
+  double D_growth = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
   
-  this->current_P_NL = this->P_NL(e);
-  this->current_P_L = this->P_L(this->eta_at_a(1.0));
-  double D = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
-  double D_sq = pow(D,2);
+  this->current_P_L = this->P_L(e);
+  if(D_growth > 0.3)// ISSUE: this is just a temporary fix as of June 11, 2020
+    this->current_P_NL = this->P_NL(e);
+  else
+    this->current_P_NL = this->P_L(e);
   
-  double var_NL_R = variance_of_matter_within_R_NL_2D(R);
+    
+  
+  double var_NL_R = variance_of_matter_within_R_NL_2D(R)*var_NL_rescale;
   double var_L_R = variance_of_matter_within_R_2D(R);
   double var_L_RL, skew_L_RL, dvar_L_RL_dR, dskew_L_RL_dR;
   
   vector<double> delta_L_values;
   vector<double> delta_NL_values;
   vector<double> delta_NL_prime_values;
+  vector<double> delta_NL_prime_prime_values;
   
-  this->return_delta_NL_of_delta_L_and_dF_ddelta_2D(e, &delta_L_values, &delta_NL_values, &delta_NL_prime_values);
+  this->return_delta_NL_of_delta_L_and_dF_ddelta_2D(e, &delta_L_values, &delta_NL_values, &delta_NL_prime_values, &delta_NL_prime_prime_values);
   
-  vector<vector<double> > data(7, vector<double>(delta_L_values.size(), 0.0));
+  vector<vector<double> > data(8, vector<double>(delta_L_values.size(), 0.0));
   vector<double> lambda_of_delta = delta_L_values;
+  vector<double> dlambda_ddelta = delta_L_values;
   vector<double> phi_of_delta = delta_L_values;
   vector<double> j_values = delta_L_values;
   vector<double> j_values_Gauss = delta_L_values;
   
-  int N_radii = this->log_top_hat_radii.size();
-  double log_R_min = this->log_top_hat_cylinder_radii[0];
-  double log_R_max = this->log_top_hat_cylinder_radii[N_radii-1];
-  
-  double var_L_R_min = this->top_hat_cylinder_variances[0];
-  double var_L_R_max = this->top_hat_cylinder_variances[N_radii-1];
-  
-  double dvar_L_R_min_dR = this->dtop_hat_cylinder_variances_dR[0];
-  double dvar_L_R_max_dR = this->dtop_hat_cylinder_variances_dR[N_radii-1];
+  // auxilliary variables to store intermediate results:
+  double dphi_dlnR;
+  double d2phi_dlnR2, d2phi_dlnRdj, d2phi_dj2;
+  double dvar_dlnR, d2var_dlnR2;
+  double dskew_dlnR, d2skew_dlnR2; // skew is 3rd central moment
+  double dF_dlambda;
+  double one_over_one_plus_F;
   
   for(int d = 0; d < delta_L_values.size(); d++){
     log_RL = log_R + log(1.0+delta_NL_values[d])/2.0;
@@ -868,7 +875,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lamb
     
     var_L_RL = interpolate_neville_aitken(log_RL, &this->log_top_hat_cylinder_radii, &this->top_hat_cylinder_variances, constants::order_of_interpolation);
     dvar_L_RL_dR = interpolate_neville_aitken(log_RL, &this->log_top_hat_cylinder_radii, &this->dtop_hat_cylinder_variances_dR, constants::order_of_interpolation);
-    
     
     if(f_NL != 0.0){
       
@@ -892,11 +898,16 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lamb
        * => j = -var/skew \pm sqrt(var**2/skew**2 + 2/skew * delta)
        */
       
-      j_values[d] = -var_L_RL/skew_L_RL;
-      if(skew_L_RL > 0.0)
-        j_values[d] += sqrt(pow(var_L_RL/skew_L_RL,2) + 2.0*delta_L_values[d]/skew_L_RL);
+      if(skew_L_RL > 0.0){
+        j_values[d] = -var_L_RL/skew_L_RL;
+        j_values[d] += sqrt(max(pow(var_L_RL/skew_L_RL,2) + 2.0*delta_L_values[d]/skew_L_RL, 0.0));
+      }
+      else if(skew_L_RL < 0.0){
+        j_values[d] = -var_L_RL/skew_L_RL;
+        j_values[d] -= sqrt(max(pow(var_L_RL/skew_L_RL,2) + 2.0*delta_L_values[d]/skew_L_RL, 0.0));
+      }
       else
-        j_values[d] -= sqrt(pow(var_L_RL/skew_L_RL,2) + 2.0*delta_L_values[d]/skew_L_RL);
+        j_values[d] = delta_L_values[d]/var_L_RL;
       
       lambda_of_delta[d] = j_values[d]/delta_NL_prime_values[d];
       lambda_of_delta[d] -= RL/(2.0*(1.0+delta_NL_values[d]))*(dvar_L_RL_dR/2.0*pow(j_values[d],2) + dskew_L_RL_dR/6.0*pow(j_values[d],3));
@@ -911,8 +922,40 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lamb
       phi_of_delta[d] = lambda_of_delta[d]*delta_NL_values[d]-delta_L_values[d]*j_values[d] + var_L_RL/2.0*pow(j_values[d],2);
     }
     
-    phi_of_delta[d] *= D_sq*var_L_R/var_NL_R;
-    lambda_of_delta[d] *= D_sq*var_L_R/var_NL_R;
+    
+    // now calculating dF/dlambda (needed in same applications for saddle point approxiamtion)
+    dvar_dlnR = dvar_L_RL_dR*RL;
+    d2var_dlnR2 = interpolate_neville_aitken(log_RL, &this->log_top_hat_cylinder_radii, &this->d2top_hat_cylinder_variances_dR2, constants::order_of_interpolation);
+    d2var_dlnR2 = pow(RL, 2)*d2var_dlnR2 + dvar_dlnR;
+    dphi_dlnR = 0.5*pow(j_values[d],2)*dvar_dlnR;
+    d2phi_dlnR2 = 0.5*pow(j_values[d],2)*d2var_dlnR2;
+    d2phi_dlnRdj = j_values[d]*dvar_dlnR;
+    d2phi_dj2 = var_L_RL;
+    
+    if(f_NL != 0.0){
+      dskew_dlnR = dskew_L_RL_dR*RL;
+      // this is d(dskew_dR)/dlnR:
+      d2skew_dlnR2 = interpolate_neville_aitken_derivative(log_RL, &this->log_top_hat_cylinder_radii_for_skewnesses, &this->dtop_hat_cylinder_skewnesses_dR, constants::order_of_interpolation);
+      d2skew_dlnR2 = RL*d2skew_dlnR2 + dskew_dlnR;
+      dphi_dlnR += pow(j_values[d],3)/6.0*dskew_dlnR;
+      d2phi_dlnR2 += pow(j_values[d],3)/6.0*d2skew_dlnR2;
+      d2phi_dlnRdj += pow(j_values[d],2)*0.5*dskew_dlnR;
+      d2phi_dj2 += j_values[d]*skew_L_RL;
+    }
+    one_over_one_plus_F = 1.0/(1.0+delta_NL_values[d]);
+    dlambda_ddelta[d] = pow(1.0 - 0.5*one_over_one_plus_F*delta_NL_prime_values[d]*d2phi_dlnRdj, 2);
+    dlambda_ddelta[d] /= delta_NL_prime_values[d]*d2phi_dj2;
+    dlambda_ddelta[d] += 0.25*pow(one_over_one_plus_F,2)*delta_NL_prime_values[d]*(2.0*dphi_dlnR - d2phi_dlnR2);
+    dlambda_ddelta[d] += -delta_NL_prime_prime_values[d]*j_values[d]/pow(delta_NL_prime_values[d], 2);
+    dF_dlambda = delta_NL_prime_values[d]/dlambda_ddelta[d];
+    // finished calculating dF/dlambda
+    
+    
+    
+    phi_of_delta[d] *= var_L_R/var_NL_R;
+    lambda_of_delta[d] *= var_L_R/var_NL_R;
+    dlambda_ddelta[d] *= var_L_R/var_NL_R;
+    dF_dlambda /= var_L_R/var_NL_R;
     
     data[0][d] = delta_L_values[d];
     data[1][d] = delta_NL_values[d];
@@ -921,8 +964,21 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lamb
     data[4][d] = var_L_RL;
     data[5][d] = skew_L_RL;
     data[6][d] = RL*constants::c_over_e5;
+    data[7][d] = dF_dlambda;
     
   }
+  
+  /*
+   * Please don't delete:
+  for(int d = 0; d < delta_L_values.size(); d++){
+    cout << d << "   ";
+    cout << delta_L_values[d] << "   ";
+    cout << interpolate_neville_aitken_derivative(delta_L_values[d], &delta_L_values, &lambda_of_delta, constants::order_of_interpolation) << "   ";
+    cout << dlambda_ddelta[d] << "   ";
+    cout << data[7][d] << "   ";
+    cout << delta_NL_prime_values[d]/interpolate_neville_aitken_derivative(delta_L_values[d], &delta_L_values, &lambda_of_delta, constants::order_of_interpolation) << "\n";
+  }
+  */
   
   return data;
   

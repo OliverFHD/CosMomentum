@@ -322,8 +322,70 @@ double interpolate_neville_aitken_grid(double t0, double x0, vector<double> * t,
     P_new[i] = interpolate_neville_aitken(x0, x, &(*f_of_t_x)[i+index], order_x);
   }
   
-  return neville_aitken(t0, &t_new, &P_new);
+  //return neville_aitken(t0, &t_new, &P_new);
+  return neville_aitken_more_clever(0, order_t+1, t0, &t_new, &P_new);
   
+}
+
+double interpolate_neville_aitken_dgrid_dt(double t0, double x0, vector<double> * t, vector<double> * x,
+				       vector<vector<double> > * f_of_t_x, int order_t, int order_x){
+  
+  int index = find_index(t0, t);
+  int n = (*t).size();
+	
+	
+	if(x0 > (*x)[n-1] || x0 < (*x)[0])
+		order_x = 1;
+	if(t0 > (*t)[n-1] || t0 < (*t)[0])
+		order_t = 1;
+  
+  vector<double> t_new(order_t+1, 0.0);
+  vector<double> P_new(order_t+1, 0.0);
+  
+  index -= (order_t+1)/2;
+  if(index < 0)
+    index = 0;
+  if(index + order_t > n - 1)
+    index = n - order_t - 1;
+  
+  for(int i = 0; i <= order_t; i++){
+    t_new[i] = (*t)[i+index];
+    P_new[i] = interpolate_neville_aitken(x0, x, &(*f_of_t_x)[i+index], order_x);
+  }
+  
+  //return neville_aitken(t0, &t_new, &P_new);
+  return neville_aitken_derivative_more_clever(0, order_t+1, t0, &t_new, &P_new);
+  
+}
+
+double interpolate_neville_aitken_dgrid_dx(double t0, double x0, vector<double> * t, vector<double> * x,
+				       vector<vector<double> > * f_of_t_x, int order_t, int order_x){
+  
+  int index = find_index(t0, t);
+  int n = (*t).size();
+	
+	
+	if(x0 > (*x)[n-1] || x0 < (*x)[0])
+		order_x = 1;
+	if(t0 > (*t)[n-1] || t0 < (*t)[0])
+		order_t = 1;
+  
+  vector<double> t_new(order_t+1, 0.0);
+  vector<double> P_new(order_t+1, 0.0);
+  
+  index -= (order_t+1)/2;
+  if(index < 0)
+    index = 0;
+  if(index + order_t > n - 1)
+    index = n - order_t - 1;
+  
+  for(int i = 0; i <= order_t; i++){
+    t_new[i] = (*t)[i+index];
+    P_new[i] = interpolate_neville_aitken_derivative(x0, x, &(*f_of_t_x)[i+index], order_x);
+  }
+  
+  //return neville_aitken(t0, &t_new, &P_new);
+  return neville_aitken_more_clever(0, order_t+1, t0, &t_new, &P_new);
   
 }
 

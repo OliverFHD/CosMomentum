@@ -95,6 +95,14 @@ double deriv_of_w_R_2D(double k, double R){
   
 }
 
+double second_deriv_of_w_R_2D(double k, double R){
+  
+  double x = k*R;
+  double one_over_x = 1.0/x;
+  return k*k*(2.0*gsl_sf_bessel_Jn(2, x)*pow(one_over_x,2) + one_over_x*gsl_sf_bessel_Jn(3, x) - one_over_x*gsl_sf_bessel_J1(x));
+  
+}
+
 
 
 

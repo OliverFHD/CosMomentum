@@ -22,7 +22,7 @@ void GalaxySample3D::set_3D_bias_model_from_br_parametrisation(double b_tilde, d
   double V = 4.0*constants::pi/3.0*pow(R_in_Mpc_over_h/constants::c_over_e5, 3);
   double N_bar = V*this->density;
   double variance = this->compute_variance_in_3D_tophat(R_in_Mpc_over_h, var_NL_rescale);
-  double skewness = var_NL_rescale*var_NL_rescale*this->pointer_to_universe()->return_3D_skewness(this->redshift, R_in_Mpc_over_h, f_NL);
+  double skewness = this->pointer_to_universe()->return_3D_skewness(this->redshift, R_in_Mpc_over_h, f_NL, var_NL_rescale);
   
   this->set_bias_model_from_br_parametrisation(b_tilde, r, N_bar, variance, skewness);
 }
@@ -36,7 +36,7 @@ void GalaxySample3D::set_3D_bias_model_from_br_parametrisation(double b_tilde, d
  */
 
 double GalaxySample3D::compute_variance_in_3D_tophat(double R_in_Mpc_over_h, double var_NL_rescale){
-  return var_NL_rescale*this->pointer_to_universe()->return_non_linear_variance(this->redshift, R_in_Mpc_over_h);
+  return this->pointer_to_universe()->return_non_linear_variance(this->redshift, R_in_Mpc_over_h, var_NL_rescale);
 }
 
 

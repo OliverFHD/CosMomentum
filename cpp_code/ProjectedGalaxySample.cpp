@@ -121,7 +121,7 @@ void ProjectedGalaxySample::set_n_of_w_data(string n_of_z_input_file){
  */
 
 double ProjectedGalaxySample::compute_variance_in_angular_tophat(double theta_in_arcmin, double var_NL_rescale){
-  return var_NL_rescale*this->pointer_to_universe()->return_LOS_integrated_variance(theta_in_arcmin*constants::arcmin, this->w_values, this->n_of_w_values);
+  return this->pointer_to_universe()->return_LOS_integrated_variance(theta_in_arcmin*constants::arcmin, this->w_values, this->n_of_w_values, var_NL_rescale);
 }
 
 
@@ -175,6 +175,37 @@ vector<double> ProjectedGalaxySample::return_CiC_PDF_in_angular_tophat(double th
   return this->return_CIC_from_matter_density_PDF(N_bar, PDF_data);
   
 }
+/*
+ * ProjectedGalaxySample::return_CiC_saddle_point_PDF_in_angular_tophat
+ * 
+ * Same as return_CiC_PDF_in_angular_tophat, but: to compute the PDF of matter density fluctuations, the CGF-to-PDF inverse Laplace transformation is approximated by it's saddle point. 
+ * 
+ */
+
+vector<double> ProjectedGalaxySample::return_CiC_saddle_point_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale){
+  
+  vector<vector<double> > PDF_data = this->pointer_to_universe()->compute_LOS_projected_PDF_saddle_point(this->w_values, this->n_of_w_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);
+  
+  double A = 2.0*constants::pi*(1.0-cos(theta_in_arcmin*constants::arcmin));
+  double N_bar = A*this->density;
+  
+  return this->return_CIC_from_matter_density_PDF(N_bar, PDF_data);
+  
+}
+
+/*
+ * ProjectedGalaxySample::return_LOS_data
+ * 
+ * Returns bins in co-moving distance and the corresponding line-of-sight distribution of galaxies and lensing kernel.
+ * 
+ */
+void ProjectedGalaxySample::return_LOS_data(vector<double> *w_vals, vector<double> *n_of_w_vals, vector<double> *lensing_kernel_vals){
+  (*w_vals) = this->w_values;
+  (*n_of_w_vals) = this->n_of_w_values;
+  (*lensing_kernel_vals) = this->lensing_kernel_values;
+}
+
+
 
 
 

@@ -25,8 +25,6 @@ class GalaxySample {
    double return_P_of_N_given_delta(int N, double N_bar, double delta, double variance); // variance only used when quadratic_bias != 0
    vector<double> return_CIC_from_matter_density_PDF(double N_bar, vector<vector<double> > PDF_data);
    
- protected:
-   
    FlatInhomogeneousUniverseLCDM* pointer_to_universe(){return this->universe;};
    
  private:

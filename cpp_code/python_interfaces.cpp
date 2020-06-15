@@ -16,6 +16,10 @@ class Global_Universes {
     
     cosmological_model cosmo;
     
+    vector<vector<double> > delta_grid;
+    vector<vector<double> > kappa_grid;
+    vector<vector<double> > PDF_grid;
+    
     vector<FlatInhomogeneousUniverseLCDM*> universes;
     vector<GalaxySample3D*> galaxy_samples_3D;
     vector<ProjectedGalaxySample*> projected_galaxy_samples;
@@ -119,6 +123,42 @@ extern "C" void return_CiC_PDF_projected(double* P_of_N, double theta, double f_
     P_of_N[i] = P_of_N_vector[i];
   }
   
+}
+
+extern "C" void return_CiC_saddle_point_PDF_projected(double* P_of_N, double theta, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
+  
+  vector<double> P_of_N_vector = global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_CiC_saddle_point_PDF_in_angular_tophat(theta, f_NL, var_NL_rescale);
+  
+  int number_of_Ns = P_of_N_vector.size();
+  
+  for(int i = 0; i < number_of_Ns; i++){
+    P_of_N[i] = P_of_N_vector[i];
+  }
+  
+}
+
+
+/*
+ * return_R_in_Mpc_over_h_from_angular_scale
+ * 
+ * This function calculates what transverse scale R the angular scale theta corresponds to at
+ * the mean co-moving distance of galaxy sample index_of_galaxy_sample.
+ * 
+ */
+extern "C" double return_R_in_Mpc_over_h_from_angular_scale(int index_of_galaxy_sample, double theta_in_arcmin){
+  vector<double> w_vals;
+  vector<double> n_of_w_vals;
+  vector<double> lensing_kernel_vals;
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_LOS_data(&w_vals, &n_of_w_vals, &lensing_kernel_vals);
+  
+  double dw, w, w_mean = 0.0;
+  for(int i = 0; i < w_vals.size()-1; i++){
+    dw = w_vals[i+1]-w_vals[i];
+    w = 0.5*(w_vals[i+1]+w_vals[i]);
+    w_mean += w*n_of_w_vals[i]*dw;
+  }
+  
+  return (theta_in_arcmin*constants::arcmin)*(w_mean*constants::c_over_e5);
 }
 
 
@@ -288,12 +328,83 @@ extern "C" int return_Nlambda(int index_of_universe){
 }
 
 extern "C" double return_var_NL(double z, double R_in_Mpc_over_h, int index_of_universe){
-  return global_universes.universes[index_of_universe]->return_non_linear_variance(z, R_in_Mpc_over_h);
+  // ISSUE: var_NL_rescale non implemented here
+  return global_universes.universes[index_of_universe]->return_non_linear_variance(z, R_in_Mpc_over_h, 1.0);
 }
 
 
 extern "C" double return_var_L(double z, double R_in_Mpc_over_h, int index_of_universe){
   return global_universes.universes[index_of_universe]->return_linear_variance(z, R_in_Mpc_over_h);
+}
+
+extern "C" void compute_projected_PDF_incl_CMB_kappa(int *Nd, int *Nk, double theta_in_arcmin, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
+  vector<vector<double> > *d_grid = &global_universes.delta_grid;
+  vector<vector<double> > *k_grid = &global_universes.kappa_grid;
+  vector<vector<double> > *p_grid = &global_universes.PDF_grid;
+  vector<double> w_values;
+  vector<double> kernel_values;
+  vector<double> lensing_kernel_values;
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_LOS_data(&w_values, &kernel_values, &lensing_kernel_values);
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->pointer_to_universe()->compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(w_values, kernel_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, d_grid, k_grid, p_grid);
+  (*Nd) = p_grid->size();
+  (*Nk) = (*p_grid)[0].size();
+}
+
+extern "C" void return_projected_PDF_incl_CMB_kappa(double *delta_grid, double *kappa_grid, double *PDF_grid){
+  int Nd = global_universes.PDF_grid.size();
+  int Nk = global_universes.PDF_grid[0].size();
+  int index = 0;
+  for(int k = 0; k < Nk; k++){
+    for(int d = 0; d < Nd; d++){
+      delta_grid[index] = global_universes.delta_grid[d][k];
+      kappa_grid[index] = global_universes.kappa_grid[d][k];
+      PDF_grid[index] = global_universes.PDF_grid[d][k];
+      index++;
+    }
+  }
+  
+}
+
+
+
+extern "C" void return_convergence_PDF(double* kappa_values, double* PDF, double z_source, double theta_in_arcmin, double f_NL, double var_NL_rescale, int index_of_universe){
+  
+  
+  double eta_0 = global_universes.universes[index_of_universe]->eta_at_a(1.0);
+  double eta_source = global_universes.universes[index_of_universe]->eta_at_a(1.0/(1.0+z_source));
+  double w_source = eta_0-eta_source;
+  double w = 0.0;
+  double dw, eta_1, eta_2, scale_1, scale_2;
+  
+  vector<double> w_boundaries(0, 0.0);
+  
+  while(w < w_source){
+    w_boundaries.push_back(w);
+    eta_1 = eta_0-w;
+    scale_1 = global_universes.universes[index_of_universe]->a_at_eta(eta_1);
+    scale_2 = scale_1 - constants::maximal_da;
+    eta_2 = global_universes.universes[index_of_universe]->eta_at_a(scale_2);
+    w += min(constants::maximal_dw, eta_1 - eta_2);
+  }
+  w_boundaries.push_back(w_source);
+  
+  int N_w = w_boundaries.size();
+  vector<double> lensing_kernel_values(N_w, 0.0);
+  
+  for(int i = 0; i < N_w-1; i++){
+    w = 0.5*(w_boundaries[i]+w_boundaries[i+1]);
+    scale_1 = global_universes.universes[index_of_universe]->a_at_eta(eta_0-w);
+    lensing_kernel_values[i] = 1.5/w_source*global_universes.universes[index_of_universe]->return_Omega_m();
+    lensing_kernel_values[i] *= w*(w_source-w)/scale_1;
+  }
+  
+  vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_LOS_projected_PDF(w_boundaries, lensing_kernel_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);
+  
+  for(int d = 0; d < PDF_data[0].size(); d++){
+    kappa_values[d] = PDF_data[0][d];
+    PDF[d] = PDF_data[1][d];
+  }
+  
 }
 
 

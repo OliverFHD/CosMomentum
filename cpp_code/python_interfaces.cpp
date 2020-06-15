@@ -309,7 +309,6 @@ extern "C" void return_CGF(double* delta_L, double* delta_NL, double* lambda, do
 
 extern "C" void return_PDF(double* delta_values, double* PDF, double z, double R_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
   
-  
   vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_PDF_3D(z, R_in_comoving_Mpc, f_NL, var_NL_rescale);
   
   for(int d = 0; d < PDF_data[0].size(); d++){
@@ -396,6 +395,10 @@ extern "C" void return_convergence_PDF(double* kappa_values, double* PDF, double
     scale_1 = global_universes.universes[index_of_universe]->a_at_eta(eta_0-w);
     lensing_kernel_values[i] = 1.5/w_source*global_universes.universes[index_of_universe]->return_Omega_m();
     lensing_kernel_values[i] *= w*(w_source-w)/scale_1;
+  }
+  for(int i = 0; i < w_boundaries.size(); i++){
+    cout << w_boundaries[i] << "   ";
+    cout << lensing_kernel_values[i] << "\n";
   }
   
   vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_LOS_projected_PDF(w_boundaries, lensing_kernel_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);

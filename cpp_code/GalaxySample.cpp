@@ -107,6 +107,10 @@ int GalaxySample::return_N_max(double N_bar, double variance){
   double var_Gauss = log(1.0+variance);
   double delta_max = (exp(-0.5*var_Gauss + 5.0*sqrt(var_Gauss))-1.0);
   double delta_g_max = this->linear_bias*delta_max + this->quadratic_bias*(delta_max*delta_max - variance);
+  if(this->quadratic_bias < 0.0){
+    delta_g_max = -0.5*this->linear_bias/this->quadratic_bias;
+  }
+  
   double N_bar_max = N_bar*(1.0+delta_g_max);
   double galaxies_per_Poisson_halo = this->alpha_0 + delta_max*this->alpha_1;
   

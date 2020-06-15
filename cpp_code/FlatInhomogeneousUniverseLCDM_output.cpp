@@ -553,6 +553,22 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
   }
   
   
+  
+  int n_delta = constants::N_delta_values_for_PDFs;
+  double var = interpolate_neville_aitken(0.0, &lambda_values, &phi_prime_prime_values, constants::order_of_interpolation);
+  double std = sqrt(var);
+  double skew = interpolate_neville_aitken_derivative(0.0, &lambda_values, &phi_prime_prime_values, constants::order_of_interpolation);
+  double lognormal_shift = lognormal_tools::get_delta0(var, skew);
+  double var_Gauss = log(1.0+var/lognormal_shift/lognormal_shift);
+  double mean_Gauss = -0.5*var_Gauss;
+  double std_Gauss = sqrt(var_Gauss);
+  double delta_min = max(-1.0, lognormal_shift*(exp(mean_Gauss-5.0*std_Gauss)-1.0));
+  double delta_max = lognormal_shift*(exp(mean_Gauss+5.0*std_Gauss)-1.0);
+  // --> ISSUE: choosing delta_max to be 5*sigma may not be 100% reasonable for very skewed PDFs
+  //            Maybe choose it by some quantile in a log-normal PDF that approximates the real PDF?
+  
+  
+  
   /*
    * Extract phi_data with equal number and range of points left and right of tau = 0 (better for polynomial fit).
    * 
@@ -587,7 +603,15 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
     lambda_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &lambda_values, constants::order_of_interpolation);
     phi_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &phi_values, constants::order_of_interpolation);
     phi_prime_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &delta_NL_values, constants::order_of_interpolation);
+    cout << i << "   ";
+    cout << lambda_for_fit[i] << "   ";
+    cout << phi_for_fit[i] << "   ";
+    cout << phi_prime_for_fit[i] << "\n";
   }
+  cout << var << "   ";
+  cout << skew << '\n';
+  cout << delta_min << '\n';
+  cout << delta_max << '\n';
   
   
   cout << "Done.\n";
@@ -606,51 +630,63 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
   
   vector<double> coefficients_phi_of_tau = return_coefficients(&tau_for_fit, &phi_for_fit, n_coeff);
   vector<double> coefficients_phi_of_tau_prime = return_coefficients(&tau_for_fit, &phi_prime_for_fit, n_coeff);
+  //for(int i = 0; i < coefficients_phi_of_tau_prime.size()-1; i++) coefficients_phi_of_tau[i+1] = coefficients_phi_of_tau_prime[i]/double(i+1);
+  //for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++) coefficients_phi_of_tau_prime[i] = coefficients_phi_of_tau[i+1]*double(i+1);
   
-  vector<double> coefficients_phi_of_lambda(coefficients_lambda_of_tau.size(), 0.0);
-  vector<double> coefficients_phi_prime_of_lambda(coefficients_lambda_of_tau.size(), 0.0);
+  /*
+  for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++){
+    cout << i << "   ";
+    cout << coefficients_phi_of_tau[i] << "   ";
+    cout << coefficients_lambda_of_tau_prime[i] << "\n";
+  }
+  
+  vector<double> coeffs_phi_of_lambda(coefficients_lambda_of_tau.size(), 0.0);
+  vector<double> coeffs_phi_prime_of_lambda(coefficients_lambda_of_tau.size(), 0.0);
+  //this->return_LOS_integrated_polynomial_coefficients(theta, f_NL, var_NL_rescale, w_values, kernel_values, &coeffs_phi_of_lambda, &coeffs_phi_prime_of_lambda);
+  
   vector<vector<double> > Bell_matrix(0, vector<double>(0, 0.0));
   vector<vector<double> > inverse_Bell_matrix(0, vector<double>(0, 0.0));
   vector<double> fact = factoria(coefficients_lambda_of_tau.size());
   return_Bell_matrix(&Bell_matrix, &inverse_Bell_matrix, &coefficients_lambda_of_tau);
   
   for(int i = 0; i < coefficients_lambda_of_tau.size(); i++){
+    coeffs_phi_of_lambda[i] = 0.0;
     for(int j = 0; j <= i; j++){
-      coefficients_phi_of_lambda[i] += inverse_Bell_matrix[i][j]*coefficients_phi_of_tau[j]*fact[j];
-      coefficients_phi_prime_of_lambda[i] += inverse_Bell_matrix[i][j]*coefficients_phi_of_tau_prime[j]*fact[j];
+      coeffs_phi_of_lambda[i] += inverse_Bell_matrix[i][j]*coefficients_phi_of_tau[j]*fact[j];
     }
-    coefficients_phi_of_lambda[i] /= fact[i];
-    coefficients_phi_prime_of_lambda[i] /= fact[i];
+    coeffs_phi_of_lambda[i] /= fact[i];
   }
   
-  double var = return_LOS_integrated_variance(theta, w_values, kernel_values, var_NL_rescale);
-  double skew = interpolate_neville_aitken_derivative(0.0, &lambda_values, &phi_prime_prime_values, constants::order_of_interpolation);
-  coefficients_phi_of_lambda[0] = 0.0;
-  coefficients_phi_of_lambda[1] = 0.0;
-  coefficients_phi_of_lambda[2] = 0.5*var;
-  coefficients_phi_of_lambda[3] = skew/6.0;
+  coeffs_phi_of_lambda[0] = 0.0;
+  coeffs_phi_of_lambda[1] = 0.0;
+  coeffs_phi_of_lambda[2] = 0.5*var;
+  coeffs_phi_of_lambda[3] = skew/6.0;
   
-  
-  coefficients_phi_prime_of_lambda[0] = 0.0;
-  coefficients_phi_prime_of_lambda[1] = var;
-  coefficients_phi_prime_of_lambda[2] = 0.5*skew;
-  
-  /*
   for(int i = 0; i < coefficients_lambda_of_tau.size(); i++){
     coefficients_phi_of_tau[i] = 0.0;
     coefficients_phi_of_tau_prime[i] = 0.0;
     for(int j = 0; j < coefficients_lambda_of_tau.size(); j++){
-      coefficients_phi_of_tau[i] += Bell_matrix[i][j]*coefficients_phi_of_lambda[j]*fact[j];
-      coefficients_phi_of_tau_prime[i] += Bell_matrix[i][j]*coefficients_phi_prime_of_lambda[j]*fact[j];
+      coefficients_phi_of_tau[i] += Bell_matrix[i][j]*coeffs_phi_of_lambda[j]*fact[j];
     }
     coefficients_phi_of_tau[i] /= fact[i];
-    coefficients_phi_of_tau_prime[i] /= fact[i];
   }
-  */
+  
+  
+  //for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++) coefficients_phi_of_tau[i+1] = coefficients_phi_of_tau[i]/double(i+1);
+  for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++) coefficients_phi_of_tau_prime[i] = coefficients_phi_of_tau[i+1]*double(i+1);
+  
+  
+  for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++){
+    cout << i << "   ";
+    cout << coeffs_phi_of_lambda[i] << "   ";
+    cout << coefficients_phi_of_tau[i] << "   ";
+    cout << coefficients_lambda_of_tau_prime[i] << "\n";
+  }
   
   /*
    * ISSUE: one can enforce even more coefficients to their analytical value!
    */
+  
   coefficients_phi_of_tau[0] = 0.0;
   coefficients_phi_of_tau[1] = 0.0;
   coefficients_phi_of_tau_prime[0] = 0.0;
@@ -661,13 +697,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
    * Perform the inverse Laplace transform of phi(lambda) to compute p(delta).
    * 
    */
-  
-  int n_delta = constants::N_delta_values_for_PDFs;
-  double delta_min = interpolate_neville_aitken(tau_min, &tau_values, &delta_NL_values, constants::order_of_interpolation);
-  double delta_max = max(delta_c, 6.0*sqrt(var));
-  // --> ISSUE: choosing delta_max to be 6*sigma may not be 100% reasonable for very skewed PDFs
-  //            Maybe choose it by some quantile in a log-normal PDF that approximates the real PDF?
-  
   
   /*
    * ISSUE: sometimes at delta=delta_max the code outputs PDF[i] = nan! Why is this? OF preliminarily fixed this by replacing "/double(n_delta-1)" with "/double(n_delta)" (hence avoiding delta=delta_max).
@@ -711,6 +740,10 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
     dr = sigma_frac/sqrt(interpolate_neville_aitken_derivative(lambda_0, &lambda_values, &delta_NL_values, constants::order_of_interpolation));
     dlambda = complex<double>(0.0, dr);
     int j = 0;
+    cout << lambda << "   ";
+    cout << tau << "   ";
+    cout << exponent << "   ";
+    cout << dr << "   ";
     do{
       lambda_next = lambda + 0.5*dlambda;
       tau_next = Newtons_method_complex(tau, lambda_next,  &coefficients_lambda_of_tau, &coefficients_lambda_of_tau_prime);
@@ -1203,14 +1236,6 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficient
     coefficients_phi_of_lambda[t][1] = 0.0;
     coefficients_phi_of_lambda[t][2] = 0.5*coefficients_phi_prime_of_lambda[t][1];
     
-  if(t == 0){
-  for(int i = 0; i < coefficients_phi_of_lambda[t].size(); i++){
-    cout << i << "   ";
-    cout << coefficients_phi_of_lambda[t][i] << "   ";
-    cout << coefficients_phi_prime_of_lambda[t][i] << "\n";
-  }
-  }
-    
   }
   
   int N_coeff = coefficients_phi_of_lambda[0].size();
@@ -1224,12 +1249,6 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficient
       (*coeffs_phi_of_lambda)[c] += dw*coefficients_phi_of_lambda[t][c]*pow(kernel_values[i], c);
       (*coeffs_phi_prime_of_lambda)[c] += dw*coefficients_phi_prime_of_lambda[t][c]*pow(kernel_values[i], c+1);
     }
-  }
-  
-  for(int i = 0; i < N_coeff; i++){
-    cout << i << "   ";
-    cout << (*coeffs_phi_of_lambda)[i] << "   ";
-    cout << (*coeffs_phi_prime_of_lambda)[i] << "\n";
   }
   
 }
@@ -1273,7 +1292,6 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficient
   vector<double> CMB_lensing_kernel(n_time, 0.0);
   double w_min = w_values_extended_to_last_scattering[0];
   double w_max = w_values_extended_to_last_scattering[n_time];
-  double norm = 0.0;
   for(int i = 0; i < n_time; i++){
     w = w_values_bin_center[i];
     a = this->a_at_eta(eta_0-w);

@@ -836,10 +836,10 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lamb
   double D_growth = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
   
   this->current_P_L = this->P_L(e);
-  if(D_growth > 0.3)// ISSUE: this is just a temporary fix as of June 11, 2020
+  //if(D_growth > 0.3)// ISSUE: this is just a temporary fix as of June 11, 2020
     this->current_P_NL = this->P_NL(e);
-  else
-    this->current_P_NL = this->P_L(e);
+  //else
+    //this->current_P_NL = this->P_L(e);
   
     
   

@@ -102,7 +102,7 @@ void ProjectedGalaxySample::set_n_of_w_data(string n_of_z_input_file){
     w_1 = this->w_values[i+1];
     dw = w_1 - w;
     scale = this->pointer_to_universe()->a_at_eta(eta_0 - w);
-    this->lensing_kernel_values[i] += dw*0.5*(w*(w_1-w)/a_1/w_1);
+    this->lensing_kernel_values[i] += dw*0.5*(w*(w_1-w)/scale/w_1);
     for(int j = i+1; j < Nz-1; j++){
       w_1 = this->w_values[j];
       w_2 = this->w_values[j+1];

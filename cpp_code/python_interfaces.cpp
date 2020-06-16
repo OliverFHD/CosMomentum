@@ -396,10 +396,6 @@ extern "C" void return_convergence_PDF(double* kappa_values, double* PDF, double
     lensing_kernel_values[i] = 1.5/w_source*global_universes.universes[index_of_universe]->return_Omega_m();
     lensing_kernel_values[i] *= w*(w_source-w)/scale_1;
   }
-  for(int i = 0; i < w_boundaries.size(); i++){
-    cout << w_boundaries[i] << "   ";
-    cout << lensing_kernel_values[i] << "\n";
-  }
   
   vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_LOS_projected_PDF(w_boundaries, lensing_kernel_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);
   

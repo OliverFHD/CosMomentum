@@ -556,7 +556,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
   double tau_min = 0.9*tau_values[0];
   
   double R_max = interpolate_neville_aitken(tau_max, &tau_values, &R_L_values, constants::order_of_interpolation);
-  
   double R_min = interpolate_neville_aitken(tau_min, &tau_values, &R_L_values, constants::order_of_interpolation);
   
   
@@ -577,8 +576,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
   // ISSUE: this shouldn't be hardcoded!
   
   vector<double> tau_for_fit(n_tau,0.0);
-  vector<double> lambda_for_fit(n_tau,0.0);
-  vector<double> phi_for_fit(n_tau,0.0);
   vector<double> phi_prime_for_fit(n_tau,0.0);
   
   double dt = -tau_min/double(n_tau/2);
@@ -592,8 +589,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
   }
   
   for(int i = 0; i < n_tau; i++){
-    lambda_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &lambda_values, constants::order_of_interpolation);
-    phi_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &phi_values, constants::order_of_interpolation);
     phi_prime_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &delta_NL_values, constants::order_of_interpolation);
   }
   
@@ -608,19 +603,9 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
   
   int n_coeff = constants::generating_function_coeff_order;
   
-  vector<double> coefficients_lambda_of_tau = return_coefficients(&tau_for_fit, &lambda_for_fit, n_coeff);
-  vector<double> coefficients_lambda_of_tau_prime(coefficients_lambda_of_tau.size(), 0.0);
-  for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++) coefficients_lambda_of_tau_prime[i] = coefficients_lambda_of_tau[i+1]*double(i+1);
-  
-  vector<double> coefficients_phi_of_tau = return_coefficients(&tau_for_fit, &phi_for_fit, n_coeff);
-  vector<double> coefficients_phi_of_tau_prime = return_coefficients(&tau_for_fit, &phi_prime_for_fit, n_coeff);
-  
-  /*
-   * ISSUE: one can enforce even more coefficients to their analytical value!
-   */
-  coefficients_phi_of_tau[0] = 0.0;
-  coefficients_phi_of_tau[1] = 0.0;
-  coefficients_phi_of_tau_prime[0] = 0.0;
+  vector<double> coefficients_phi_prime_of_tau = return_coefficients(&tau_for_fit, &phi_prime_for_fit, n_coeff);
+  vector<double> coefficients_dphi_prime_of_dtau(coefficients_phi_prime_of_tau.size(), 0.0);
+  vector<double> coefficients_d2phi_prime_of_dtau2(coefficients_phi_prime_of_tau.size(), 0.0);
   
   cout << "Done.\n";
   
@@ -636,6 +621,19 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
   // --> ISSUE: choosing delta_max to be 6*sigma may not be 100% reasonable for very skewed PDFs
   //            Maybe choose it by some quantile in a log-normal PDF that approximates the real PDF?
   
+  /*
+   * ISSUE: one can enforce even more coefficients to their analytical value!
+   */
+  
+  coefficients_phi_prime_of_tau[0] = 0.0;
+  coefficients_phi_prime_of_tau[1] = sqrt(var);
+  
+  for(int i = 0; i < coefficients_phi_prime_of_tau.size()-1; i++){
+    coefficients_dphi_prime_of_dtau[i] = coefficients_phi_prime_of_tau[i+1]*double(i+1);
+  }
+  for(int i = 0; i < coefficients_phi_prime_of_tau.size()-1; i++){
+    coefficients_d2phi_prime_of_dtau2[i] = coefficients_dphi_prime_of_dtau[i+1]*double(i+1);
+  }
   
   /*
    * ISSUE: sometimes at delta=delta_max the code outputs PDF[i] = nan! Why is this? OF preliminarily fixed this by replacing "/double(n_delta-1)" with "/double(n_delta)" (hence avoiding delta=delta_max).
@@ -672,7 +670,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
     }
     lambda = complex<double>(lambda_0, 0.0);
     tau = complex<double>(tau_0, 0.0);
-    exponent = exp(-lambda*delta + return_polnomial_value(tau, &coefficients_phi_of_tau));
+    exponent = exp(-0.5*pow(tau, 2));
     
     // sigma_r^2 \approx 1/phi''(lambda_0)
     double sigma_frac = 0.001;
@@ -681,13 +679,13 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
     int j = 0;
     do{
       lambda_next = lambda + 0.5*dlambda;
-      tau_next = Newtons_method_complex(tau, lambda_next,  &coefficients_lambda_of_tau, &coefficients_lambda_of_tau_prime);
-      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_of_tau_prime);
+      tau_next = get_tau_from_secant_method_complex_Bernardeau_notation_2D(lambda_next, tau, &coefficients_dphi_prime_of_dtau, &coefficients_d2phi_prime_of_dtau2);
+      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_prime_of_tau);
       dlambda = -dr*conj(phi_prime_next-delta)/abs(phi_prime_next-delta);
       lambda_next = lambda + dlambda;
-      tau_next = Newtons_method_complex(tau_next, lambda_next,  &coefficients_lambda_of_tau, &coefficients_lambda_of_tau_prime);
-      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_of_tau_prime);
-      exponent_next = exp(-lambda_next*delta + return_polnomial_value(tau_next, &coefficients_phi_of_tau));
+      tau_next = get_tau_from_secant_method_complex_Bernardeau_notation_2D(lambda_next, tau_next, &coefficients_dphi_prime_of_dtau, &coefficients_d2phi_prime_of_dtau2);
+      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_prime_of_tau);
+      exponent_next = exp(-lambda_next*(delta-phi_prime_next)-0.5*pow(tau_next, 2));
       
       step = 0.5*dlambda*(exponent_next+exponent);
       PDF_data[1][i] += step.imag();

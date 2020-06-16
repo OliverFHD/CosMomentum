@@ -562,10 +562,8 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
   double var_Gauss = log(1.0+var/lognormal_shift/lognormal_shift);
   double mean_Gauss = -0.5*var_Gauss;
   double std_Gauss = sqrt(var_Gauss);
-  double delta_min = max(-1.0, lognormal_shift*(exp(mean_Gauss-5.0*std_Gauss)-1.0));
-  double delta_max = lognormal_shift*(exp(mean_Gauss+5.0*std_Gauss)-1.0);
-  // --> ISSUE: choosing delta_max to be 5*sigma may not be 100% reasonable for very skewed PDFs
-  //            Maybe choose it by some quantile in a log-normal PDF that approximates the real PDF?
+  double delta_min = max(-1.0, lognormal_shift*(exp(mean_Gauss-7.0*std_Gauss)-1.0));
+  double delta_max = lognormal_shift*(exp(mean_Gauss+7.0*std_Gauss)-1.0);
   
   
   
@@ -573,6 +571,9 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
    * Extract phi_data with equal number and range of points left and right of tau = 0 (better for polynomial fit).
    * 
    */
+  
+  //int index_delta_min = find_index(delta_min, &delta_NL_values);
+  //int index_delta_max = find_index(delta_max, &delta_NL_values);
   
   double tau_max = 0.9*tau_c;
   double tau_min = 0.9*tau_values[0];
@@ -585,8 +586,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
   int n_tau = 4*constants::generating_function_coeff_order + 1; // has to be odd number in order to include tau=0 exactly.
   
   vector<double> tau_for_fit(n_tau,0.0);
-  vector<double> lambda_for_fit(n_tau,0.0);
-  vector<double> phi_for_fit(n_tau,0.0);
   vector<double> phi_prime_for_fit(n_tau,0.0);
   
   double dt = -tau_min/double(n_tau/2);
@@ -600,19 +599,8 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
   }
   
   for(int i = 0; i < n_tau; i++){
-    lambda_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &lambda_values, constants::order_of_interpolation);
-    phi_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &phi_values, constants::order_of_interpolation);
     phi_prime_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &delta_NL_values, constants::order_of_interpolation);
-    cout << i << "   ";
-    cout << lambda_for_fit[i] << "   ";
-    cout << phi_for_fit[i] << "   ";
-    cout << phi_prime_for_fit[i] << "\n";
   }
-  cout << var << "   ";
-  cout << skew << '\n';
-  cout << delta_min << '\n';
-  cout << delta_max << '\n';
-  
   
   cout << "Done.\n";
   
@@ -624,72 +612,65 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
   
   int n_coeff = constants::generating_function_coeff_order;
   
-  vector<double> coefficients_lambda_of_tau = return_coefficients(&tau_for_fit, &lambda_for_fit, n_coeff);
-  vector<double> coefficients_lambda_of_tau_prime(coefficients_lambda_of_tau.size(), 0.0);
-  for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++) coefficients_lambda_of_tau_prime[i] = coefficients_lambda_of_tau[i+1]*double(i+1);
-  
-  vector<double> coefficients_phi_of_tau = return_coefficients(&tau_for_fit, &phi_for_fit, n_coeff);
-  vector<double> coefficients_phi_of_tau_prime = return_coefficients(&tau_for_fit, &phi_prime_for_fit, n_coeff);
-  //for(int i = 0; i < coefficients_phi_of_tau_prime.size()-1; i++) coefficients_phi_of_tau[i+1] = coefficients_phi_of_tau_prime[i]/double(i+1);
-  //for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++) coefficients_phi_of_tau_prime[i] = coefficients_phi_of_tau[i+1]*double(i+1);
-  
+  cout << var << "   ";
+  cout << skew << '\n';
+  cout << delta_min << '\n';
+  cout << delta_max << '\n';
+    
+    
+  vector<double> coefficients_phi_prime_of_tau = return_coefficients(&tau_for_fit, &phi_prime_for_fit, n_coeff);
+  vector<double> coefficients_dphi_prime_of_dtau(coefficients_phi_prime_of_tau.size(), 0.0);
+  vector<double> coefficients_d2phi_prime_of_dtau2(coefficients_phi_prime_of_tau.size(), 0.0);
+    
+    
   /*
-  for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++){
-    cout << i << "   ";
-    cout << coefficients_phi_of_tau[i] << "   ";
-    cout << coefficients_lambda_of_tau_prime[i] << "\n";
-  }
-  
-  vector<double> coeffs_phi_of_lambda(coefficients_lambda_of_tau.size(), 0.0);
-  vector<double> coeffs_phi_prime_of_lambda(coefficients_lambda_of_tau.size(), 0.0);
-  //this->return_LOS_integrated_polynomial_coefficients(theta, f_NL, var_NL_rescale, w_values, kernel_values, &coeffs_phi_of_lambda, &coeffs_phi_prime_of_lambda);
-  
-  vector<vector<double> > Bell_matrix(0, vector<double>(0, 0.0));
-  vector<vector<double> > inverse_Bell_matrix(0, vector<double>(0, 0.0));
-  vector<double> fact = factoria(coefficients_lambda_of_tau.size());
-  return_Bell_matrix(&Bell_matrix, &inverse_Bell_matrix, &coefficients_lambda_of_tau);
-  
-  for(int i = 0; i < coefficients_lambda_of_tau.size(); i++){
-    coeffs_phi_of_lambda[i] = 0.0;
-    for(int j = 0; j <= i; j++){
-      coeffs_phi_of_lambda[i] += inverse_Bell_matrix[i][j]*coefficients_phi_of_tau[j]*fact[j];
-    }
-    coeffs_phi_of_lambda[i] /= fact[i];
-  }
-  
-  coeffs_phi_of_lambda[0] = 0.0;
-  coeffs_phi_of_lambda[1] = 0.0;
-  coeffs_phi_of_lambda[2] = 0.5*var;
-  coeffs_phi_of_lambda[3] = skew/6.0;
-  
-  for(int i = 0; i < coefficients_lambda_of_tau.size(); i++){
-    coefficients_phi_of_tau[i] = 0.0;
-    coefficients_phi_of_tau_prime[i] = 0.0;
-    for(int j = 0; j < coefficients_lambda_of_tau.size(); j++){
-      coefficients_phi_of_tau[i] += Bell_matrix[i][j]*coeffs_phi_of_lambda[j]*fact[j];
-    }
-    coefficients_phi_of_tau[i] /= fact[i];
-  }
-  
-  
-  //for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++) coefficients_phi_of_tau[i+1] = coefficients_phi_of_tau[i]/double(i+1);
-  for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++) coefficients_phi_of_tau_prime[i] = coefficients_phi_of_tau[i+1]*double(i+1);
-  
-  
-  for(int i = 0; i < coefficients_lambda_of_tau.size()-1; i++){
-    cout << i << "   ";
-    cout << coeffs_phi_of_lambda[i] << "   ";
-    cout << coefficients_phi_of_tau[i] << "   ";
-    cout << coefficients_lambda_of_tau_prime[i] << "\n";
-  }
-  
-  /*
-   * ISSUE: one can enforce even more coefficients to their analytical value!
+   * enforcing first few coefficients to their analytical value:
+   * 
+   * F := d\phi/d\lambda
+   * - F(\tau = 0) = 0
+   * - dF/d\tau(0) = dF/d\lambda(0) * d\lambda/d\tau(0)
+   *               = variance * d\lambda/d\tau(0)
+   * 
+   * using the fact that \tau^2/2 = \lambda F - \phi:
+   * [d\tau/d\lambda(0)]^2 = dF/d\lambda(0)
+   * => dF/d\tau(0) = \sqrt(variance)
+   * 
+   * - d^2F/d\tau^2(0) = d^2F/d\lambda^2(0) * [d\lambda/d\tau(0)]^2
+   *                     + dF/d\lambda(0) * d^2\lambda/d\tau^2(0)
+   *                   = 3rd-moment / variance
+   *                     + variance * d^2\lambda/d\tau^2(0)
+   * 
+   * d^2\lambda/d\tau^2 = d(1.0/[d\tau/d\lambda])/d\lambda * d\lambda/d\tau
+   *                    = - d^2\tau/d\lambda^2 * [d\lambda/d\tau]^3
+   * 
+   * \tau * d\tau/d\lambda = \lambda dF/d\lambda
+   * => [d\tau/d\lambda]^2 + \tau * d^2\tau/d\lambda^2 = dF/d\lambda + \lambda d^2F/d\lambda^2
+   * equate first derivatives on both sides at 0:
+   * => 3*d\tau/d\lambda(0) * d^2\tau/d\lambda^2(0) = 2*d^2F/d\lambda^2(0)
+   * => d^2\tau/d\lambda^2(0) = 2/3 * 3rd-moment / \sqrt(variance)
+   * => d^2\lambda/d\tau^2(0) = - 2/3 * 3rd-moment / \sqrt(variance) * [d\lambda/d\tau(0)]^3
+   *                          = - 2/3 * 3rd-moment / variance^2
+   * => d^2F/d\tau^2(0) = 3rd-moment / variance
+   *                      - 2/3 * 3rd-moment / variance
+   *                    = 1/3 * 3rd-moment / variance
+   * 
    */
+  coefficients_phi_prime_of_tau[0] = 0.0;
+  coefficients_phi_prime_of_tau[1] = sqrt(var);
+  coefficients_phi_prime_of_tau[2] = 0.5*skew/var/3.0;
   
-  coefficients_phi_of_tau[0] = 0.0;
-  coefficients_phi_of_tau[1] = 0.0;
-  coefficients_phi_of_tau_prime[0] = 0.0;
+  for(int i = 0; i < coefficients_phi_prime_of_tau.size()-1; i++){
+    coefficients_dphi_prime_of_dtau[i] = coefficients_phi_prime_of_tau[i+1]*double(i+1);
+  }
+  for(int i = 0; i < coefficients_phi_prime_of_tau.size()-1; i++){
+    coefficients_d2phi_prime_of_dtau2[i] = coefficients_dphi_prime_of_dtau[i+1]*double(i+1);
+  }
+    
+    
+  for(int i = 0; i < coefficients_phi_prime_of_tau.size(); i++){
+    cout << i << "   " << coefficients_phi_prime_of_tau[i] << '\n';
+  }
+    
   
   cout << "Done.\n";
   
@@ -733,26 +714,22 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
     }
     lambda = complex<double>(lambda_0, 0.0);
     tau = complex<double>(tau_0, 0.0);
-    exponent = exp(-lambda*delta + return_polnomial_value(tau, &coefficients_phi_of_tau));
+    exponent = exp(-0.5*pow(tau, 2));
     
     // sigma_r^2 \approx 1/phi''(lambda_0)
     double sigma_frac = 0.001;
     dr = sigma_frac/sqrt(interpolate_neville_aitken_derivative(lambda_0, &lambda_values, &delta_NL_values, constants::order_of_interpolation));
     dlambda = complex<double>(0.0, dr);
     int j = 0;
-    cout << lambda << "   ";
-    cout << tau << "   ";
-    cout << exponent << "   ";
-    cout << dr << "   ";
     do{
       lambda_next = lambda + 0.5*dlambda;
-      tau_next = Newtons_method_complex(tau, lambda_next,  &coefficients_lambda_of_tau, &coefficients_lambda_of_tau_prime);
-      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_of_tau_prime);
+      tau_next = get_tau_from_secant_method_complex_Bernardeau_notation_2D(lambda_next, tau, &coefficients_dphi_prime_of_dtau, &coefficients_d2phi_prime_of_dtau2);
+      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_prime_of_tau);
       dlambda = -dr*conj(phi_prime_next-delta)/abs(phi_prime_next-delta);
       lambda_next = lambda + dlambda;
-      tau_next = Newtons_method_complex(tau_next, lambda_next,  &coefficients_lambda_of_tau, &coefficients_lambda_of_tau_prime);
-      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_of_tau_prime);
-      exponent_next = exp(-lambda_next*delta + return_polnomial_value(tau_next, &coefficients_phi_of_tau));
+      tau_next = get_tau_from_secant_method_complex_Bernardeau_notation_2D(lambda_next, tau_next, &coefficients_dphi_prime_of_dtau, &coefficients_d2phi_prime_of_dtau2);
+      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_prime_of_tau);
+      exponent_next = exp(-lambda_next*(delta-phi_prime_next)-0.5*pow(tau_next, 2));
       
       step = 0.5*dlambda*(exponent_next+exponent);
       PDF_data[1][i] += step.imag();
@@ -920,14 +897,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
 
 void FlatInhomogeneousUniverseLCDM::compute_polynomial_coefficients_from_CGF(double e, double R, double f_NL, double var_NL_rescale, vector<double> lambda_values, vector<double> tau_values, vector<double> phi_values, vector<double> phi_prime_values, vector<double> *coeffs_phi_of_lambda, vector<double> *coeffs_phi_prime_of_lambda){
   
-  
-  
-  /*
-   * Beginning of old code
-   * 
-   * 
-   */
-  
   vector<double> delta_values_temp(0, 0.0);
   vector<double> F_values(0, 0.0);
   vector<double> F_prime_values(0, 0.0);
@@ -1049,7 +1018,7 @@ void FlatInhomogeneousUniverseLCDM::compute_polynomial_coefficients_from_CGF(dou
     (*coeffs_phi_of_lambda)[i] = (*coeffs_phi_prime_of_lambda)[i-1]/double(i);
   }
   
-  this->current_P_L = this->P_L(e);
+  /*this->current_P_L = this->P_L(e);
   double vL = this->variance_of_matter_within_R_NL_2D(R);
   double vL_2 = dsigma_R1_squared_dlogR = interpolate_neville_aitken_derivative(0.0, &y_values_reduced, &F_values_reduced, constants::order_of_interpolation);
   for(int i = 0; i < polynomial_order+1; i++){
@@ -1058,114 +1027,7 @@ void FlatInhomogeneousUniverseLCDM::compute_polynomial_coefficients_from_CGF(dou
     cout << (*coeffs_phi_prime_of_lambda)[i] << " , ";
     cout << (*coeffs_phi_of_lambda)[i] << "\n";
   }
-  cout << '\n';
-  
-  
-  /*
-   * Ending of old code
-   * 
-   * 
-   */
-  
-  /*
-  
-  int n_lambda = lambda_values.size();
-  
-  int tau_c = tau_values[0];
-  for(int i = 0; i < n_lambda-1; i++){
-    if(lambda_values[i] < lambda_values[i+1]){
-      tau_c = tau_values[i];
-    }
-  }
-  
-  n_lambda = y_values.size();
-  
-  int i_min = find_index(0.0, &tau_values_temp)-3;
-  int i_max = find_index(0.0, &tau_values_temp)+3;
-  while(y_values[i_min-1] < y_values[i_min] && i_min > 0) i_min--;
-  while(y_values[i_max+1] > y_values[i_max]  && i_max < n_lambda-1) i_max++;
-  
-  int n_reduced = i_max - i_min + 1;
-  vector<double> tau_values_reduced(n_reduced, 0.0);
-  vector<double> y_values_reduced(n_reduced, 0.0);
-  vector<double> F_values_reduced(n_reduced, 0.0);
-  
-  for(int i = 0; i < n_reduced; i++){
-    tau_values_reduced[i] = tau_values_temp[i+i_min];
-    y_values_reduced[i] = y_values[i+i_min];
-    F_values_reduced[i] = F_values[i+i_min];
-  }
-  
-  
-  //double tau_max = 0.9*tau_c;
-  //double tau_min = 0.9*tau_values[0];
-  double tau_max = tau_values_temp[i_max];
-  double tau_min = tau_values_temp[i_min];
-  int n_tau = 3*constants::generating_function_coeff_order + 1; // has to be odd number in order to include tau=0 exactly.
-  // ISSUE: this shouldn't be hardcoded!
-  
-  vector<double> tau_for_fit(n_tau,0.0);
-  vector<double> lambda_for_fit(n_tau,0.0);
-  vector<double> phi_prime_for_fit(n_tau,0.0);
-  
-  // ISSUE: this only works as long as C++ doesn't change its treatment of integer division.
-  double dt = -tau_min/double(n_tau/2);
-  for(int i = 0; i < n_tau/2; i++){
-    tau_for_fit[i] = tau_min+double(i)*dt;
-  }
-  tau_for_fit[n_tau/2] = 0.0;
-  dt = tau_max/double(n_tau/2);
-  for(int i = 0; i < n_tau/2; i++){
-    tau_for_fit[i+n_tau/2+1] = double(i+1)*dt;
-  }
-  
-  for(int i = 0; i < n_tau; i++){
-    lambda_for_fit[i] = interpolate_Newton(tau_for_fit[i], &tau_values_reduced, &y_values_reduced, constants::order_of_interpolation);
-    phi_prime_for_fit[i] = interpolate_Newton(tau_for_fit[i], &tau_values_reduced, &F_values_reduced, constants::order_of_interpolation);
-    cout << i << "   ";
-    cout << tau_for_fit[i] << "   ";
-    cout << lambda_for_fit[i] << "   ";
-    cout << phi_prime_for_fit[i] << "\n";
-  }
-  
-  // polynomial coefficients approximating lambda(tau)
-  vector<double> coeffs_lambda_of_tau = return_coefficients(&tau_for_fit, &lambda_for_fit, constants::generating_function_coeff_order);
-  int N_coeffs = coeffs_lambda_of_tau.size();
-  
-  // Bell matrices for translating coefficients interms of tau to coefficients in terms of lambda
-  vector<vector<double> > Bell_matrix(0, vector<double>(0, 0.0));
-  vector<vector<double> > inverse_Bell_matrix(0, vector<double>(0, 0.0));
-  return_Bell_matrix(&Bell_matrix, &inverse_Bell_matrix, &coeffs_lambda_of_tau);
-  
-  
-  vector<double> coeffs_phi_prime_of_tau = return_coefficients(&tau_for_fit, &phi_prime_for_fit, constants::order_of_interpolation);
-  (*coeffs_phi_of_lambda) = vector<double>(N_coeffs,0.0);
-  (*coeffs_phi_prime_of_lambda) = vector<double>(N_coeffs,0.0);
-  vector<double> fact = factoria(N_coeffs);
-  
-  for(int i = 0; i < N_coeffs; i++){
-    //cout << i << "! = ";
-    //cout << fact[i] << "\n";
-    for(int j = 0; j <= i; j++){
-      (*coeffs_phi_prime_of_lambda)[i] += inverse_Bell_matrix[i][j]*coeffs_phi_prime_of_tau[j]*fact[j];
-    }
-    (*coeffs_phi_prime_of_lambda)[i] /= fact[i];
-  }
-  
-  
-  for(int i = N_coeffs-1; i > 0; i--){
-    (*coeffs_phi_of_lambda)[i] = (*coeffs_phi_prime_of_lambda)[i-1]/double(i);
-  }
-  
-  
-  for(int i = 0; i < N_coeffs; i++){
-    cout << coeffs_lambda_of_tau[i] << " , ";
-    cout << coeffs_phi_prime_of_tau[i] << " , ";
-    cout << (*coeffs_phi_prime_of_lambda)[i] << " , ";
-    cout << (*coeffs_phi_of_lambda)[i] << "\n";
-  }
-  
-  */
+  cout << '\n';*/
   
 }
 
@@ -1185,7 +1047,7 @@ void FlatInhomogeneousUniverseLCDM::compute_polynomial_coefficients_from_CGF(dou
 void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficients(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values, vector<double> *coeffs_phi_of_lambda, vector<double> *coeffs_phi_prime_of_lambda){
   
   int n_time = w_values.size()-1;
-  double eta;
+  double e;
   double eta_0 = this->eta_at_a(1.0);
   double w;
   double dw;
@@ -1211,15 +1073,21 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficient
   vector<double> phi_values;
   vector<double> phi_prime_values;
   
+  double D_11;
+  double D_22;
+  double mu;
+  double one_plus_mu;
+  double vNL, vL, dlnvL_dlnR, S_3;
+  
   cout << "computing CGF grid & cutting out 1st branch\n";
   
   for(int t = 0; t < n_time_of_nonzero_kernel; t++){
     int i = indeces_of_nonzero_kernel[t];
     w = w_values_bin_center[i];
-    eta = eta_0-w;
+    e = eta_0-w;
     R = w*theta;
     
-    CGF_data = this->compute_phi_tilde_of_lambda_2D(eta, R, f_NL, var_NL_rescale);
+    CGF_data = this->compute_phi_tilde_of_lambda_2D(e, R, f_NL, var_NL_rescale);
     tau_values = CGF_data[0];
     lambda_values = CGF_data[2];
     phi_values = CGF_data[3];
@@ -1227,14 +1095,29 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficient
     for(int d = 0; d < tau_values.size(); d++){
       tau_values[d] /= sqrt(CGF_data[4][d]);
     }
-    this->compute_polynomial_coefficients_from_CGF(eta, R, f_NL, var_NL_rescale, lambda_values, tau_values, phi_values, phi_prime_values, &coefficients_phi_of_lambda[t], &coefficients_phi_prime_of_lambda[t]);
+    this->compute_polynomial_coefficients_from_CGF(e, R, f_NL, var_NL_rescale, lambda_values, tau_values, phi_values, phi_prime_values, &coefficients_phi_of_lambda[t], &coefficients_phi_prime_of_lambda[t]);
+    
+    
+    D_11 = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
+    D_22 = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_second_order, constants::order_of_interpolation);
+    mu = 1.0 - D_22/D_11/D_11;
+    one_plus_mu = (1.0+mu);
+    this->current_P_L = this->P_L(e);
+    this->current_P_NL = this->P_NL(e);
+    vNL = variance_of_matter_within_R_NL_2D(R)*var_NL_rescale;
+    vL = this->variance_of_matter_within_R_2D(R);
+    dlnvL_dlnR = this->dvariance_of_matter_within_R_dR_2D(R)/vL*R;
+    
+    S_3 = 3.0*one_plus_mu + 1.5*dlnvL_dlnR;
+    
     coefficients_phi_prime_of_lambda[t][0] = 0.0;
-    // ISSUE: you can do this because current non-linear P(k) has been computed in "compute_phi_tilde_of_lambda_2D".
-    // But this kind of flow seems very prone to error!
-    coefficients_phi_prime_of_lambda[t][1] = variance_of_matter_within_R_NL_2D(R)*var_NL_rescale;
+    coefficients_phi_prime_of_lambda[t][1] = vNL;
+    coefficients_phi_prime_of_lambda[t][2] = 0.5*S_3*vNL*vNL;
+    
     coefficients_phi_of_lambda[t][0] = 0.0;
     coefficients_phi_of_lambda[t][1] = 0.0;
     coefficients_phi_of_lambda[t][2] = 0.5*coefficients_phi_prime_of_lambda[t][1];
+    coefficients_phi_of_lambda[t][3] = coefficients_phi_prime_of_lambda[t][2]/3.0;
     
   }
   

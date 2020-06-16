@@ -408,7 +408,13 @@ double get_tau_final(double delta, double tau, vector<double> *G_coefficients, v
 }
 
 
-
+/*
+ * get_tau_coefficients
+ * 
+ * This function assumes that
+ * \tau^2(\lambda) = 2.0*(\lambda\phi'(\lambda) - \phi(\lambda))
+ * 
+ */
 vector<double> get_tau_coefficients(vector<double> *phi_coefficients){
   
   int n = phi_coefficients->size();
@@ -434,3 +440,48 @@ vector<double> get_tau_coefficients(vector<double> *phi_coefficients){
   
 }
 
+
+
+
+
+
+complex<double> get_tau_from_secant_method_complex_Bernardeau_notation_2D(complex<double> lambda, complex<double> tau_c, vector<double> *G_prime_coefficients, vector<double> *G_prime_prime_coefficients){ 
+
+  double re, im;
+
+  complex<double> tau_now = tau_c;
+  complex<double> tau_previous = tau_now - 0.1;
+  complex<double> tau_previous_previous;
+  complex<double> f;
+  complex<double> f_prime;
+  complex<double> Dtau;
+  
+  /*to shake the algorithm when it becomes stiff.*/
+  mt19937 gen(2);
+
+  while(abs(tau_now - tau_previous)  > constants::eps_Newton){
+
+    f = lambda*return_polnomial_value(tau_now, G_prime_coefficients)-tau_now;
+    f_prime = lambda*return_polnomial_value(tau_now, G_prime_prime_coefficients) - 1.0;
+
+    tau_previous_previous = tau_previous;
+    tau_previous = tau_now;
+ 
+    Dtau = f/f_prime;
+    if(abs(Dtau) > 1.0) Dtau /= abs(Dtau); 
+    if(abs(f_prime) != 0.0)
+      tau_now = tau_previous - Dtau;
+    else
+      tau_now += 0.1;
+    
+    // shaking the algorithm if it starts jumping between two points.
+    if(abs(tau_now - tau_previous_previous)  < constants::eps_Newton){
+      re = double(gen())/double(gen.max());
+      im = double(gen())/double(gen.max());
+      tau_now += complex<double>(re, im);
+    }
+  }
+
+  return tau_now;
+
+}

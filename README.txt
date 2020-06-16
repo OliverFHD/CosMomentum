@@ -3,11 +3,12 @@
 <-----> README version of Dec 15 2019
 
 <---> As of now, this code can compute
-- the probability distribution function (PDF) of the 3D matter density field,
-- the cumulant generating function (CGF) of the 3D matter density field,
-- individual cumulants of the 3D matter density field,
+- the probability distribution function (PDF) of the matter density field,
+- the cumulant generating function (CGF) of the matter density field,
+- individual cumulants of the matter density field,
 - all of this for Gaussian and 3 types of non-Gaussian initial conditions.
-- all of this for line-of-sight projections of the matter density field
+- all of this for both line-of-sight projections of the matter density field as well as the 3D density field
+- all of this for PDFs of lensing convergence
 - statistics of biased & stochastic tracers (e.g. galaxies)
 
 <---> Features that will be added in the near future are

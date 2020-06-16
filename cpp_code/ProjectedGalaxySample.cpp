@@ -97,18 +97,27 @@ void ProjectedGalaxySample::set_n_of_w_data(string n_of_z_input_file){
   double w_final = this->w_values[Nz-1];
   
   // now calculating the lensing kernel (if ProjectedGalaxySample is used as source galaxy sample)
-  for(int i = 0; i < Nz; i++){
-    for(int j = i; j < Nz-1; j++){
+  for(int i = 0; i < Nz-1; i++){
+    w = 0.5*(this->w_values[i]+this->w_values[i+1]);
+    w_1 = this->w_values[i+1];
+    dw = this->w_values[i+1] - w;
+    a_1 = this->pointer_to_universe()->a_at_eta(eta_0 - w_1);
+    this->lensing_kernel_values[i] += dw*0.5*(w*(w_1-w)/a_1/w_1);
+    for(int j = i+1; j < Nz-1; j++){
       w_1 = this->w_values[j];
       w_2 = this->w_values[j+1];
       dw = w_2 - w_1;
       a_1 = this->pointer_to_universe()->a_at_eta(eta_0 - w_1);
       a_2 = this->pointer_to_universe()->a_at_eta(eta_0 - w_2);
       //w*(w_final-w)/w_final/a
-      this->lensing_kernel_values[i] += dw*0.5*(w_1*(w_final-w_1)/a_1);
-      this->lensing_kernel_values[i] += dw*0.5*(w_2*(w_final-w_2)/a_2);
+      this->lensing_kernel_values[i] += dw*0.5*(w*(w_1-w)/a_1/w_1);
+      this->lensing_kernel_values[i] += dw*0.5*(w*(w_2-w)/a_2/w_2);
     }
-    this->lensing_kernel_values[i] *= 1.5*this->pointer_to_universe()->return_Omega_m()/w_final;
+    this->lensing_kernel_values[i] *= 1.5*this->pointer_to_universe()->return_Omega_m();
+  
+    cout << i << "   ";
+    cout << this->w_values[i] << "   ";
+    cout << this->lensing_kernel_values[i] << "\n";
   }
 }
 
@@ -175,6 +184,7 @@ vector<double> ProjectedGalaxySample::return_CiC_PDF_in_angular_tophat(double th
   return this->return_CIC_from_matter_density_PDF(N_bar, PDF_data);
   
 }
+
 /*
  * ProjectedGalaxySample::return_CiC_saddle_point_PDF_in_angular_tophat
  * 
@@ -192,6 +202,26 @@ vector<double> ProjectedGalaxySample::return_CiC_saddle_point_PDF_in_angular_top
   return this->return_CIC_from_matter_density_PDF(N_bar, PDF_data);
   
 }
+
+
+
+
+/*
+ * ProjectedGalaxySample::return_kappa_PDF_in_angular_tophat
+ * 
+ * Returns an array whose 1st column contains values of convergence kappa and whose
+ * 2nd column contains the PDF p(kappa).
+ * 
+ */
+
+vector<vector<double> > ProjectedGalaxySample::return_kappa_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale){
+  
+  vector<vector<double> > PDF_data = this->pointer_to_universe()->compute_LOS_projected_PDF(this->w_values, this->lensing_kernel_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);
+  
+  return PDF_data;
+  
+}
+
 
 /*
  * ProjectedGalaxySample::return_LOS_data

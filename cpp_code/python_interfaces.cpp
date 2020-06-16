@@ -366,7 +366,7 @@ extern "C" void return_projected_PDF_incl_CMB_kappa(double *delta_grid, double *
 
 
 
-extern "C" void return_convergence_PDF(double* kappa_values, double* PDF, double z_source, double theta_in_arcmin, double f_NL, double var_NL_rescale, int index_of_universe){
+extern "C" void return_convergence_PDF_from_single_z(double* kappa_values, double* PDF, double z_source, double theta_in_arcmin, double f_NL, double var_NL_rescale, int index_of_universe){
   
   
   double eta_0 = global_universes.universes[index_of_universe]->eta_at_a(1.0);
@@ -398,6 +398,17 @@ extern "C" void return_convergence_PDF(double* kappa_values, double* PDF, double
   }
   
   vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_LOS_projected_PDF(w_boundaries, lensing_kernel_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);
+  
+  for(int d = 0; d < PDF_data[0].size(); d++){
+    kappa_values[d] = PDF_data[0][d];
+    PDF[d] = PDF_data[1][d];
+  }
+  
+}
+
+extern "C" void return_convergence_PDF_from_source_sample(double* kappa_values, double* PDF, double theta_in_arcmin, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
+  
+  vector<vector<double> > PDF_data = global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_kappa_PDF_in_angular_tophat(theta_in_arcmin, f_NL, var_NL_rescale);
   
   for(int d = 0; d < PDF_data[0].size(); d++){
     kappa_values[d] = PDF_data[0][d];

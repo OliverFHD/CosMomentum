@@ -601,7 +601,21 @@ double dskewness_integral_2D_1_derivs_gsl(double lnk, void *params){
  * 
  * ************************************/
 
-
+/*
+double norm_derivs_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
+  
+  double k = exp(lnk);
+  double index = 3.0;
+  double WR = w_R(k, integration_params->top_hat_radius);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  
+  return one_over_2_pi_sq*pow(k,index)*P*WR*WR;
+  
+}
+*/
 
 
 double halofit_sig_sq_gsl(double lnk, void *params){

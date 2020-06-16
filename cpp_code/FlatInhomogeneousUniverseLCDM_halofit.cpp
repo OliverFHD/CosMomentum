@@ -105,7 +105,7 @@ vector<double> FlatInhomogeneousUniverseLCDM::c_and_n_NL(double R, double e){
  * 
 *******************************************************************************************************************************************************/
 
-double FlatInhomogeneousUniverseLCDM::k_NL(double k_min, double k_max, double e){
+double FlatInhomogeneousUniverseLCDM::k_NL(double k_min, double k_max, double s_min, double s_max, double e){
   
   double k = (k_max + k_min)/2.0;
   double s = this->sig_sq(1.0/k, e);  
@@ -114,17 +114,18 @@ double FlatInhomogeneousUniverseLCDM::k_NL(double k_min, double k_max, double e)
   if(abs(s-1.0) <= sig_sq_precision){
     return k;
   }
-  else if(s-1.0 > sig_sq_precision){
-    return this->k_NL(k_min, k, e);
+  else if(s > 1.0 && s_min < 1.0){
+    return this->k_NL(k_min, k, s_min, s, e);
   }
-  else{
-    s = this->sig_sq(1.0/k_max, e);
-    if(s-1.0 > sig_sq_precision)
-      return this->k_NL(k, k_max, e);
+  else if(s < 1.0 && s_max > 1.0){
+      return this->k_NL(k, k_max, s, s_max, e);
   }
 
-  
-  return this->k_NL(0.9*k_max, 2*k_max, e);
+  double k_min_new = 0.9*k_min;
+  double s_min_new = this->sig_sq(1.0/k_min_new, e);
+  double k_max_new = 1.1*k_max;
+  double s_max_new = this->sig_sq(1.0/k_max_new, e);
+  return this->k_NL(k_min_new, k_max_new, s_min_new, s_max_new, e);
   
 }
 
@@ -283,7 +284,16 @@ vector<double> FlatInhomogeneousUniverseLCDM::P_NL(double e){
   double D = return_D_of_eta(e);
 
   double k;
-  double k_s = this->k_NL(0., 3., e);
+  double k_min = this->wave_numbers[0];
+  double k_max = this->wave_numbers[this->wave_numbers.size()-1];
+  double s_min = this->sig_sq(1.0/k_min, e);
+  double s_max = this->sig_sq(1.0/k_max, e);
+  
+  if(s_max < 1.0){
+    return this->P_L(e);
+  }
+  
+  double k_s = this->k_NL(k_min, k_max, s_min, s_max, e);
   double hubble;
   double q;
   double h;
@@ -306,8 +316,6 @@ vector<double> FlatInhomogeneousUniverseLCDM::P_NL(double e){
   this->f_1 = interpol*f_1b(Om_m) + (1.0-interpol)*f_1a(Om_m);
   this->f_2 = interpol*f_2b(Om_m) + (1.0-interpol)*f_2a(Om_m);
   this->f_3 = interpol*f_3b(Om_m) + (1.0-interpol)*f_3a(Om_m);
-  
-  
   
   this->current_k_non_linear = k_s;
   this->current_n_eff = c_and_n_eff[0]-3.0;

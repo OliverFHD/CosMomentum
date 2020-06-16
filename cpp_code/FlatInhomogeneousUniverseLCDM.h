@@ -174,7 +174,7 @@ class FlatInhomogeneousUniverseLCDM : public FlatHomogeneousUniverseLCDM {
   double sig_sq(double R, double e);
   vector<double> c_and_n_NL(double R, double e);
 
-  double k_NL(double k_min, double k_max, double e);
+  double k_NL(double k_min, double k_max, double s_min, double s_max, double e);
 
   double Delta_Q_sq(double k, double e);
   double Delta_H_sq(double k);

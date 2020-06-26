@@ -27,7 +27,7 @@ For comments / suggestions to improve these guidelines, please contact Oliver Fr
  *
  */
 
-- if a function is more that ~ 20 lines long, than there should be comment lines in the function body that divide it into meaningful parts of the computation flow
+- if a function is more than ~ 20 lines long, then there should be comment lines in the function body that divide it into meaningful parts of the computation flow
 
 
 ****** Constants ******

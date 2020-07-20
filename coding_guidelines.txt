@@ -2,6 +2,11 @@ All contributors to CosMomentum are asked to follow the following coding guideli
 For comments / suggestions to improve these guidelines, please contact Oliver Friedrich (of259@ast.cam.ac.uk).
 
 
+****** General ******
+
+- in order to contribute directly to the code/documentation of CosMomentum, please fork this repository (https://github.com/OliverFHD/CosMomentum) and submit your contributions in the form of a pull request
+
+
 ****** Units ******
 
 - The c++ of the CosMomentum code should use units where c/H_0 = 1
@@ -11,7 +16,6 @@ For comments / suggestions to improve these guidelines, please contact Oliver Fr
 -- analytic fitting functions taken from the literature (such as halofit, Eisenstein&Hu transfer function etc), which usually use units of Mpc/h
 
 - The python part of the CosMomentum code should use units where Mpc/h = 1
-
 
 
 ****** Code documentation ******
@@ -27,7 +31,7 @@ For comments / suggestions to improve these guidelines, please contact Oliver Fr
  *
  */
 
-- if a function is more that ~ 20 lines long, than there should be comment lines in the function body that divide it into meaningful parts of the computation flow
+- if a function is more than ~ 20 lines long, then there should be comment lines in the function body that divide it into meaningful parts of the computation flow
 
 
 ****** Constants ******

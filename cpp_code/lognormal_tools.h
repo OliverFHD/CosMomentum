@@ -109,6 +109,13 @@ extern "C" double get_delta0(double twoPt, double threePt){
 }
 
 
+double get_skew_from_delta_0(double d0, double twoPt){
+  
+  return 2.0*pow(twoPt, 2)/d0 + pow(twoPt/d0, 3);
+  
+}
+
+
 double expectation_of_kappa_given_delta(double d, double d0, double k0, double variance_d, double covariance){
   
   double COV = log(1.0 + covariance/d0/k0);

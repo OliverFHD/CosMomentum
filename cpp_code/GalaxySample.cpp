@@ -174,6 +174,7 @@ vector<double> GalaxySample::return_CIC_from_matter_density_PDF(double N_bar, ve
     variance += integrand*d_delta;
   }
   
+  // ISSUE: maybe make variance a parameter of this function instead
   int N_max = this->return_N_max(N_bar, variance);
   
   

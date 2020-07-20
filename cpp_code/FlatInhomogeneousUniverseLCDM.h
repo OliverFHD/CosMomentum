@@ -65,8 +65,10 @@ class FlatInhomogeneousUniverseLCDM : public FlatHomogeneousUniverseLCDM {
   vector<vector<double> > compute_phi_of_lambda_3D(double z, double R, double f_NL, double var_NL_rescale);
   vector<vector<double> > compute_phi_tilde_of_lambda_2D(double z, double R, double f_NL, double var_NL_rescale);
   vector<vector<double> > return_LOS_integrated_phi_of_lambda(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values);
+  vector<vector<double> > return_LOS_integrated_phi_of_lambda_lensing_version(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values);
   void return_LOS_integrated_phi_of_lambda_incl_CMB_kappa(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values, vector<vector<double> > *phi_data_delta, vector<vector<double> > *phi_data_kappa, vector<vector<double> > *phi_grid, vector<vector<double> > *dphi_dldelta_grid, vector<vector<double> > *dphi_dlkappa_grid, vector<vector<double> > *d2phi_dldelta2_grid, vector<vector<double> > *d2phi_dldelta_dlkappa_grid, vector<vector<double> > *d2phi_dlkappa2_grid, vector<vector<int> > *grid_mask);
-
+  void return_LOS_integrated_phi_of_lambda_incl_kappa(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values, vector<double> lensing_kernel_values, vector<vector<double> > *phi_data_delta, vector<vector<double> > *phi_data_kappa, vector<vector<double> > *phi_grid, vector<vector<double> > *dphi_dldelta_grid, vector<vector<double> > *dphi_dlkappa_grid, vector<vector<double> > *d2phi_dldelta2_grid, vector<vector<double> > *d2phi_dldelta_dlkappa_grid, vector<vector<double> > *d2phi_dlkappa2_grid, vector<vector<int> > *grid_mask);
+  
   /*
    * Computing PDFs
    * 
@@ -74,7 +76,8 @@ class FlatInhomogeneousUniverseLCDM : public FlatHomogeneousUniverseLCDM {
   vector<vector<double> > compute_PDF_3D(double z, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale);
   vector<vector<double> > compute_LOS_projected_PDF(vector<double> w_values, vector<double> kernel_values, double theta, double f_NL, double var_NL_rescale);
   vector<vector<double> > compute_LOS_projected_PDF_saddle_point(vector<double> w_values, vector<double> kernel_values, double theta, double f_NL, double var_NL_rescale);
-  void compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(vector<double> w_values, vector<double> kernel_values, double theta, double f_NL, double var_NL_rescale, vector<vector<double> > *delta_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid);
+  void compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(double theta, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, vector<double> w_values, vector<double> kernel_values, vector<vector<double> > *delta_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid);
+  void compute_LOS_projected_PDF_incl_kappa_saddle_point(double theta, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, vector<double> w_values, vector<double> kernel_values, vector<double> lensing_kernel_values, vector<vector<double> > *delta_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid);
   
   /*
    * Computing moments and cumulants
@@ -83,13 +86,29 @@ class FlatInhomogeneousUniverseLCDM : public FlatHomogeneousUniverseLCDM {
    * 
    */
   void return_2nd_moment_and_derivative(double R, double *variance, double *dvariance_dR);
+  //
   void return_2nd_moment_and_derivative_2D(double R, double *variance, double *dvariance_dR);
+  //
   double return_3D_skewness(double z, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale);
+  //
   double return_LOS_integrated_variance(double theta, vector<double> w_values, vector<double> kernel_values, double var_NL_rescale);
+  //
   double return_LOS_integrated_skewness(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values);
+  //
   void compute_polynomial_coefficients_from_CGF(double eta, double R, double f_NL, double var_NL_rescale, vector<double> lambda_values, vector<double> tau_values, vector<double> phi_values, vector<double> phi_prime_values, vector<double> *coeffs_phi_of_lambda, vector<double> *coeffs_phi_prime_of_lambda);
+  //
   void return_LOS_integrated_polynomial_coefficients(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values, vector<double> *coeffs_phi_of_lambda, vector<double> *coeffs_phi_prime_of_lambda);
+  //
   void return_LOS_integrated_polynomial_coefficients_incl_CMB_kappa(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values, vector<vector<double> > *coeffs_phi, vector<vector<double> > *coeffs_dphi_dlambda_delta, vector<vector<double> > *coeffs_dphi_dlambda_kappa);
+  //
+  vector<double> return_LOS_integrated_C_ells(int l_max, vector<double> w_values, vector<double> kernel_values);
+  //
+  vector<vector<vector<double> > > return_LOS_integrated_C_ells(int l_max, vector<double> w_values, vector<vector<double> > kernel_values);
+  //
+  vector<vector<vector<double> > > return_LOS_integrated_3rd_moments(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<vector<double> > kernel_values);
+  //
+  vector<vector<double> > return_LOS_integrated_2nd_moments(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<vector<double> > kernel_values);
+
   
   int return_N_of_lambda(){return this->delta_values_for_spherical_collapse.size();};
   int return_N_of_lambda_2D(){return this->delta_values_for_cylindrical_collapse.size();};

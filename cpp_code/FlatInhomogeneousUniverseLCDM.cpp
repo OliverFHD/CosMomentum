@@ -28,7 +28,8 @@ FlatInhomogeneousUniverseLCDM::FlatInhomogeneousUniverseLCDM(cosmological_model 
   
   this->set_initial_conditions_for_growth();
   this->initialize_linear_growth_factor_of_delta();
-  this->print_growth_history("linear_growth_history.dat");
+  this->print_growth_history("linear_growth_history_2.dat");
+  this->print_background_cosmology("expansion_history_2.dat");
   this->initialize_up_to_second_order_growth_factor_of_delta(2.0/7.0*this->D_initial*this->D_initial, 4.0/7.0*this->D_initial*this->D_prime_initial);
   
   // ISSUE: terrible that this is hard coded!!! At least put it into constants.h
@@ -437,12 +438,15 @@ void FlatInhomogeneousUniverseLCDM::set_spherical_collapse_evolution_of_delta(){
 void FlatInhomogeneousUniverseLCDM::set_cylindrical_collapse_evolution_of_delta(){
 
   //double delta_min = -10.0;
-  double delta_min = -5.0;
-  double delta_max = 1.45;
+  //double delta_min = -3.0;
+  double delta_min = -1.5;
+  double delta_max = 1.455;
   //double delta_max = 1.4;
-  double ddelta = 0.003;
+  double ddelta = 0.002;
+  //double ddelta = 0.005;
   //double ddelta = 0.02;
   double delta = delta_min-ddelta;
+  double max_contrast = 100.0;
   
   /* ISSUE: THIS HARDCODING IS REALLY BAD!! */
   /* CHANGE REQUIRED                        */
@@ -480,9 +484,10 @@ void FlatInhomogeneousUniverseLCDM::set_cylindrical_collapse_evolution_of_delta(
     
     double e_start = e_i;
     double y[6] = { delta*D_i, delta*D_prime_i, D_i, D_prime_i, 0.0, 0.0};
+    int status;
     for (int t = 0; t < number_of_time_steps; t++){
       double e_f = this->eta[t];
-      int status = gsl_odeiv2_driver_apply(driver, &e_start, e_f, y);
+      status = gsl_odeiv2_driver_apply(driver, &e_start, e_f, y);
       if (status != GSL_SUCCESS){
         printf ("error, return value=%d\n", status);
         exit(1);

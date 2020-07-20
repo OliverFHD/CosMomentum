@@ -18,6 +18,17 @@ void ProjectedGalaxySample::set_parameters_projected(double density_in_arcmin_sq
 }
 
 
+
+void ProjectedGalaxySample::set_projected_bias_model_from_br_parametrisation(double b_tilde, double r, double theta_in_arcmin, double f_NL, double var_NL_rescale){
+  double A = 2.0*constants::pi*(1.0-cos(theta_in_arcmin*constants::arcmin));
+  double N_bar = A*this->density;
+  double variance = this->compute_variance_in_angular_tophat(theta_in_arcmin, var_NL_rescale);
+  double skewness = this->compute_skewness_in_angular_tophat(theta_in_arcmin, f_NL, var_NL_rescale);
+  
+  this->set_bias_model_from_br_parametrisation(b_tilde, r, N_bar, variance, skewness);
+}
+
+
 /*
  * ProjectedGalaxySample::set_n_of_w_data
  * 
@@ -131,6 +142,17 @@ double ProjectedGalaxySample::compute_variance_in_angular_tophat(double theta_in
   return this->pointer_to_universe()->return_LOS_integrated_variance(theta_in_arcmin*constants::arcmin, this->w_values, this->n_of_w_values, var_NL_rescale);
 }
 
+/*
+ * ProjectedGalaxySample::compute_skewness_in_angular_tophat
+ * 
+ * Compute 3rd central moment of the projected density contrast smoothed with a angular top-hat filter of radius theta. The variance allows for a re-scaling wrt the fiducial power spectrum (for var_NL_rescale=1.0 the code uses the Takahashi et al. (2012) version of halofit (see also Smith et al. 2003)).
+ * 
+ */
+
+double ProjectedGalaxySample::compute_skewness_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale){
+  return this->pointer_to_universe()->return_LOS_integrated_skewness(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, this->w_values, this->n_of_w_values);
+}
+
 
 /*
  * ProjectedGalaxySample::return_N_max_in_angular_tophat
@@ -202,6 +224,216 @@ vector<double> ProjectedGalaxySample::return_CiC_saddle_point_PDF_in_angular_top
 }
 
 
+/*
+ * ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappaCMB_in_angular_tophat
+ * 
+ * Return joint PDF of galaxy number counts and CMB convergence, smoothed over angular top-hat of radius theta_in_arcmin.
+ * NOTE: this used a saddle point approximation for the joint PDF p(delta, kappa) instead of the full inverse Laplace transform.
+ * 
+ */
+
+void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappaCMB_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, vector<vector<double> > *Ng_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid){
+  
+  
+  vector<vector<double> > d_grid;
+  vector<vector<double> > k_grid;
+  vector<vector<double> > p_grid;
+  this->pointer_to_universe()->compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, this->w_values, this->n_of_w_values, &d_grid, &k_grid, &p_grid);
+
+  int N_delta = d_grid.size(); 
+  int N_kappa = d_grid[0].size(); // in principle N_kappa should be == N_delta. But let's be ignorant on what the other class is doing.
+  
+  double A = 2.0*constants::pi*(1.0-cos(theta_in_arcmin*constants::arcmin));
+  double N_bar = A*this->density;
+  double variance = this->compute_variance_in_angular_tophat(theta_in_arcmin, var_NL_rescale);
+  double norm;
+  double d_delta, integrand;
+  int N_max = this->return_N_max(N_bar, variance);
+  
+  vector<vector<double> > P_of_N_given_delta(N_max+1, vector<double>(N_delta, 0.0));
+  
+  // ISSUE: you use here the knowledge, that all columns of d_grid are identical.
+  for(int d = 0; d < N_delta; d++){
+    norm = 0.0;
+    for(int n = 0; n < N_max+1; n++){
+      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta(n, N_bar, d_grid[d][0], variance);
+      norm += P_of_N_given_delta[n][d];
+    }
+    for(int n = 0; n < N_max+1; n++){
+      P_of_N_given_delta[n][d] /= norm;
+    }
+  }
+  
+  (*Ng_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
+  (*kappa_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
+  (*PDF_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
+  
+  for(int k = 0; k < N_kappa; k++){
+    for(int n = 0; n < N_max+1; n++){
+      (*Ng_grid)[n][k] = double(n);
+      (*kappa_grid)[n][k] = k_grid[0][k];
+      for(int d = 0; d < N_delta-1; d++){
+        d_delta = d_grid[d+1][0]-d_grid[d][0];
+        integrand = 0.5*(P_of_N_given_delta[n][d]*p_grid[d][k] + P_of_N_given_delta[n][d+1]*p_grid[d+1][k]);
+        (*PDF_grid)[n][k] += d_delta*integrand;
+      }
+    }
+  }
+    
+}
+
+void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappaCMB_noisy_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, double kappa_CMB_noise_variance, vector<vector<double> > *Ng_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid){
+  
+  
+  vector<vector<double> > d_grid;
+  vector<vector<double> > k_grid;
+  vector<vector<double> > p_grid;
+  this->pointer_to_universe()->compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, this->w_values, this->n_of_w_values, &d_grid, &k_grid, &p_grid);
+
+  int N_delta = d_grid.size(); 
+  int N_kappa = d_grid[0].size(); // in principle N_kappa should be == N_delta. But let's be ignorant on what the other class is doing.
+  
+  double A = 2.0*constants::pi*(1.0-cos(theta_in_arcmin*constants::arcmin));
+  double N_bar = A*this->density;
+  double variance = this->compute_variance_in_angular_tophat(theta_in_arcmin, var_NL_rescale);
+  double norm;
+  double d_delta, d_kappa, integrand;
+  int N_max = this->return_N_max(N_bar, variance);
+  
+  vector<vector<double> > P_of_N_given_delta(N_max+1, vector<double>(N_delta, 0.0));
+  
+  // ISSUE: you use here the knowledge, that all columns of d_grid are identical.
+  for(int d = 0; d < N_delta; d++){
+    norm = 0.0;
+    for(int n = 0; n < N_max+1; n++){
+      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta(n, N_bar, d_grid[d][0], variance);
+      norm += P_of_N_given_delta[n][d];
+    }
+    for(int n = 0; n < N_max+1; n++){
+      P_of_N_given_delta[n][d] /= norm;
+    }
+  }
+  
+  (*Ng_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
+  (*kappa_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
+  vector<vector<double> > PDF_grid_no_noise(N_max+1, vector<double>(N_kappa, 0.0));
+  (*PDF_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
+  
+  for(int k = 0; k < N_kappa; k++){
+    for(int n = 0; n < N_max+1; n++){
+      (*Ng_grid)[n][k] = double(n);
+      (*kappa_grid)[n][k] = k_grid[0][k];
+      for(int d = 0; d < N_delta-1; d++){
+        d_delta = d_grid[d+1][0]-d_grid[d][0];
+        integrand = 0.5*(P_of_N_given_delta[n][d]*p_grid[d][k] + P_of_N_given_delta[n][d+1]*p_grid[d+1][k]);
+        PDF_grid_no_noise[n][k] += d_delta*integrand;
+      }
+    }
+  }
+  
+  double kappa, kappa_tilde;
+  double integrand_normalisation = 1.0/sqrt(2.0*constants::pi*kappa_CMB_noise_variance);
+  for(int k = 0; k < N_kappa; k++){
+    kappa = k_grid[0][k];
+    for(int n = 0; n < N_max+1; n++){
+      for(int kk = 0; kk < N_kappa-1; kk++){
+        d_kappa = k_grid[0][kk+1]-k_grid[0][kk];
+        kappa_tilde = k_grid[0][kk];
+        integrand = 0.5*PDF_grid_no_noise[n][kk]*exp(-0.5*pow(kappa-kappa_tilde, 2)/kappa_CMB_noise_variance);
+        kappa_tilde = k_grid[0][kk+1];
+        integrand += 0.5*PDF_grid_no_noise[n][kk+1]*exp(-0.5*pow(kappa-kappa_tilde, 2)/kappa_CMB_noise_variance);
+        integrand *= integrand_normalisation;
+        (*PDF_grid)[n][k] += d_kappa*integrand;
+      }
+    }
+  }
+    
+}
+
+void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappa_noisy_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, double kappa_noise_variance, vector<double> w_values_lensing_kernel, vector<double> lensing_kernel_values, vector<vector<double> > *Ng_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid){
+  
+  
+  vector<vector<double> > d_grid;
+  vector<vector<double> > k_grid;
+  vector<vector<double> > p_grid;
+  
+  vector<vector<double> > rebinned_data = return_joint_binning(this->w_values, this->n_of_w_values, w_values_lensing_kernel, lensing_kernel_values);
+  
+  for(int t = 0; t < rebinned_data[0].size(); t++){
+    cout << t << "   ";
+    cout << rebinned_data[0][t] << "   ";
+    cout << rebinned_data[1][t] << "   ";
+    cout << rebinned_data[2][t] << "\n";
+  }
+  
+  this->pointer_to_universe()->compute_LOS_projected_PDF_incl_kappa_saddle_point(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, rebinned_data[0], rebinned_data[1], rebinned_data[2], &d_grid, &k_grid, &p_grid);
+
+  int N_delta = d_grid.size(); 
+  int N_kappa = d_grid[0].size(); // in principle N_kappa should be == N_delta. But let's be ignorant on what the other class is doing.
+  
+  double A = 2.0*constants::pi*(1.0-cos(theta_in_arcmin*constants::arcmin));
+  double N_bar = A*this->density;
+  double variance = this->compute_variance_in_angular_tophat(theta_in_arcmin, var_NL_rescale);
+  double norm;
+  double d_delta, d_kappa, integrand;
+  int N_max = this->return_N_max(N_bar, variance);
+  
+  vector<vector<double> > P_of_N_given_delta(N_max+1, vector<double>(N_delta, 0.0));
+  
+  // ISSUE: you use here the knowledge, that all columns of d_grid are identical.
+  for(int d = 0; d < N_delta; d++){
+    norm = 0.0;
+    for(int n = 0; n < N_max+1; n++){
+      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta(n, N_bar, d_grid[d][0], variance);
+      norm += P_of_N_given_delta[n][d];
+    }
+    for(int n = 0; n < N_max+1; n++){
+      P_of_N_given_delta[n][d] /= norm;
+    }
+  }
+  
+  (*Ng_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
+  (*kappa_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
+  vector<vector<double> > PDF_grid_no_noise(N_max+1, vector<double>(N_kappa, 0.0));
+  (*PDF_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
+  
+  for(int k = 0; k < N_kappa; k++){
+    for(int n = 0; n < N_max+1; n++){
+      (*Ng_grid)[n][k] = double(n);
+      (*kappa_grid)[n][k] = k_grid[0][k];
+      for(int d = 0; d < N_delta-1; d++){
+        d_delta = d_grid[d+1][0]-d_grid[d][0];
+        integrand = 0.5*(P_of_N_given_delta[n][d]*p_grid[d][k] + P_of_N_given_delta[n][d+1]*p_grid[d+1][k]);
+        PDF_grid_no_noise[n][k] += d_delta*integrand;
+      }
+    }
+  }
+  
+  if(kappa_noise_variance > 0.0){
+    double kappa, kappa_tilde;
+    double integrand_normalisation = 1.0/sqrt(2.0*constants::pi*kappa_noise_variance);
+    for(int k = 0; k < N_kappa; k++){
+      kappa = k_grid[0][k];
+      for(int n = 0; n < N_max+1; n++){
+        for(int kk = 0; kk < N_kappa-1; kk++){
+          d_kappa = k_grid[0][kk+1]-k_grid[0][kk];
+          kappa_tilde = k_grid[0][kk];
+          integrand = 0.5*PDF_grid_no_noise[n][kk]*exp(-0.5*pow(kappa-kappa_tilde, 2)/kappa_noise_variance);
+          kappa_tilde = k_grid[0][kk+1];
+          integrand += 0.5*PDF_grid_no_noise[n][kk+1]*exp(-0.5*pow(kappa-kappa_tilde, 2)/kappa_noise_variance);
+          integrand *= integrand_normalisation;
+          (*PDF_grid)[n][k] += d_kappa*integrand;
+        }
+      }
+    }
+  }
+  else{
+    (*PDF_grid) = PDF_grid_no_noise;
+  }
+    
+}
+
+
 
 
 /*
@@ -232,8 +464,5 @@ void ProjectedGalaxySample::return_LOS_data(vector<double> *w_vals, vector<doubl
   (*n_of_w_vals) = this->n_of_w_values;
   (*lensing_kernel_vals) = this->lensing_kernel_values;
 }
-
-
-
 
 

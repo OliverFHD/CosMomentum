@@ -212,7 +212,7 @@ void FlatInhomogeneousUniverseLCDM::print_growth_history(string file_name){
   double Om_m = this->return_Omega_m();
   double Om_l = this->return_Omega_L();
   double Om_r = this->return_Omega_r();
-  double scale, e;
+  double scale, e, t_val;
   fstream growth_stream;
   
   remove(file_name.c_str());
@@ -223,11 +223,13 @@ void FlatInhomogeneousUniverseLCDM::print_growth_history(string file_name){
   growth_stream << setprecision(10) << scientific;
   growth_stream << "#Cosmological Parameters: Om_m = " << Om_m << ", Om_l = " << Om_l << ", Om_r = " << Om_r << '\n';
   growth_stream << "#a_max = " << this->a_final << '\n';
-  growth_stream << "#eta(t)" << setw(20) << "w(eta)" << setw(20) << "z(eta)" << setw(20) << "a(eta)" << setw(20) << "D(eta)" << setw(20) << "D_prime(eta)\n";
+  growth_stream << "#eta(t)" << setw(20) << "t(eta)" << setw(20) << "w(eta)" << setw(20) << "z(eta)" << setw(20) << "a(eta)" << setw(20) << "D(eta)" << setw(20) << "D_prime(eta)\n";
   for(int i = 0; i < this->return_number_of_time_steps(); i++){
+    t_val = this->t[i];
     e = this->eta[i];
     scale = this->a[i];
     growth_stream << setw(20) << e;
+    growth_stream << setw(20) << t_val;
     growth_stream << setw(20) << this->eta_at_a(1.0)-e;
     growth_stream << setw(20) << 1.0/scale - 1.0;
     growth_stream << setw(20) << scale;
@@ -349,6 +351,110 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi
   
   cout << "delta_min = " << projected_phi_data[2][0] << '\n';
   cout << "delta_max = " << projected_phi_data[2][n_lambda_1st_branch-1] << '\n';
+  
+  return projected_phi_data;
+  
+}
+
+
+
+
+/*******************************************************************************************************************************************************
+ * return_LOS_integrated_phi_of_lambda_lensing_version
+ * Description:
+ * - modification of return_LOS_integrated_phi_of_lambda, that deals with the problem of very
+ *   small values of the lensing kernel (at very irrelevant redshifts)
+ * 
+*******************************************************************************************************************************************************/
+
+
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_lensing_version(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values){
+  
+  int n_lambda = this->delta_values_for_cylindrical_collapse.size();
+  int n_time = w_values.size() - 1;
+  double eta;
+  double eta_0 = this->eta_at_a(1.0);
+  double w;
+  double dw;
+  double R;
+  
+  vector<double> w_values_bin_center(n_time, 0.0);
+  for(int i = 0; i < n_time; i++){
+    w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
+  }
+  vector<int> indeces_of_nonzero_kernel(0,0);
+  int index_of_max_kernel = 0;
+  double max_kernel = kernel_values[0];
+  for(int i = 0; i < n_time; i++){
+    if(kernel_values[i] != 0.0){
+      indeces_of_nonzero_kernel.push_back(i);
+    }
+    if(kernel_values[i] > max_kernel){
+      max_kernel = kernel_values[i];
+      index_of_max_kernel = i;
+    }
+  }
+  
+  int n_time_of_nonzero_kernel = indeces_of_nonzero_kernel.size();
+  vector<vector<double> > y_values(n_time_of_nonzero_kernel, vector<double>(n_lambda, 0.0));
+  vector<vector<double> > phi_values(n_time_of_nonzero_kernel, vector<double>(n_lambda, 0.0));
+  vector<vector<double> > phi_prime_values(n_time_of_nonzero_kernel, vector<double>(n_lambda, 0.0));
+  vector<vector<double> > phi_prime_prime_values(n_time_of_nonzero_kernel, vector<double>(n_lambda, 0.0));
+  vector<vector<double> > dummy_data;
+  
+  vector<double>::iterator y_max_iterator;
+  int lambda_index_y_max;
+  
+  cout << "computing CGF grid & cutting out 1st branch\n";
+  
+  for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+    int i = indeces_of_nonzero_kernel[t];
+    w = w_values_bin_center[i];
+    eta = eta_0-w;
+    R = w*theta;
+    dummy_data = compute_phi_tilde_of_lambda_2D(eta, R, f_NL, var_NL_rescale);
+    // ISSUE: this order of indeces in confusing.
+    y_values[t] = dummy_data[2];
+    phi_values[t] = dummy_data[3];
+    phi_prime_values[t] = dummy_data[1];
+    phi_prime_prime_values[t] = dummy_data[7];
+    for(int l = 0; l < n_lambda; l++){
+      y_values[t][l] /= kernel_values[i];
+    }
+    
+    y_max_iterator = std::max_element(y_values[t].begin(), y_values[t].end());
+    lambda_index_y_max = std::distance(y_values[t].begin(), y_max_iterator);
+    
+    y_values[t] = vector<double>(&y_values[t][0], &y_values[t][lambda_index_y_max]+1);
+    phi_values[t] = vector<double>(&phi_values[t][0], &phi_values[t][lambda_index_y_max]+1);
+    phi_prime_values[t] = vector<double>(&phi_prime_values[t][0], &phi_prime_values[t][lambda_index_y_max]+1);
+    phi_prime_prime_values[t] = vector<double>(&phi_prime_prime_values[t][0], &phi_prime_prime_values[t][lambda_index_y_max]+1);
+    
+  }
+  
+  
+  int n_lambda_max_kernel = y_values[index_of_max_kernel].size();
+  int n_y;
+  vector<vector<double> > projected_phi_data(4, vector<double>(n_lambda_max_kernel, 0.0));
+  projected_phi_data[0] = y_values[index_of_max_kernel];
+  
+  cout << "projecting CGF\n";
+  
+  for(int y = 0; y < n_lambda_max_kernel; y++){
+    for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+      int i = indeces_of_nonzero_kernel[t];
+      dw = w_values[i+1]-w_values[i];
+      n_y = y_values[t].size();
+      if(projected_phi_data[0][y] > y_values[t][0] && projected_phi_data[0][y] < y_values[t][n_y-1]){
+        projected_phi_data[1][y] += interpolate_neville_aitken(projected_phi_data[0][y], &y_values[t], &phi_values[t], constants::order_of_interpolation)*dw;
+        projected_phi_data[2][y] += interpolate_neville_aitken(projected_phi_data[0][y], &y_values[t], &phi_prime_values[t], constants::order_of_interpolation)*kernel_values[i]*dw;
+        projected_phi_data[3][y] += interpolate_neville_aitken(projected_phi_data[0][y], &y_values[t], &phi_prime_prime_values[t], constants::order_of_interpolation)*pow(kernel_values[i], 2)*dw;
+      }
+    }
+  }
+  
+  cout << "delta_min = " << projected_phi_data[2][0] << '\n';
+  cout << "delta_max = " << projected_phi_data[2][n_lambda_max_kernel-1] << '\n';
   
   return projected_phi_data;
   
@@ -1350,27 +1456,858 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
   (*phi_data_kappa) = this->return_LOS_integrated_phi_of_lambda(theta, f_NL, var_NL_rescale, w_values_extended_to_last_scattering, CMB_lensing_kernel);
   vector<vector<double> > phi_data_kappa_nonoverlap = this->return_LOS_integrated_phi_of_lambda(theta, f_NL, var_NL_rescale, w_values_extended_to_last_scattering, CMB_lensing_kernel_nonoverlap);
   
+  int N_ldelta = (*phi_data_delta)[0].size();
+  int N_lkappa = (*phi_data_kappa)[0].size();
+  (*phi_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
+  (*dphi_dldelta_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
+  (*dphi_dlkappa_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
+  (*d2phi_dldelta2_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
+  (*d2phi_dldelta_dlkappa_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
+  (*d2phi_dlkappa2_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
+  (*grid_mask) = vector<vector<int> >(N_ldelta, vector<int>(N_lkappa, 0));
   
-  double var_delta = interpolate_neville_aitken(0.0, &(*phi_data_delta)[0], &(*phi_data_delta)[3], constants::order_of_interpolation);
+  int t, N_nonzero_kernel = indeces_of_nonzero_kernel.size();
+  double y, ldelta, lkappa;
+  double kernel_delta, kernel_kappa;
+  double dw_times_kernel_delta;
+  double dw_times_kernel_kappa;
+  
+  double phi;
+  double dphi_dldelta;
+  double dphi_dlkappa;
+  double d2phi_dldelta2;
+  double d2phi_dldelta_dlkappa;
+  double d2phi_dlkappa2;
+  
+  double phi_prime_integrand;
+  double phi_prime_prime_integrand;
+  vector<double> * pointer_to_y_values;
+  
+  for(int d = 0; d < N_ldelta; d++){
+    cout << d << '\n';
+    ldelta = (*phi_data_delta)[0][d];
+    for(int k = 0; k < N_lkappa; k++){
+      lkappa = (*phi_data_kappa)[0][k];
+      
+      
+      phi = interpolate_neville_aitken(lkappa, &phi_data_kappa_nonoverlap[0], &phi_data_kappa_nonoverlap[1], constants::order_of_interpolation);
+      dphi_dldelta = 0.0;
+      dphi_dlkappa = interpolate_neville_aitken(lkappa, &phi_data_kappa_nonoverlap[0], &phi_data_kappa_nonoverlap[2], constants::order_of_interpolation);
+      d2phi_dldelta2 = 0.0;
+      d2phi_dldelta_dlkappa = 0.0;
+      d2phi_dlkappa2 = interpolate_neville_aitken(lkappa, &phi_data_kappa_nonoverlap[0], &phi_data_kappa_nonoverlap[3], constants::order_of_interpolation);
+      
+      for(int i = 0; i < N_nonzero_kernel; i++){
+        t = indeces_of_nonzero_kernel[i];
+        dw = w_values_extended_to_last_scattering[t+1]-w_values_extended_to_last_scattering[t];
+        kernel_delta = kernel_values_extended_to_last_scattering[t];
+        dw_times_kernel_delta = kernel_delta*dw;
+        kernel_kappa = CMB_lensing_kernel[t];
+        dw_times_kernel_kappa = kernel_kappa*dw;
+        y = kernel_delta*ldelta;
+        y += kernel_kappa*lkappa;
+        
+        pointer_to_y_values = &y_values[t];
+        
+        phi_prime_integrand = interpolate_neville_aitken(y, pointer_to_y_values, &phi_prime_values[t], constants::order_of_interpolation);
+        dphi_dldelta += dw_times_kernel_delta*phi_prime_integrand;
+        dphi_dlkappa += dw_times_kernel_kappa*phi_prime_integrand;
+        
+        lambda_index_y_max = pointer_to_y_values->size() - 1;
+        if(y < y_values[t][lambda_index_y_max] && y > y_values[t][0]){
+          phi += dw*interpolate_neville_aitken(y, pointer_to_y_values, &phi_values[t], constants::order_of_interpolation);
+          phi_prime_prime_integrand = interpolate_neville_aitken(y, pointer_to_y_values, &phi_prime_prime_values[t], constants::order_of_interpolation);
+          d2phi_dldelta2 += dw_times_kernel_delta*kernel_delta*phi_prime_prime_integrand;
+          d2phi_dldelta_dlkappa += dw_times_kernel_delta*kernel_kappa*phi_prime_prime_integrand;
+          d2phi_dlkappa2 += dw_times_kernel_kappa*kernel_kappa*phi_prime_prime_integrand;
+          (*grid_mask)[d][k] = 1;
+        }
+            
+      }
+          
+      (*phi_grid)[d][k] = phi;
+      (*dphi_dldelta_grid)[d][k] = dphi_dldelta;
+      (*dphi_dlkappa_grid)[d][k] = dphi_dlkappa;
+      (*d2phi_dldelta2_grid)[d][k] = d2phi_dldelta2;
+      (*d2phi_dldelta_dlkappa_grid)[d][k] = d2phi_dldelta_dlkappa;
+      (*d2phi_dlkappa2_grid)[d][k] = d2phi_dlkappa2;
+      
+    }
+  }
+  
+}
+
+
+
+
+/*
+ * FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point
+ * 
+ * 
+ * 
+ */
+
+
+
+void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(double theta, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, vector<double> w_values, vector<double> kernel_values, vector<vector<double> > *delta_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid){
+  
+  cout << "Computing projected phi_data:\n";
+  cout.flush();
+  
+  vector<vector<double> > phi_data_delta;
+  vector<vector<double> > phi_data_kappa;
+  vector<vector<double> > phi_grid;
+  vector<vector<double> > dphi_dldelta_grid;
+  vector<vector<double> > dphi_dlkappa_grid;
+  vector<vector<double> > d2phi_dldelta2_grid;
+  vector<vector<double> > d2phi_dldelta_dlkappa_grid;
+  vector<vector<double> > d2phi_dlkappa2_grid;
+  vector<vector<int> > grid_mask;
+  
+  this->return_LOS_integrated_phi_of_lambda_incl_CMB_kappa(theta, f_NL, var_NL_rescale, w_values, kernel_values, &phi_data_delta, &phi_data_kappa, &phi_grid, &dphi_dldelta_grid, &dphi_dlkappa_grid, &d2phi_dldelta2_grid, &d2phi_dldelta_dlkappa_grid, &d2phi_dlkappa2_grid, &grid_mask);
+  
+  cout << "kappa variance = " << interpolate_neville_aitken(0.0, &phi_data_kappa[0], &phi_data_kappa[3], constants::order_of_interpolation)  << "\n";
+  
+  int N_lambda_delta = phi_grid.size();
+  int N_lambda_kappa = phi_grid[0].size();
+  vector<vector<double> > PDF_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > logPDF_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > delta_Gauss_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > kappa_Gauss_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  
+  vector<vector<double> > delta_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > kappa_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > delta_grid_when_forcing_kappa_transposed(N_lambda_kappa, vector<double>(N_lambda_delta,0.0));
+  vector<vector<double> > PDF_grid_when_forcing_kappa_transposed(N_lambda_kappa, vector<double>(N_lambda_delta,0.0));
+  vector<vector<double> > PDF_grid_when_forcing_delta_and_kappa(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  double Lkappa_when_forcing_kappa;
+  
+  double delta, kappa, delta_Gauss, kappa_Gauss;
+  double phi;
+  double dphi_dldelta;
+  double dphi_dlkappa;
+  double d2phi_dldelta2;
+  double d2phi_dldelta_dlkappa;
+  double d2phi_dlkappa_dldelta;
+  double d2phi_dlkappa2;
+  double determinant;
+  cout << "test 1\n";
+  for(int d = 0; d < N_lambda_delta; d++){
+    for(int k = 0; k < N_lambda_kappa; k++){
+      phi = phi_grid[d][k];
+      dphi_dldelta = dphi_dldelta_grid[d][k];
+      dphi_dlkappa = dphi_dlkappa_grid[d][k];
+      d2phi_dldelta2 = d2phi_dldelta2_grid[d][k];
+      d2phi_dldelta_dlkappa = d2phi_dldelta_dlkappa_grid[d][k];
+      d2phi_dlkappa_dldelta = d2phi_dldelta_dlkappa;
+      d2phi_dlkappa2 = d2phi_dlkappa2_grid[d][k];
+      determinant = d2phi_dldelta2*d2phi_dlkappa2;
+      determinant -= d2phi_dlkappa_dldelta*d2phi_dldelta_dlkappa;
+      
+      if(determinant > 0.0 && grid_mask[d][k] == 1){
+        PDF_on_lambda_grid[d][k] = exp(-dphi_dldelta*phi_data_delta[0][d]-dphi_dlkappa*phi_data_kappa[0][k]+phi);
+        PDF_on_lambda_grid[d][k] /= constants::pi2*sqrt(determinant);
+      }
+      if(determinant <= 0.0){
+        grid_mask[d][k] = 0;
+      }
+    }
+  }
+  cout << "test 2\n";
+  
+  
+  for(int d = 0; d < N_lambda_delta; d++){
+    for(int k = 0; k < N_lambda_kappa; k++){
+      delta_on_lambda_grid[d][k] = phi_data_delta[2][d];
+      kappa_on_lambda_grid[d][k] = phi_data_kappa[2][k];
+      Lkappa_when_forcing_kappa = interpolate_neville_aitken(kappa_on_lambda_grid[d][k], &dphi_dlkappa_grid[d], &phi_data_kappa[0], constants::order_of_interpolation);
+      delta_grid_when_forcing_kappa_transposed[k][d] = interpolate_neville_aitken(Lkappa_when_forcing_kappa, &phi_data_kappa[0], &dphi_dldelta_grid[d], constants::order_of_interpolation);
+      PDF_grid_when_forcing_kappa_transposed[k][d] = interpolate_neville_aitken(Lkappa_when_forcing_kappa, &phi_data_kappa[0], &PDF_on_lambda_grid[d], constants::order_of_interpolation);
+    }
+  }
+  
+  cout << "test 3\n";
+  
+  for(int d = 0; d < N_lambda_delta; d++){
+    for(int k = 0; k < N_lambda_kappa; k++){
+      // d_values = delta_grid_when_forcing_kappa_transposed[k][:]
+      // p_values = PDF_grid_when_forcing_kappa_transposed[k][:]
+      if(delta_on_lambda_grid[d][k] >= delta_grid_when_forcing_kappa_transposed[k][0] && delta_on_lambda_grid[d][k] <= delta_grid_when_forcing_kappa_transposed[k][N_lambda_delta-1])
+        PDF_grid_when_forcing_delta_and_kappa[d][k] = max(0.0,interpolate_neville_aitken(delta_on_lambda_grid[d][k], &delta_grid_when_forcing_kappa_transposed[k], &PDF_grid_when_forcing_kappa_transposed[k], constants::order_of_interpolation));
+    }
+  }
+  cout << "test 4\n";
+  
+  // on delta-axis we need to compute the PDF on a 5sigma intervall, because
+  // shot-noise makes counts-in-cells histogram sensitive to wide range in delta.
+  double N_sigma = 5.0;
+  double var_delta = interpolate_neville_aitken(0.0, &phi_data_delta[0], &phi_data_delta[3], constants::order_of_interpolation);
+  double one_over_var_delta = 1.0/var_delta;
   double std_delta = sqrt(var_delta);
-  double skew = interpolate_neville_aitken_derivative(0.0, &(*phi_data_delta)[0], &(*phi_data_delta)[3], constants::order_of_interpolation);
-  double lognormal_shift = lognormal_tools::get_delta0(var_delta, skew);
-  double var_Gauss = log(1.0+var_delta/lognormal_shift/lognormal_shift);
-  double mean_Gauss = -0.5*var_Gauss;
-  double std_Gauss = sqrt(var_Gauss);
-  double delta_min = max(-1.0, lognormal_shift*(exp(mean_Gauss-5.0*std_Gauss)-1.0));
-  double delta_max = lognormal_shift*(exp(mean_Gauss+5.0*std_Gauss)-1.0);
+  double skew = interpolate_neville_aitken_derivative(0.0, &phi_data_delta[0], &phi_data_delta[3], constants::order_of_interpolation);
+  double lognormal_shift_delta = lognormal_tools::get_delta0(var_delta, skew);
+  double var_delta_Gauss = log(1.0+var_delta/lognormal_shift_delta/lognormal_shift_delta);
+  double one_over_var_delta_Gauss = 1.0/var_delta_Gauss;
+  double mean_delta_Gauss = -0.5*var_delta_Gauss;
+  double std_delta_Gauss = sqrt(var_delta_Gauss);
+  double delta_min = max(-1.0, lognormal_shift_delta*(exp(mean_delta_Gauss-N_sigma*std_delta_Gauss)-1.0));
+  double delta_max = lognormal_shift_delta*(exp(mean_delta_Gauss+N_sigma*std_delta_Gauss)-1.0);
   
-  double var_kappa = interpolate_neville_aitken(0.0, &(*phi_data_kappa)[0], &(*phi_data_kappa)[3], constants::order_of_interpolation);
+  double var_kappa = interpolate_neville_aitken(0.0, &phi_data_kappa[0], &phi_data_kappa[3], constants::order_of_interpolation);
+  double one_over_var_kappa = 1.0/var_kappa;
   double std_kappa = sqrt(var_kappa);
-  skew = interpolate_neville_aitken_derivative(0.0, &(*phi_data_kappa)[0], &(*phi_data_kappa)[3], constants::order_of_interpolation);
-  lognormal_shift = lognormal_tools::get_delta0(var_kappa, skew);
-  var_Gauss = log(1.0+var_kappa/lognormal_shift/lognormal_shift);
-  mean_Gauss = -0.5*var_Gauss;
-  std_Gauss = sqrt(var_Gauss);
-  double kappa_min = max(-1.0, lognormal_shift*(exp(mean_Gauss-5.0*std_Gauss)-1.0));
-  double kappa_max = lognormal_shift*(exp(mean_Gauss+5.0*std_Gauss)-1.0);
+  skew = interpolate_neville_aitken_derivative(0.0, &phi_data_kappa[0], &phi_data_kappa[3], constants::order_of_interpolation);
+  double lognormal_shift_kappa = lognormal_tools::get_delta0(var_kappa, skew);
+  double var_kappa_Gauss = log(1.0+var_kappa/lognormal_shift_kappa/lognormal_shift_kappa);
+  double one_over_var_kappa_Gauss = 1.0/var_kappa_Gauss;
+  double mean_kappa_Gauss = -0.5*var_kappa_Gauss;
+  double std_kappa_Gauss = sqrt(var_kappa_Gauss);
   
+  if(kappa_min > lognormal_shift_kappa*(exp(mean_kappa_Gauss-3.0*std_kappa_Gauss)-1.0) || kappa_max < lognormal_shift_kappa*(exp(mean_kappa_Gauss+3.0*std_kappa_Gauss)-1.0)){
+    error_handling::general_warning("WARNING in compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point:\nYour intervall [kappa_min, kappa_max] might contain less than 3sigma of probability.");
+  }
+  
+  int n_delta = constants::N_delta_values_for_PDFs;
+  int n_kappa = constants::N_delta_values_for_PDFs;
+  
+  (*delta_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  (*kappa_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  (*PDF_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  
+  /*
+   * ISSUE: still avoiding delta=delta_max here, but just for conformity since this was 
+   * necessary in compute_LOS_projected_PDF.
+   */
+  double ddelta = (delta_max-delta_min)/double(n_delta);
+  double dkappa = (kappa_max-kappa_min)/double(n_kappa);
+  
+  vector<double> delta_values(n_delta, 0.0);
+  vector<double> kappa_values(n_kappa, 0.0);
+  for(int i = 0; i < n_delta; i++){
+    delta_values[i] = delta_min + double(i)*ddelta;
+  }
+  for(int i = 0; i < n_kappa; i++){
+    kappa_values[i] = kappa_min + double(i)*dkappa;
+  }
+  
+  for(int d = 0; d < n_delta; d++){
+    delta = delta_values[d];
+    cout << "delta = " << delta << "\n";
+    for(int k = 0; k < n_kappa; k++){
+      kappa = kappa_values[k];
+      
+      (*delta_grid)[d][k] = delta;
+      (*kappa_grid)[d][k] = kappa;
+      (*PDF_grid)[d][k] = interpolate_grid_biquadratic(delta, kappa, &phi_data_delta[2], &phi_data_kappa[2], &PDF_grid_when_forcing_delta_and_kappa);
+      if((*PDF_grid)[d][k] < 0.0) (*PDF_grid)[d][k] = 0.0;
+      
+    }
+  }
+  
+  double norm = 0.0;
+  double maxi = 0.0;
+  int dmaxi = 0;
+  int kmaxi = 0;
+  for(int d = 0; d < n_delta; d++){
+    for(int k = 0; k < n_kappa; k++){
+      norm += (*PDF_grid)[d][k];
+      if((*PDF_grid)[d][k] > maxi){
+        maxi = (*PDF_grid)[d][k];
+        dmaxi = d;
+        kmaxi = k;
+      }
+    }
+  }
+  norm *= ddelta*dkappa;
+  
+  cout << scientific << setprecision(5);
+  cout << "# norm:\n";
+  cout << "# " << norm << '\n';
+  cout << "# max:\n";
+  cout << "# " << dmaxi << "  " << kmaxi << "  " << maxi << '\n';
+  cout << "# P[250,250]:\n";
+  cout << "# " << (*PDF_grid)[250][250] << '\n';
+  cout << "# delta bounds:\n";
+  cout << "# " << delta_min << "  " << delta_max << '\n';
+  cout << "# " << phi_data_delta[2][0] << "  " << phi_data_delta[2][N_lambda_delta-1] << '\n';
+  cout << "# kappa bounds:\n";
+  cout << "# " << kappa_min << "  " << kappa_max << '\n';
+  cout << "# " << phi_data_kappa[2][0] << "  " << phi_data_kappa[2][N_lambda_kappa-1] << '\n';
+  
+}
+
+
+
+/*
+
+void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(double theta, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, vector<double> w_values, vector<double> kernel_values, vector<vector<double> > *delta_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid){
+  
+  cout << "Computing projected phi_data:\n";
+  cout.flush();
+  
+  vector<vector<double> > phi_data_delta;
+  vector<vector<double> > phi_data_kappa;
+  vector<vector<double> > phi_grid;
+  vector<vector<double> > dphi_dldelta_grid;
+  vector<vector<double> > dphi_dlkappa_grid;
+  vector<vector<double> > d2phi_dldelta2_grid;
+  vector<vector<double> > d2phi_dldelta_dlkappa_grid;
+  vector<vector<double> > d2phi_dlkappa2_grid;
+  vector<vector<int> > grid_mask;
+  
+  this->return_LOS_integrated_phi_of_lambda_incl_CMB_kappa(theta, f_NL, var_NL_rescale, w_values, kernel_values, &phi_data_delta, &phi_data_kappa, &phi_grid, &dphi_dldelta_grid, &dphi_dlkappa_grid, &d2phi_dldelta2_grid, &d2phi_dldelta_dlkappa_grid, &d2phi_dlkappa2_grid, &grid_mask);
+  
+  int N_lambda_delta = phi_grid.size();
+  int N_lambda_kappa = phi_grid[0].size();
+  vector<vector<double> > PDF_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > delta_Gauss_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > kappa_Gauss_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  
+  double delta, kappa, delta_Gauss, kappa_Gauss;
+  double phi;
+  double dphi_dldelta;
+  double dphi_dlkappa;
+  double d2phi_dldelta2;
+  double d2phi_dldelta_dlkappa;
+  double d2phi_dlkappa_dldelta;
+  double d2phi_dlkappa2;
+  double determinant;
+  
+  for(int d = 0; d < N_lambda_delta; d++){
+    for(int k = 0; k < N_lambda_kappa; k++){
+      phi = phi_grid[d][k];
+      dphi_dldelta = dphi_dldelta_grid[d][k];
+      dphi_dlkappa = dphi_dlkappa_grid[d][k];
+      d2phi_dldelta2 = d2phi_dldelta2_grid[d][k];
+      d2phi_dldelta_dlkappa = d2phi_dldelta_dlkappa_grid[d][k];
+      d2phi_dlkappa_dldelta = d2phi_dldelta_dlkappa;
+      d2phi_dlkappa2 = d2phi_dlkappa2_grid[d][k];
+      determinant = d2phi_dldelta2*d2phi_dlkappa2;
+      determinant -= d2phi_dlkappa_dldelta*d2phi_dldelta_dlkappa;
+      
+      if(determinant > 0.0 && grid_mask[d][k] == 1){
+        PDF_on_lambda_grid[d][k] = exp(-dphi_dldelta*phi_data_delta[0][d]-dphi_dlkappa*phi_data_kappa[0][k]+phi);
+        PDF_on_lambda_grid[d][k] /= constants::pi2*sqrt(determinant);
+      }
+      if(determinant <= 0.0){
+        grid_mask[d][k] = 0;
+      }
+    }
+  }
+  
+  // on delta-axis we need to compute the PDF on a 5sigma intervall, because
+  // shot-noise makes counts-in-cells histogram sensitive to wide range in delta.
+  double N_sigma = 5.0;
+  double var_delta = interpolate_neville_aitken(0.0, &phi_data_delta[0], &phi_data_delta[3], constants::order_of_interpolation);
+  double one_over_var_delta = 1.0/var_delta;
+  double std_delta = sqrt(var_delta);
+  double skew = interpolate_neville_aitken_derivative(0.0, &phi_data_delta[0], &phi_data_delta[3], constants::order_of_interpolation);
+  double lognormal_shift_delta = lognormal_tools::get_delta0(var_delta, skew);
+  double var_delta_Gauss = log(1.0+var_delta/lognormal_shift_delta/lognormal_shift_delta);
+  double one_over_var_delta_Gauss = 1.0/var_delta_Gauss;
+  double mean_delta_Gauss = -0.5*var_delta_Gauss;
+  double std_delta_Gauss = sqrt(var_delta_Gauss);
+  double delta_min = max(-1.0, lognormal_shift_delta*(exp(mean_delta_Gauss-N_sigma*std_delta_Gauss)-1.0));
+  double delta_max = lognormal_shift_delta*(exp(mean_delta_Gauss+N_sigma*std_delta_Gauss)-1.0);
+  
+  double var_kappa = interpolate_neville_aitken(0.0, &phi_data_kappa[0], &phi_data_kappa[3], constants::order_of_interpolation);
+  double one_over_var_kappa = 1.0/var_kappa;
+  double std_kappa = sqrt(var_kappa);
+  skew = interpolate_neville_aitken_derivative(0.0, &phi_data_kappa[0], &phi_data_kappa[3], constants::order_of_interpolation);
+  double lognormal_shift_kappa = lognormal_tools::get_delta0(var_kappa, skew);
+  double var_kappa_Gauss = log(1.0+var_kappa/lognormal_shift_kappa/lognormal_shift_kappa);
+  double one_over_var_kappa_Gauss = 1.0/var_kappa_Gauss;
+  double mean_kappa_Gauss = -0.5*var_kappa_Gauss;
+  double std_kappa_Gauss = sqrt(var_kappa_Gauss);
+  
+  
+  for(int d = 0; d < N_lambda_delta; d++){
+    for(int k = 0; k < N_lambda_kappa; k++){
+      delta_Gauss_on_lambda_grid[d][k] = log(1.0+dphi_dldelta_grid[d][k]/lognormal_shift_delta);
+      kappa_Gauss_on_lambda_grid[d][k] = log(1.0+dphi_dlkappa_grid[d][k]/lognormal_shift_kappa);
+    }
+  }
+  
+  if(kappa_min > lognormal_shift_kappa*(exp(mean_kappa_Gauss-3.0*std_kappa_Gauss)-1.0) || kappa_max < lognormal_shift_kappa*(exp(mean_kappa_Gauss+3.0*std_kappa_Gauss)-1.0)){
+    error_handling::general_warning("WARNING in compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point:\nYour intervall [kappa_min, kappa_max] might contain less than 3sigma of probability.");
+  }
+  
+  int n_delta = constants::N_delta_values_for_PDFs;
+  int n_kappa = constants::N_delta_values_for_PDFs;
+  
+  (*delta_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  (*kappa_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  (*PDF_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  
+  double ddelta = (delta_max-delta_min)/double(n_delta);
+  double dkappa = (kappa_max-kappa_min)/double(n_kappa);
+  
+  vector<double> delta_values(n_delta, 0.0);
+  vector<double> kappa_values(n_kappa, 0.0);
+  vector<double> delta_Gauss_values(n_delta, 0.0);
+  vector<double> kappa_Gauss_values(n_kappa, 0.0);
+  vector<double> f(2,0.0); // vector needed for interpolation
+  vector<double> g(2,0.0); // vector needed for interpolation
+  vector<vector<double> > A(2, vector<double>(2,0.0)); // matrix needed for interpolation
+  vector<vector<double> > A_inverse(2, vector<double>(2,0.0)); // matrix needed for interpolation
+  for(int i = 0; i < n_delta; i++){
+    delta_values[i] = delta_min + double(i)*ddelta;
+    delta_Gauss_values[i] = log(1.0+delta_values[i]/lognormal_shift_delta);
+  }
+  for(int i = 0; i < n_kappa; i++){
+    kappa_values[i] = kappa_min + double(i)*dkappa;
+    kappa_Gauss_values[i] = log(1.0+kappa_values[i]/lognormal_shift_kappa);
+  }
+  
+  for(int d = 0; d < n_delta; d++){
+    delta = delta_values[d];
+    cout << "delta = " << delta << "\n";
+    for(int k = 0; k < n_kappa; k++){
+      kappa = kappa_values[k];
+      //cout << "kappa = " << kappa << "\n";
+      
+      double delta_1 = dphi_dldelta_grid[0][0], delta_2 = dphi_dldelta_grid[0][0], delta_3 = dphi_dldelta_grid[0][0];
+      double kappa_1 = dphi_dlkappa_grid[0][0], kappa_2 = dphi_dlkappa_grid[0][0], kappa_3 = dphi_dlkappa_grid[0][0];
+      double PDF_1 = 0.0, PDF_2 = 0.0, PDF_3 = 0.0;
+      double distanceSq_1 = pow(N_sigma, 2), distanceSq_2 = pow(N_sigma, 2), distanceSq_3 = pow(N_sigma, 2);
+      double distanceSq;
+      int found_triangle = 0;
+      
+      for(int ld = 0; ld < N_lambda_delta; ld++){
+        for(int lk = 0; lk < N_lambda_kappa; lk++){
+          delta_Gauss = delta_Gauss_on_lambda_grid[ld][lk]; 
+          kappa_Gauss = kappa_Gauss_on_lambda_grid[ld][lk]; 
+          //distanceSq = pow(delta_Gauss-delta_Gauss_values[d], 2)*one_over_var_delta_Gauss + pow(kappa_Gauss-kappa_Gauss_values[k], 2)*one_over_var_kappa_Gauss;
+          distanceSq = pow(delta-dphi_dldelta_grid[ld][lk], 2)*one_over_var_delta + pow(kappa-dphi_dlkappa_grid[ld][lk], 2)*one_over_var_kappa;
+          
+          if(distanceSq < distanceSq_1 && grid_mask[ld][lk] == 1){
+            found_triangle++;
+            distanceSq_3 = distanceSq_2;
+            distanceSq_2 = distanceSq_1;
+            distanceSq_1 = distanceSq;
+            delta_3 = delta_2;
+            delta_2 = delta_1;
+            delta_1 = dphi_dldelta_grid[ld][lk];
+            kappa_3 = kappa_2;
+            kappa_2 = kappa_1;
+            kappa_1 = dphi_dlkappa_grid[ld][lk];
+            PDF_3 = PDF_2;
+            PDF_2 = PDF_1;
+            PDF_1 = PDF_on_lambda_grid[ld][lk];
+          }
+          else if(distanceSq < distanceSq_2 && grid_mask[ld][lk] == 1){
+            found_triangle++;
+            distanceSq_3 = distanceSq_2;
+            distanceSq_2 = distanceSq;
+            delta_3 = delta_2;
+            delta_2 = dphi_dldelta_grid[ld][lk];
+            kappa_3 = kappa_2;
+            kappa_2 = dphi_dlkappa_grid[ld][lk];
+            PDF_3 = PDF_2;
+            PDF_2 = PDF_on_lambda_grid[ld][lk];
+          }
+          else if(distanceSq < distanceSq_3 && grid_mask[ld][lk] == 1){
+            found_triangle++;
+            distanceSq_3 = distanceSq;
+            delta_3 = dphi_dldelta_grid[ld][lk];
+            kappa_3 = dphi_dlkappa_grid[ld][lk];
+            PDF_3 = PDF_on_lambda_grid[ld][lk];
+          }
+        }
+      }
+      
+      if(found_triangle >= 3){
+        f[0] = PDF_2 - PDF_1;
+        f[1] = PDF_3 - PDF_1;
+        A[0][0] = delta_2 - delta_1;
+        A[0][1] = kappa_2 - kappa_1;
+        A[1][0] = delta_3 - delta_1;
+        A[1][1] = kappa_3 - kappa_1;
+        //cout << delta_1 << "  " << delta_2 << "  " << delta_3 << '\n';
+        //cout << kappa_1 << "  " << kappa_2 << "  " << kappa_3 << '\n';
+        invert_matrix(&A, &A_inverse);
+        g[0] = A_inverse[0][0]*f[0] + A_inverse[0][1]*f[1];
+        g[1] = A_inverse[1][0]*f[0] + A_inverse[1][1]*f[1];
+        (*PDF_grid)[d][k] = PDF_1 + g[0]*(delta-delta_1) + g[1]*(kappa-kappa_1);
+        
+        //(*PDF_grid)[d][k] = PDF_1;
+        //(*PDF_grid)[d][k] *= exp();
+      }
+      
+      (*delta_grid)[d][k] = delta;
+      (*kappa_grid)[d][k] = kappa;
+      if((*PDF_grid)[d][k] < 0.0) (*PDF_grid)[d][k] = 0.0;
+      
+    }
+  }
+  
+  double norm = 0.0;
+  double maxi = 0.0;
+  int dmaxi = 0;
+  int kmaxi = 0;
+  for(int d = 0; d < n_delta; d++){
+    for(int k = 0; k < n_kappa; k++){
+      norm += (*PDF_grid)[d][k];
+      if((*PDF_grid)[d][k] > maxi){
+        maxi = (*PDF_grid)[d][k];
+        dmaxi = d;
+        kmaxi = k;
+      }
+    }
+  }
+  norm *= ddelta*dkappa;
+  
+  cout << scientific << setprecision(5);
+  cout << "# norm:\n";
+  cout << "# " << norm << '\n';
+  cout << "# max:\n";
+  cout << "# " << dmaxi << "  " << kmaxi << "  " << maxi << '\n';
+  cout << "# P[250,250]:\n";
+  cout << "# " << (*PDF_grid)[250][250] << '\n';
+  cout << "# delta bounds:\n";
+  cout << "# " << delta_min << "  " << delta_max << '\n';
+  cout << "# " << phi_data_delta[2][0] << "  " << phi_data_delta[2][N_lambda_delta-1] << '\n';
+  cout << "# kappa bounds:\n";
+  cout << "# " << kappa_min << "  " << kappa_max << '\n';
+  cout << "# " << phi_data_kappa[2][0] << "  " << phi_data_kappa[2][N_lambda_kappa-1] << '\n';
+  
+}
+*/
+
+/*
+void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(double theta, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, vector<double> w_values, vector<double> kernel_values, vector<vector<double> > *delta_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid){
+  
+  cout << "Computing projected phi_data:\n";
+  cout.flush();
+  
+  vector<vector<double> > phi_data_delta;
+  vector<vector<double> > phi_data_kappa;
+  vector<vector<double> > phi_grid;
+  vector<vector<double> > dphi_dldelta_grid;
+  vector<vector<double> > dphi_dlkappa_grid;
+  vector<vector<double> > d2phi_dldelta2_grid;
+  vector<vector<double> > d2phi_dldelta_dlkappa_grid;
+  vector<vector<double> > d2phi_dlkappa2_grid;
+  vector<vector<int> > grid_mask;
+  
+  this->return_LOS_integrated_phi_of_lambda_incl_CMB_kappa(theta, f_NL, var_NL_rescale, w_values, kernel_values, &phi_data_delta, &phi_data_kappa, &phi_grid, &dphi_dldelta_grid, &dphi_dlkappa_grid, &d2phi_dldelta2_grid, &d2phi_dldelta_dlkappa_grid, &d2phi_dlkappa2_grid, &grid_mask);
+  
+  // on delta-axis we need to compute the PDF on a 5sigma intervall, because
+  // shot-noise makes counts-in-cells histogram sensitive to wide range in delta.
+  double N_sigma = 5.0;
+  double var_delta = interpolate_neville_aitken(0.0, &phi_data_delta[0], &phi_data_delta[3], constants::order_of_interpolation);
+  double std_delta = sqrt(var_delta);
+  double skew = interpolate_neville_aitken_derivative(0.0, &phi_data_delta[0], &phi_data_delta[3], constants::order_of_interpolation);
+  double lognormal_shift_delta = lognormal_tools::get_delta0(var_delta, skew);
+  double var_delta_Gauss = log(1.0+var_delta/lognormal_shift_delta/lognormal_shift_delta);
+  double mean_delta_Gauss = -0.5*var_delta_Gauss;
+  double std_delta_Gauss = sqrt(var_delta_Gauss);
+  double delta_min = max(-1.0, lognormal_shift_delta*(exp(mean_delta_Gauss-N_sigma*std_delta_Gauss)-1.0));
+  double delta_max = lognormal_shift_delta*(exp(mean_delta_Gauss+N_sigma*std_delta_Gauss)-1.0);
+  
+  double var_kappa = interpolate_neville_aitken(0.0, &phi_data_kappa[0], &phi_data_kappa[3], constants::order_of_interpolation);
+  double std_kappa = sqrt(var_kappa);
+  skew = interpolate_neville_aitken_derivative(0.0, &phi_data_kappa[0], &phi_data_kappa[3], constants::order_of_interpolation);
+  double lognormal_shift_kappa = lognormal_tools::get_delta0(var_kappa, skew);
+  double var_kappa_Gauss = log(1.0+var_kappa/lognormal_shift_kappa/lognormal_shift_kappa);
+  double mean_kappa_Gauss = -0.5*var_kappa_Gauss;
+  double std_kappa_Gauss = sqrt(var_kappa_Gauss);
+  
+  if(kappa_min > lognormal_shift_kappa*(exp(mean_kappa_Gauss-3.0*std_kappa_Gauss)-1.0) || kappa_max < lognormal_shift_kappa*(exp(mean_kappa_Gauss+3.0*std_kappa_Gauss)-1.0)){
+    error_handling::general_warning("WARNING in compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point:\nYour intervall [kappa_min, kappa_max] might contain less than 3sigma of probability.");
+  }
+  
+  cout << "delta_min = " << delta_min << '\n';
+  cout << "delta_max = " << delta_max << '\n';
+  cout << "kappa_min = " << phi_data_kappa[2][0] << '\n';
+  cout << "kappa_min = " << kappa_min << '\n';
+  cout << "kappa_max = " << kappa_max << '\n';
+  
+  int n_delta = constants::N_delta_values_for_PDFs;
+  int n_kappa = constants::N_delta_values_for_PDFs;
+  
+  double ddelta = (delta_max-delta_min)/double(n_delta);
+  double dkappa = (kappa_max-kappa_min)/double(n_kappa);
+  
+  vector<double> delta_values(n_delta, 0.0);
+  vector<double> kappa_values(n_kappa, 0.0);
+  for(int i = 0; i < n_delta; i++){
+    delta_values[i] = delta_min + double(i)*ddelta;
+  }
+  for(int i = 0; i < n_kappa; i++){
+    kappa_values[i] = kappa_min + double(i)*dkappa;
+  }
+  
+  
+  double y, delta, kappa, lambda_delta, lambda_kappa, delta_Gauss, kappa_Gauss;
+  double phi;
+  double dphi_dldelta;
+  double dphi_dlkappa;
+  double d2phi_dldelta2;
+  double d2phi_dldelta_dlkappa;
+  double d2phi_dlkappa_dldelta;
+  double d2phi_dlkappa2;
+  double determinant;
+  vector<vector<double> > inverse_Jacobian(2, vector<double>(2, 0.0));
+  
+  
+  (*delta_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  (*kappa_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  (*PDF_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  
+  int steps;
+  int index_ldelta;
+  int index_lkappa;
+  int N_lambda_delta = phi_data_delta[0].size();
+  int N_lambda_kappa = phi_data_kappa[0].size();
+  double ldelta_min = phi_data_delta[0][0];
+  double ldelta_max = phi_data_delta[0][N_lambda_delta-1];
+  double lkappa_min = phi_data_kappa[0][0];
+  double lkappa_max = phi_data_kappa[0][N_lambda_kappa-1];
+  double exponent;
+  vector<double> interpolation_results;
+  
+  
+  for(int d = 0; d < n_delta; d++){
+    delta = delta_values[d];
+    delta_Gauss = log(1.0+delta/lognormal_shift_delta); // use log-normal approx to determine far-out grid points for which not to compute the PDF
+    cout << delta << "   ";
+    for(int k = 0; k < n_kappa; k++){
+      kappa = kappa_values[k];
+      kappa_Gauss = log(1.0+kappa/lognormal_shift_kappa); // use log-normal approx to determine far-out grid points for which not to compute the PDF
+      (*delta_grid)[d][k] = delta;
+      (*kappa_grid)[d][k] = kappa;
+      
+      // use log-normal approx to determine far-out grid points for which not to compute the PDF
+      if(sqrt(pow(delta_Gauss-mean_delta_Gauss, 2)/var_delta_Gauss + pow(kappa_Gauss-mean_kappa_Gauss, 2)/var_kappa_Gauss) <= N_sigma){
+        lambda_kappa = 0.0;
+        lambda_delta = 0.0;
+        
+        steps = 0;
+        // ISSUE: these precision criteria should be set in constants.h in the "constants" namespace.
+        while(steps < 100 && (abs(dphi_dldelta - delta) > 0.01*ddelta || abs(dphi_dlkappa - kappa) > 0.01*dkappa)){
+          
+          if(steps > 0){
+            // f = f0
+            // 
+            //(f-f0)/(x-x0) = f'
+            //==> x0 = x-(f-f0)/f'
+            // d_lambda = Jac^{-1} * ((delta,kappa) - (dphi_dldelta, dphi_dlkappa))
+            lambda_delta -= inverse_Jacobian[0][0]*(dphi_dldelta-delta) + inverse_Jacobian[0][1]*(dphi_dlkappa-kappa);
+            lambda_kappa -= inverse_Jacobian[1][0]*(dphi_dldelta-delta) + inverse_Jacobian[1][1]*(dphi_dlkappa-kappa);
+          }
+          
+          steps++;
+          
+          index_ldelta = find_index(lambda_delta, &phi_data_delta[0]);
+          index_lkappa = find_index(lambda_kappa, &phi_data_kappa[0]);
+          while(grid_mask[index_ldelta][index_lkappa] != 1){
+            index_ldelta--;
+            if(grid_mask[index_ldelta][index_lkappa]==1){
+              //go even further into unmasked range to ensure good interpolation
+              lambda_delta = phi_data_delta[0][index_ldelta-3];
+            }
+          }
+          
+          // outside of lambda boundaries: push Newton algorithm back into the grid
+          if(lambda_delta < ldelta_min){
+            lambda_delta += 1.1*(ldelta_min-lambda_delta);
+          }
+          if(lambda_delta > ldelta_max){
+            lambda_delta -= 1.1*(lambda_delta-ldelta_max);
+          }
+          if(lambda_kappa < lkappa_min){
+            lambda_kappa += 1.1*(lkappa_min-lambda_kappa);
+          }
+          if(lambda_kappa > lkappa_max){
+            lambda_kappa -= 1.1*(lambda_kappa-lkappa_max);
+          }
+          
+          interpolation_results = interpolate_grid_biquadratic_derivs(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dldelta_grid);
+          dphi_dldelta = interpolation_results[0];
+          d2phi_dldelta2 = interpolation_results[1];
+          d2phi_dldelta_dlkappa = interpolation_results[2];
+          
+          interpolation_results = interpolate_grid_biquadratic_derivs(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dlkappa_grid);
+          dphi_dlkappa = interpolation_results[0];
+          d2phi_dlkappa_dldelta = interpolation_results[1];
+          d2phi_dlkappa2 = interpolation_results[2];
+          
+          determinant = d2phi_dldelta2*d2phi_dlkappa2;
+          determinant -= d2phi_dldelta_dlkappa*d2phi_dlkappa_dldelta;
+        
+          inverse_Jacobian[0][0] = d2phi_dlkappa2/determinant;
+          inverse_Jacobian[0][1] = -d2phi_dldelta_dlkappa/determinant;
+          inverse_Jacobian[1][0] = -d2phi_dlkappa_dldelta/determinant;
+          inverse_Jacobian[1][1] = d2phi_dldelta2/determinant;
+          
+        }
+        
+        phi = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &phi_grid, constants::order_of_interpolation, constants::order_of_interpolation);
+        dphi_dldelta = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dldelta_grid, constants::order_of_interpolation, constants::order_of_interpolation);
+        dphi_dlkappa = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dlkappa_grid, constants::order_of_interpolation, constants::order_of_interpolation);
+        d2phi_dldelta2 = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &d2phi_dldelta2_grid, constants::order_of_interpolation, constants::order_of_interpolation);
+        d2phi_dldelta_dlkappa = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &d2phi_dldelta_dlkappa_grid, constants::order_of_interpolation, constants::order_of_interpolation);
+        d2phi_dlkappa_dldelta = d2phi_dldelta_dlkappa;
+        d2phi_dlkappa2 = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &d2phi_dlkappa2_grid, constants::order_of_interpolation, constants::order_of_interpolation);
+        determinant = d2phi_dldelta2*d2phi_dlkappa2;
+        determinant -= d2phi_dlkappa_dldelta*d2phi_dldelta_dlkappa;
+        
+        if(determinant > 0.0){
+          (*PDF_grid)[d][k] = exp(-delta*lambda_delta-kappa*lambda_kappa+phi);
+          (*PDF_grid)[d][k] /= constants::pi2*sqrt(determinant);
+          
+          inverse_Jacobian[0][0] = d2phi_dlkappa2/determinant;
+          inverse_Jacobian[0][1] = -d2phi_dldelta_dlkappa/determinant;
+          inverse_Jacobian[1][0] = -d2phi_dlkappa_dldelta/determinant;
+          inverse_Jacobian[1][1] = d2phi_dldelta2/determinant;
+          exponent = inverse_Jacobian[0][0]*pow(delta - dphi_dldelta, 2);
+          exponent += inverse_Jacobian[1][1]*pow(kappa - dphi_dlkappa, 2);
+          exponent += inverse_Jacobian[0][1]*(delta - dphi_dldelta)*(kappa - dphi_dlkappa);
+          exponent += inverse_Jacobian[1][0]*(kappa - dphi_dlkappa)*(delta - dphi_dldelta);
+          exponent *= -0.5;
+          (*PDF_grid)[d][k] *= exp(exponent);
+        }
+        
+      }
+      
+    }
+    
+    cout << steps << '\n';
+  }
+  
+  double norm = 0.0;
+  double maxi = 0.0;
+  int dmaxi = 0;
+  int kmaxi = 0;
+  for(int d = 0; d < n_delta; d++){
+    for(int k = 0; k < n_kappa; k++){
+      norm += (*PDF_grid)[d][k];
+      if((*PDF_grid)[d][k] > maxi){
+        maxi = (*PDF_grid)[d][k];
+        dmaxi = d;
+        kmaxi = k;
+      }
+    }
+  }
+  norm *= ddelta*dkappa;
+  
+  cout << scientific << setprecision(5);
+  cout << "# norm:\n";
+  cout << "# " << norm << '\n';
+  cout << "# max:\n";
+  cout << "# " << dmaxi << "  " << kmaxi << "  " << maxi << '\n';
+  cout << "# P[250,250]:\n";
+  cout << "# " << (*PDF_grid)[250][250] << '\n';
+  cout << "# delta bounds:\n";
+  cout << "# " << delta_min << "  " << delta_max << '\n';
+  cout << "# " << phi_data_delta[2][0] << "  " << phi_data_delta[2][N_lambda_delta-1] << '\n';
+  cout << "# kappa bounds:\n";
+  cout << "# " << kappa_min << "  " << kappa_max << '\n';
+  cout << "# " << phi_data_kappa[2][0] << "  " << phi_data_kappa[2][N_lambda_kappa-1] << '\n';
+  
+}
+*/
+
+
+
+
+
+/*******************************************************************************************************************************************************
+ * return_LOS_integrated_phi_of_lambda_incl_kappa
+ * 
+ * 
+*******************************************************************************************************************************************************/
+
+void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_kappa(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values, vector<double> lensing_kernel_values, vector<vector<double> > *phi_data_delta, vector<vector<double> > *phi_data_kappa, vector<vector<double> > *phi_grid, vector<vector<double> > *dphi_dldelta_grid, vector<vector<double> > *dphi_dlkappa_grid, vector<vector<double> > *d2phi_dldelta2_grid, vector<vector<double> > *d2phi_dldelta_dlkappa_grid, vector<vector<double> > *d2phi_dlkappa2_grid, vector<vector<int> > *grid_mask){
+  
+  int n_lambda = this->delta_values_for_cylindrical_collapse.size();
+  int n_time = w_values.size()-1;
+  double z, a, eta, eta_0, w, dw, w_last_scattering, R;
+  eta_0 = this->eta_at_a(1.0);
+  
+  vector<double> w_values_bin_center(n_time, 0.0);
+  for(int i = 0; i < n_time; i++){
+    w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
+  }
+  
+  cout << "computing CGF grid & cutting out 1st branch\n";
+  
+  vector<vector<double> > y_values(n_time, vector<double>(n_lambda, 0.0));
+  vector<vector<double> > phi_values(n_time, vector<double>(n_lambda, 0.0));
+  vector<vector<double> > phi_prime_values(n_time, vector<double>(n_lambda, 0.0));
+  vector<vector<double> > phi_prime_prime_values(n_time, vector<double>(n_lambda, 0.0));
+  vector<vector<double> > dummy_data;
+  
+  double y_min = 0.0;
+  double y_max = 0.0;
+  vector<double>::iterator y_min_iterator;
+  vector<double>::iterator y_max_iterator;
+  int time_index_y_max, lambda_index_y_max, lambda_index_y_min;
+  
+  cout << "HAHAHAHAH 1\n";
+  
+  cout << "computing CGF grid & cutting out 1st branch\n";
+  
+  for(int t = 0; t < n_time; t++){
+    cout << w << "  ";
+    cout.flush();
+    w = w_values_bin_center[t];
+    eta = eta_0-w;
+    R = w*theta;
+    cout << w << "  ";
+    cout.flush();
+    dummy_data = compute_phi_tilde_of_lambda_2D(eta, R, f_NL, var_NL_rescale);
+    cout << t << "  ";
+    cout.flush();
+    // ISSUE: this order of indeces in confusing.
+    y_values[t] = dummy_data[2];
+    phi_values[t] = dummy_data[3];
+    phi_prime_values[t] = dummy_data[1];
+    phi_prime_prime_values[t] = dummy_data[7];
+    
+    // Determining the boundaries of y over which we can perform the projection intergral.
+    // Also, finding the maximal lambda to which primary branch of CGF(\lambda) extends.
+    y_max_iterator = std::max_element(y_values[t].begin(), y_values[t].end());
+    if(t == 0){
+      y_max=*y_max_iterator;
+      time_index_y_max = t;
+    }
+    else if(*y_max_iterator<y_max){
+      y_max=*y_max_iterator;
+      time_index_y_max = t;
+    }
+    
+    y_min_iterator = std::min_element(y_values[t].begin(), y_values[t].end());
+    if(t == 0)
+      y_min=*y_min_iterator;
+    else if(*y_min_iterator>y_min)
+      y_min=*y_min_iterator;
+    
+    lambda_index_y_max = std::distance(y_values[t].begin(), y_max_iterator);
+    y_values[t] = vector<double>(&y_values[t][0], &y_values[t][lambda_index_y_max]+1);
+    phi_values[t] = vector<double>(&phi_values[t][0], &phi_values[t][lambda_index_y_max]+1);
+    phi_prime_values[t] = vector<double>(&phi_prime_values[t][0], &phi_prime_values[t][lambda_index_y_max]+1);
+    phi_prime_prime_values[t] = vector<double>(&phi_prime_prime_values[t][0], &phi_prime_prime_values[t][lambda_index_y_max]+1);
+    
+    cout << n_time << '\n';
+    cout.flush();
+  }
+  
+  cout << "computing ranges of lambda_delta and lambda_kappa & resizing phi_grids accordingly\n";
+  
+  vector<int> indeces_of_nonzero_kernel(0,0);
+  vector<double> lensing_kernel_nonoverlap = lensing_kernel_values;
+  for(int t = 0; t < n_time; t++){
+    if(kernel_values[t] > 0.0){
+      indeces_of_nonzero_kernel.push_back(t);
+      lensing_kernel_nonoverlap[t] = 0.0;
+    }
+  }
+  
+  (*phi_data_delta) = this->return_LOS_integrated_phi_of_lambda(theta, f_NL, var_NL_rescale, w_values, kernel_values);
+  (*phi_data_kappa) = this->return_LOS_integrated_phi_of_lambda_lensing_version(theta, f_NL, var_NL_rescale, w_values, lensing_kernel_values);
+  vector<vector<double> > phi_data_kappa_nonoverlap = this->return_LOS_integrated_phi_of_lambda_lensing_version(theta, f_NL, var_NL_rescale, w_values, lensing_kernel_nonoverlap);
   
   int N_ldelta = (*phi_data_delta)[0].size();
   int N_lkappa = (*phi_data_kappa)[0].size();
@@ -1402,79 +2339,53 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
   for(int d = 0; d < N_ldelta; d++){
     cout << d << '\n';
     ldelta = (*phi_data_delta)[0][d];
-      for(int k = 0; k < N_lkappa; k++){
-        lkappa = (*phi_data_kappa)[0][k];
+    for(int k = 0; k < N_lkappa; k++){
+      lkappa = (*phi_data_kappa)[0][k];
+      
+      
+      phi = interpolate_neville_aitken(lkappa, &phi_data_kappa_nonoverlap[0], &phi_data_kappa_nonoverlap[1], constants::order_of_interpolation);
+      dphi_dldelta = 0.0;
+      dphi_dlkappa = interpolate_neville_aitken(lkappa, &phi_data_kappa_nonoverlap[0], &phi_data_kappa_nonoverlap[2], constants::order_of_interpolation);
+      d2phi_dldelta2 = 0.0;
+      d2phi_dldelta_dlkappa = 0.0;
+      d2phi_dlkappa2 = interpolate_neville_aitken(lkappa, &phi_data_kappa_nonoverlap[0], &phi_data_kappa_nonoverlap[3], constants::order_of_interpolation);
+      
+      for(int i = 0; i < N_nonzero_kernel; i++){
+        t = indeces_of_nonzero_kernel[i];
+        dw = w_values[t+1]-w_values[t];
+        kernel_delta = kernel_values[t];
+        dw_times_kernel_delta = kernel_delta*dw;
+        kernel_kappa = lensing_kernel_values[t];
+        dw_times_kernel_kappa = kernel_kappa*dw;
+        y = kernel_delta*ldelta;
+        y += kernel_kappa*lkappa;
         
-        dphi_dldelta = 0.0;
-        dphi_dlkappa = interpolate_neville_aitken(lkappa, &phi_data_kappa_nonoverlap[0], &phi_data_kappa_nonoverlap[2], constants::order_of_interpolation);
+        pointer_to_y_values = &y_values[t];
         
-          for(int i = 0; i < N_nonzero_kernel; i++){
-            t = indeces_of_nonzero_kernel[i];
-            dw = w_values_extended_to_last_scattering[t+1]-w_values_extended_to_last_scattering[t];
-            kernel_delta = kernel_values_extended_to_last_scattering[t];
-            dw_times_kernel_delta = kernel_delta*dw;
-            kernel_kappa = CMB_lensing_kernel[t];
-            dw_times_kernel_kappa = kernel_kappa*dw;
-            y = kernel_delta*ldelta;
-            y += kernel_kappa*lkappa;
-            
-            phi_prime_integrand = interpolate_neville_aitken(y, &y_values[t], &phi_prime_values[t], constants::order_of_interpolation);
-            dphi_dldelta += dw_times_kernel_delta*phi_prime_integrand;
-            dphi_dlkappa += dw_times_kernel_kappa*phi_prime_integrand;
-            
-          }
-          
-          (*dphi_dldelta_grid)[d][k] = dphi_dldelta;
-          (*dphi_dlkappa_grid)[d][k] = dphi_dlkappa;
-          
+        phi_prime_integrand = interpolate_neville_aitken(y, pointer_to_y_values, &phi_prime_values[t], constants::order_of_interpolation);
+        dphi_dldelta += dw_times_kernel_delta*phi_prime_integrand;
+        dphi_dlkappa += dw_times_kernel_kappa*phi_prime_integrand;
+        
+        lambda_index_y_max = pointer_to_y_values->size() - 1;
+        if(y < y_values[t][lambda_index_y_max] && y > y_values[t][0]){
+          phi += dw*interpolate_neville_aitken(y, pointer_to_y_values, &phi_values[t], constants::order_of_interpolation);
+          phi_prime_prime_integrand = interpolate_neville_aitken(y, pointer_to_y_values, &phi_prime_prime_values[t], constants::order_of_interpolation);
+          d2phi_dldelta2 += dw_times_kernel_delta*kernel_delta*phi_prime_prime_integrand;
+          d2phi_dldelta_dlkappa += dw_times_kernel_delta*kernel_kappa*phi_prime_prime_integrand;
+          d2phi_dlkappa2 += dw_times_kernel_kappa*kernel_kappa*phi_prime_prime_integrand;
+          (*grid_mask)[d][k] = 1;
         }
-  }
-  
-  
-  for(int d = 0; d < N_ldelta; d++){
-    cout << d << '\n';
-    ldelta = (*phi_data_delta)[0][d];
-      for(int k = 0; k < N_lkappa; k++){
-        lkappa = (*phi_data_kappa)[0][k];
-        
-        phi = interpolate_neville_aitken(lkappa, &phi_data_kappa_nonoverlap[0], &phi_data_kappa_nonoverlap[1], constants::order_of_interpolation);;
-        dphi_dldelta = (*dphi_dldelta_grid)[d][k];
-        dphi_dlkappa = (*dphi_dlkappa_grid)[d][k];
-        d2phi_dldelta2 = 0.0;
-        d2phi_dldelta_dlkappa = 0.0;
-        d2phi_dlkappa2 = interpolate_neville_aitken(lkappa, &phi_data_kappa_nonoverlap[0], &phi_data_kappa_nonoverlap[3], constants::order_of_interpolation);;
-        
-        if(dphi_dldelta > delta_min && dphi_dldelta < delta_max && dphi_dlkappa > kappa_min && dphi_dlkappa < kappa_max){
-        
-          for(int i = 0; i < N_nonzero_kernel; i++){
-            t = indeces_of_nonzero_kernel[i];
-            dw = w_values_extended_to_last_scattering[t+1]-w_values_extended_to_last_scattering[t];
-            kernel_delta = kernel_values_extended_to_last_scattering[t];
-            dw_times_kernel_delta = kernel_delta*dw;
-            kernel_kappa = CMB_lensing_kernel[t];
-            dw_times_kernel_kappa = kernel_kappa*dw;
-            y = kernel_delta*ldelta;
-            y += kernel_kappa*lkappa;
             
-            pointer_to_y_values = &y_values[t];
-            lambda_index_y_max = pointer_to_y_values->size() -1;
-            if(y < y_values[t][lambda_index_y_max] && y > y_values[t][0]){
-              phi += dw*interpolate_neville_aitken(y, pointer_to_y_values, &phi_values[t], constants::order_of_interpolation);
-              phi_prime_prime_integrand = interpolate_neville_aitken(y, pointer_to_y_values, &phi_prime_prime_values[t], constants::order_of_interpolation);
-              d2phi_dldelta2 += dw_times_kernel_delta*kernel_delta*phi_prime_prime_integrand;
-              d2phi_dldelta_dlkappa += dw_times_kernel_delta*kernel_kappa*phi_prime_prime_integrand;
-              d2phi_dlkappa2 += dw_times_kernel_kappa*kernel_kappa*phi_prime_prime_integrand;
-              (*grid_mask)[d][k] = 1;
-            }
-          }
-          
-          (*phi_grid)[d][k] = phi;
-          (*d2phi_dldelta2_grid)[d][k] = d2phi_dldelta2;
-          (*d2phi_dldelta_dlkappa_grid)[d][k] = d2phi_dldelta_dlkappa;
-          (*d2phi_dlkappa2_grid)[d][k] = d2phi_dlkappa2;
-          
-        }
       }
+          
+      (*phi_grid)[d][k] = phi;
+      (*dphi_dldelta_grid)[d][k] = dphi_dldelta;
+      (*dphi_dlkappa_grid)[d][k] = dphi_dlkappa;
+      (*d2phi_dldelta2_grid)[d][k] = d2phi_dldelta2;
+      (*d2phi_dldelta_dlkappa_grid)[d][k] = d2phi_dldelta_dlkappa;
+      (*d2phi_dlkappa2_grid)[d][k] = d2phi_dlkappa2;
+      
+    }
   }
   
 }
@@ -1483,7 +2394,7 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
 
 
 /*
- * FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point
+ * FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_kappa_saddle_point
  * 
  * 
  * 
@@ -1491,7 +2402,7 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
 
 
 
-void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(vector<double> w_values, vector<double> kernel_values, double theta, double f_NL, double var_NL_rescale, vector<vector<double> > *delta_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid){
+void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_kappa_saddle_point(double theta, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, vector<double> w_values, vector<double> kernel_values, vector<double> lensing_kernel_values, vector<vector<double> > *delta_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid){
   
   cout << "Computing projected phi_data:\n";
   cout.flush();
@@ -1506,36 +2417,116 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
   vector<vector<double> > d2phi_dlkappa2_grid;
   vector<vector<int> > grid_mask;
   
-  this->return_LOS_integrated_phi_of_lambda_incl_CMB_kappa(theta, f_NL, var_NL_rescale, w_values, kernel_values, &phi_data_delta, &phi_data_kappa, &phi_grid, &dphi_dldelta_grid, &dphi_dlkappa_grid, &d2phi_dldelta2_grid, &d2phi_dldelta_dlkappa_grid, &d2phi_dlkappa2_grid, &grid_mask);
+  this->return_LOS_integrated_phi_of_lambda_incl_kappa(theta, f_NL, var_NL_rescale, w_values, kernel_values, lensing_kernel_values, &phi_data_delta, &phi_data_kappa, &phi_grid, &dphi_dldelta_grid, &dphi_dlkappa_grid, &d2phi_dldelta2_grid, &d2phi_dldelta_dlkappa_grid, &d2phi_dlkappa2_grid, &grid_mask);
+  
+  cout << "kappa variance = " << interpolate_neville_aitken(0.0, &phi_data_kappa[0], &phi_data_kappa[3], constants::order_of_interpolation)  << "\n";
+  
+  int N_lambda_delta = phi_grid.size();
+  int N_lambda_kappa = phi_grid[0].size();
+  vector<vector<double> > PDF_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > logPDF_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > delta_Gauss_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > kappa_Gauss_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  
+  vector<vector<double> > delta_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > kappa_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  vector<vector<double> > delta_grid_when_forcing_kappa_transposed(N_lambda_kappa, vector<double>(N_lambda_delta,0.0));
+  vector<vector<double> > PDF_grid_when_forcing_kappa_transposed(N_lambda_kappa, vector<double>(N_lambda_delta,0.0));
+  vector<vector<double> > PDF_grid_when_forcing_delta_and_kappa(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
+  double Lkappa_when_forcing_kappa;
+  
+  double delta, kappa, delta_Gauss, kappa_Gauss;
+  double phi;
+  double dphi_dldelta;
+  double dphi_dlkappa;
+  double d2phi_dldelta2;
+  double d2phi_dldelta_dlkappa;
+  double d2phi_dlkappa_dldelta;
+  double d2phi_dlkappa2;
+  double determinant;
+  cout << "test 1\n";
+  for(int d = 0; d < N_lambda_delta; d++){
+    for(int k = 0; k < N_lambda_kappa; k++){
+      phi = phi_grid[d][k];
+      dphi_dldelta = dphi_dldelta_grid[d][k];
+      dphi_dlkappa = dphi_dlkappa_grid[d][k];
+      d2phi_dldelta2 = d2phi_dldelta2_grid[d][k];
+      d2phi_dldelta_dlkappa = d2phi_dldelta_dlkappa_grid[d][k];
+      d2phi_dlkappa_dldelta = d2phi_dldelta_dlkappa;
+      d2phi_dlkappa2 = d2phi_dlkappa2_grid[d][k];
+      determinant = d2phi_dldelta2*d2phi_dlkappa2;
+      determinant -= d2phi_dlkappa_dldelta*d2phi_dldelta_dlkappa;
+      
+      if(determinant > 0.0 && grid_mask[d][k] == 1){
+        PDF_on_lambda_grid[d][k] = exp(-dphi_dldelta*phi_data_delta[0][d]-dphi_dlkappa*phi_data_kappa[0][k]+phi);
+        PDF_on_lambda_grid[d][k] /= constants::pi2*sqrt(determinant);
+      }
+      if(determinant <= 0.0){
+        grid_mask[d][k] = 0;
+      }
+    }
+  }
+  cout << "test 2\n";
   
   
+  for(int d = 0; d < N_lambda_delta; d++){
+    for(int k = 0; k < N_lambda_kappa; k++){
+      delta_on_lambda_grid[d][k] = phi_data_delta[2][d];
+      kappa_on_lambda_grid[d][k] = phi_data_kappa[2][k];
+      Lkappa_when_forcing_kappa = interpolate_neville_aitken(kappa_on_lambda_grid[d][k], &dphi_dlkappa_grid[d], &phi_data_kappa[0], constants::order_of_interpolation);
+      delta_grid_when_forcing_kappa_transposed[k][d] = interpolate_neville_aitken(Lkappa_when_forcing_kappa, &phi_data_kappa[0], &dphi_dldelta_grid[d], constants::order_of_interpolation);
+      PDF_grid_when_forcing_kappa_transposed[k][d] = interpolate_neville_aitken(Lkappa_when_forcing_kappa, &phi_data_kappa[0], &PDF_on_lambda_grid[d], constants::order_of_interpolation);
+    }
+  }
+  
+  cout << "test 3\n";
+  
+  for(int d = 0; d < N_lambda_delta; d++){
+    for(int k = 0; k < N_lambda_kappa; k++){
+      // d_values = delta_grid_when_forcing_kappa_transposed[k][:]
+      // p_values = PDF_grid_when_forcing_kappa_transposed[k][:]
+      if(delta_on_lambda_grid[d][k] >= delta_grid_when_forcing_kappa_transposed[k][0] && delta_on_lambda_grid[d][k] <= delta_grid_when_forcing_kappa_transposed[k][N_lambda_delta-1])
+        PDF_grid_when_forcing_delta_and_kappa[d][k] = max(0.0,interpolate_neville_aitken(delta_on_lambda_grid[d][k], &delta_grid_when_forcing_kappa_transposed[k], &PDF_grid_when_forcing_kappa_transposed[k], constants::order_of_interpolation));
+    }
+  }
+  cout << "test 4\n";
+  
+  // on delta-axis we need to compute the PDF on a 5sigma intervall, because
+  // shot-noise makes counts-in-cells histogram sensitive to wide range in delta.
+  double N_sigma = 5.0;
   double var_delta = interpolate_neville_aitken(0.0, &phi_data_delta[0], &phi_data_delta[3], constants::order_of_interpolation);
+  double one_over_var_delta = 1.0/var_delta;
   double std_delta = sqrt(var_delta);
   double skew = interpolate_neville_aitken_derivative(0.0, &phi_data_delta[0], &phi_data_delta[3], constants::order_of_interpolation);
-  double lognormal_shift = lognormal_tools::get_delta0(var_delta, skew);
-  double var_Gauss = log(1.0+var_delta/lognormal_shift/lognormal_shift);
-  double mean_Gauss = -0.5*var_Gauss;
-  double std_Gauss = sqrt(var_Gauss);
-  double delta_min = max(-1.0, lognormal_shift*(exp(mean_Gauss-5.0*std_Gauss)-1.0));
-  double delta_max = lognormal_shift*(exp(mean_Gauss+5.0*std_Gauss)-1.0);
+  double lognormal_shift_delta = lognormal_tools::get_delta0(var_delta, skew);
+  double var_delta_Gauss = log(1.0+var_delta/lognormal_shift_delta/lognormal_shift_delta);
+  double one_over_var_delta_Gauss = 1.0/var_delta_Gauss;
+  double mean_delta_Gauss = -0.5*var_delta_Gauss;
+  double std_delta_Gauss = sqrt(var_delta_Gauss);
+  double delta_min = max(-1.0, lognormal_shift_delta*(exp(mean_delta_Gauss-N_sigma*std_delta_Gauss)-1.0));
+  double delta_max = lognormal_shift_delta*(exp(mean_delta_Gauss+N_sigma*std_delta_Gauss)-1.0);
   
   double var_kappa = interpolate_neville_aitken(0.0, &phi_data_kappa[0], &phi_data_kappa[3], constants::order_of_interpolation);
+  double one_over_var_kappa = 1.0/var_kappa;
   double std_kappa = sqrt(var_kappa);
   skew = interpolate_neville_aitken_derivative(0.0, &phi_data_kappa[0], &phi_data_kappa[3], constants::order_of_interpolation);
-  lognormal_shift = lognormal_tools::get_delta0(var_kappa, skew);
-  var_Gauss = log(1.0+var_kappa/lognormal_shift/lognormal_shift);
-  mean_Gauss = -0.5*var_Gauss;
-  std_Gauss = sqrt(var_Gauss);
-  double kappa_min = max(-1.0, lognormal_shift*(exp(mean_Gauss-5.0*std_Gauss)-1.0));
-  double kappa_max = lognormal_shift*(exp(mean_Gauss+5.0*std_Gauss)-1.0);
+  double lognormal_shift_kappa = lognormal_tools::get_delta0(var_kappa, skew);
+  double var_kappa_Gauss = log(1.0+var_kappa/lognormal_shift_kappa/lognormal_shift_kappa);
+  double one_over_var_kappa_Gauss = 1.0/var_kappa_Gauss;
+  double mean_kappa_Gauss = -0.5*var_kappa_Gauss;
+  double std_kappa_Gauss = sqrt(var_kappa_Gauss);
   
-  cout << "delta_min = " << delta_min << '\n';
-  cout << "delta_max = " << delta_max << '\n';
-  cout << "kappa_min = " << kappa_min << '\n';
-  cout << "kappa_max = " << kappa_max << '\n';
+  if(kappa_min > lognormal_shift_kappa*(exp(mean_kappa_Gauss-3.0*std_kappa_Gauss)-1.0) || kappa_max < lognormal_shift_kappa*(exp(mean_kappa_Gauss+3.0*std_kappa_Gauss)-1.0)){
+    error_handling::general_warning("WARNING in compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point:\nYour intervall [kappa_min, kappa_max] might contain less than 3sigma of probability.");
+  }
   
   int n_delta = constants::N_delta_values_for_PDFs;
   int n_kappa = constants::N_delta_values_for_PDFs;
+  
+  (*delta_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  (*kappa_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  (*PDF_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
+  
   /*
    * ISSUE: still avoiding delta=delta_max here, but just for conformity since this was 
    * necessary in compute_LOS_projected_PDF.
@@ -1552,113 +2543,305 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
     kappa_values[i] = kappa_min + double(i)*dkappa;
   }
   
-  
-  double y, delta, kappa, lambda_delta, lambda_kappa;
-  double phi;
-  double dphi_dldelta;
-  double dphi_dlkappa;
-  double d2phi_dldelta2;
-  double d2phi_dldelta_dlkappa;
-  double d2phi_dlkappa_dldelta;
-  double d2phi_dlkappa2;
-  double determinant;
-  vector<vector<double> > inverse_Jacobian(2, vector<double>(2, 0.0));
-  
-  
-  (*delta_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
-  (*kappa_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
-  (*PDF_grid) = vector<vector<double> >(n_delta, vector<double>(n_kappa, 0.0));
-  
-  int steps;
-  
   for(int d = 0; d < n_delta; d++){
     delta = delta_values[d];
-    cout << delta << "   ";
+    cout << "delta = " << delta << "\n";
     for(int k = 0; k < n_kappa; k++){
       kappa = kappa_values[k];
+      
       (*delta_grid)[d][k] = delta;
       (*kappa_grid)[d][k] = kappa;
-      
-      lambda_kappa = 0.0;//interpolate_neville_aitken(kappa, &phi_data_kappa[2], &phi_data_kappa[0], constants::order_of_interpolation);
-      lambda_delta = 0.0;//interpolate_neville_aitken(delta, &phi_data_delta[2], &phi_data_delta[0], constants::order_of_interpolation);
-      
-      dphi_dldelta = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dldelta_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-      dphi_dlkappa = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dlkappa_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-      steps = 0;
-      // ISSUE: these precision criteria should be set in constants.h in the "constants" namespace.
-      while(steps < 1000 && (abs(dphi_dldelta - delta) > 0.1*ddelta || abs(dphi_dlkappa - kappa) > 0.1*dkappa)){
-        steps++;
-        d2phi_dldelta2 = interpolate_neville_aitken_dgrid_dt(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dldelta_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-        d2phi_dldelta_dlkappa = interpolate_neville_aitken_dgrid_dx(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dldelta_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-        d2phi_dlkappa_dldelta = interpolate_neville_aitken_dgrid_dt(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dlkappa_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-        d2phi_dlkappa2 = interpolate_neville_aitken_dgrid_dx(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dlkappa_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-        determinant = d2phi_dldelta2*d2phi_dlkappa2;
-        determinant -= d2phi_dldelta_dlkappa*d2phi_dlkappa_dldelta;
-        
-        inverse_Jacobian[0][0] = d2phi_dlkappa2/determinant;
-        inverse_Jacobian[0][1] = -d2phi_dldelta_dlkappa/determinant;
-        inverse_Jacobian[1][0] = -d2phi_dlkappa_dldelta/determinant;
-        inverse_Jacobian[1][1] = d2phi_dldelta2/determinant;
-        
-        lambda_delta -= inverse_Jacobian[0][0]*(dphi_dldelta-delta) + inverse_Jacobian[0][1]*(dphi_dlkappa-kappa);
-        lambda_kappa -= inverse_Jacobian[1][0]*(dphi_dldelta-delta) + inverse_Jacobian[1][1]*(dphi_dlkappa-kappa);
-        dphi_dldelta = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dldelta_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-        dphi_dlkappa = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &dphi_dlkappa_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-        
-        // f = f0
-        // 
-        //(f-f0)/(x-x0) = f'
-        //==> x0 = x-(f-f0)/f'
-        
-        // d_lambda = Jac^{-1} * ((delta,kappa) - (dphi_dldelta, dphi_dlkappa))
-        
-      }
-      phi = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &phi_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-      d2phi_dldelta2 = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &d2phi_dldelta2_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-      d2phi_dldelta_dlkappa = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &d2phi_dldelta_dlkappa_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-      d2phi_dlkappa2 = interpolate_neville_aitken_grid(lambda_delta, lambda_kappa, &phi_data_delta[0], &phi_data_kappa[0], &d2phi_dlkappa2_grid, constants::order_of_interpolation, constants::order_of_interpolation);
-      determinant = d2phi_dldelta2*d2phi_dlkappa2;
-      determinant -= pow(d2phi_dldelta_dlkappa, 2);
-      
-      int index_delta = find_index(lambda_delta, &phi_data_delta[0]);
-      int index_kappa = find_index(lambda_kappa, &phi_data_kappa[0]);
-      if(determinant > 0.0 && steps < 1000 && grid_mask[index_delta][index_kappa] == 1){
-        (*PDF_grid)[d][k] = exp(-delta*lambda_delta-kappa*lambda_kappa+phi);
-        (*PDF_grid)[d][k] /= constants::pi2*sqrt(determinant);
-      }
+      (*PDF_grid)[d][k] = interpolate_grid_biquadratic(delta, kappa, &phi_data_delta[2], &phi_data_kappa[2], &PDF_grid_when_forcing_delta_and_kappa);
+      if((*PDF_grid)[d][k] < 0.0) (*PDF_grid)[d][k] = 0.0;
       
     }
-    
-    cout << steps << '\n';
   }
   
-  
-  
-  /*
-  int N_ldelta = phi_data_delta[0].size();
-  int N_lkappa = phi_data_kappa[0].size();
-  (*PDF_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
-  
-  for(int d = 0; d < N_ldelta; d++){
-    lambda_delta = phi_data_delta[0][d];
-    for(int k = 0; k < N_lkappa; k++){
-      lambda_kappa = phi_data_kappa[0][k];
-      delta = (*delta_grid)[d][k];
-      kappa = (*kappa_grid)[d][k];
-      if(grid_mask[d][k] == 1 && delta > -0.5 && delta < 1.0 && kappa>-0.4 && kappa < 0.4){
-        (*PDF_grid)[d][k] = exp(-delta*lambda_delta-kappa*lambda_kappa+phi_grid[d][k]);
-        determinant = d2phi_dldelta2_grid[d][k]*d2phi_dlkappa2_grid[d][k];
-        determinant -= pow(d2phi_dldelta_dlkappa_grid[d][k], 2);
-        if(determinant>0.0)
-          (*PDF_grid)[d][k] /= constants::pi2*sqrt(determinant);
-        else
-          (*PDF_grid)[d][k] = 0.0;
+  double norm = 0.0;
+  double maxi = 0.0;
+  int dmaxi = 0;
+  int kmaxi = 0;
+  for(int d = 0; d < n_delta; d++){
+    for(int k = 0; k < n_kappa; k++){
+      norm += (*PDF_grid)[d][k];
+      if((*PDF_grid)[d][k] > maxi){
+        maxi = (*PDF_grid)[d][k];
+        dmaxi = d;
+        kmaxi = k;
       }
     }
   }
-  */
+  norm *= ddelta*dkappa;
+  
+  cout << scientific << setprecision(5);
+  cout << "# norm:\n";
+  cout << "# " << norm << '\n';
+  cout << "# max:\n";
+  cout << "# " << dmaxi << "  " << kmaxi << "  " << maxi << '\n';
+  cout << "# P[250,250]:\n";
+  cout << "# " << (*PDF_grid)[250][250] << '\n';
+  cout << "# delta bounds:\n";
+  cout << "# " << delta_min << "  " << delta_max << '\n';
+  cout << "# " << phi_data_delta[2][0] << "  " << phi_data_delta[2][N_lambda_delta-1] << '\n';
+  cout << "# kappa bounds:\n";
+  cout << "# " << kappa_min << "  " << kappa_max << '\n';
+  cout << "# " << phi_data_kappa[2][0] << "  " << phi_data_kappa[2][N_lambda_kappa-1] << '\n';
   
 }
 
 
+
+
+
+vector<double> FlatInhomogeneousUniverseLCDM::return_LOS_integrated_C_ells(int l_max, vector<double> w_values, vector<double> kernel_values){
+  
+  int N_ell = l_max + 1;
+  vector<double> C_ells(N_ell, 0.0);
+  
+  int n_time = w_values.size()-1;
+  
+  vector<int> indeces_of_nonzero_kernel(0,0);
+  
+  double eta, eta_0, w, dw, ell, ell_plus_half, T_ell, k;
+  eta_0 = this->eta_at_a(1.0);
+  
+  for(int i = 0; i < n_time; i++){
+    if(kernel_values[i] > 0.0){
+      indeces_of_nonzero_kernel.push_back(i);
+    }
+  }
+  
+  int n_time_of_nonzero_kernel = indeces_of_nonzero_kernel.size();
+  
+  for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+    int i = indeces_of_nonzero_kernel[t];
+    w = 0.5*(w_values[i+1]+w_values[i]);
+    dw = w_values[i+1]-w_values[i];
+    eta = eta_0-w;
+    this->current_P_NL = this->P_NL(eta);
+    for(int l = 2; l < N_ell; l++){
+      ell = float(l);
+      ell_plus_half = ell+0.5;
+      k = ell_plus_half/w;
+      C_ells[l] += pow(kernel_values[i]/w, 2)*interpolate_neville_aitken(log(k), &this->log_wave_numbers, &this->current_P_NL, constants::order_of_interpolation);
+    }
+  }
+  
+  for(int l = 2; l < N_ell; l++){
+    ell = float(l);
+    ell_plus_half = ell+0.5;
+    // Limber correction from https://arxiv.org/abs/1611.04954 :
+    T_ell = ((ell+2.0)*(ell+1.0)*ell*(ell-1.0))/pow(ell_plus_half, 4.0);
+    C_ells[l] *= T_ell;
+  }
+  
+  return C_ells;
+  
+}
+
+
+
+
+
+vector<vector<vector<double> > > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_C_ells(int l_max, vector<double> w_values, vector<vector<double> > kernel_values){
+  
+  int N_ell = l_max + 1;
+  int N_fields = kernel_values.size();
+  vector<vector<vector<double> > > C_ells(N_fields, vector<vector<double> >(N_fields, vector<double>(N_ell, 0.0)));
+  
+  int n_time = w_values.size()-1;
+  
+  vector<int> indeces_of_nonzero_kernel(0,0);
+  
+  int kernel_positive = 0;
+  double eta, eta_0, w, dw, ell, ell_plus_half, T_ell, k;
+  eta_0 = this->eta_at_a(1.0);
+  
+  for(int i = 0; i < n_time; i++){
+    kernel_positive = 0;
+    for(int k = 0; k < N_fields; k++){
+      if(kernel_values[k][i] > 0.0) kernel_positive = 1;
+    }
+    if(kernel_positive == 1){
+      indeces_of_nonzero_kernel.push_back(i);
+    }
+  }
+  
+  int n_time_of_nonzero_kernel = indeces_of_nonzero_kernel.size();
+  
+  cout << "computing C_ells:\n";
+  
+  for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+    int i = indeces_of_nonzero_kernel[t];
+    w = 0.5*(w_values[i+1]+w_values[i]);
+    dw = w_values[i+1]-w_values[i];
+    eta = eta_0-w;
+    this->current_P_NL = this->P_NL(eta);
+    for(int l = 2; l < N_ell; l++){
+      ell = float(l);
+      ell_plus_half = ell+0.5;
+      k = ell_plus_half/w;
+      
+      for(int f1 = 0; f1 < N_fields; f1++){
+        for(int f2 = f1; f2 < N_fields; f2++){
+          C_ells[f1][f2][l] += dw*kernel_values[f1][i]*kernel_values[f2][i]/pow(w, 2)*interpolate_neville_aitken(log(k), &this->log_wave_numbers, &this->current_P_NL, constants::order_of_interpolation);
+        }
+      }
+    }
+  }
+  
+  cout << "Done.\n";
+  
+  for(int l = 2; l < N_ell; l++){
+    ell = float(l);
+    ell_plus_half = ell+0.5;
+    // Limber correction from https://arxiv.org/abs/1611.04954 :
+    T_ell = ((ell+2.0)*(ell+1.0)*ell*(ell-1.0))/pow(ell_plus_half, 4.0);
+    for(int f1 = 0; f1 < N_fields; f1++){
+      for(int f2 = f1; f2 < N_fields; f2++){
+        C_ells[f1][f2][l] *= T_ell;
+        C_ells[f2][f1][l] = C_ells[f1][f2][l];
+      }
+    }
+  }
+  cout << "Done.\n";
+  
+  return C_ells;
+  
+}
+
+
+
+
+
+vector<vector<vector<double> > > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_3rd_moments(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<vector<double> > kernel_values){
+  
+  if(f_NL != 0.0){
+    cerr << "CAREFUL: f_NL != 0 not yet implemented in return_LOS_integrated_skewness.\n";
+  }
+  
+  int n_time = w_values.size()-1;
+  int N_fields = kernel_values.size();
+  int kernel_positive = 0;
+  double a, e, eta_0, w, dw, R;
+  eta_0 = this->eta_at_a(1.0);
+  
+  vector<int> indeces_of_nonzero_kernel(0,0);
+  for(int i = 0; i < n_time; i++){
+    kernel_positive = 0;
+    for(int k = 0; k < N_fields; k++){
+      if(kernel_values[k][i] > 0.0) kernel_positive = 1;
+    }
+    if(kernel_positive == 1){
+      indeces_of_nonzero_kernel.push_back(i);
+    }
+  }
+  
+  int n_time_of_nonzero_kernel = indeces_of_nonzero_kernel.size();
+  vector<vector<vector<double> > > third_moments(N_fields, vector<vector<double> >(N_fields, vector<double>(N_fields, 0.0)));
+  
+  double D_11;
+  double D_22;
+  double mu;
+  double one_plus_mu;
+  double vNL, vL, dlnvL_dlnR, S_3, skew_cylinder;
+  
+  cout << "computing 3rd moments:\n";
+  
+  for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+    int i = indeces_of_nonzero_kernel[t];
+    w = 0.5*(w_values[i+1]+w_values[i]);
+    dw = w_values[i+1]-w_values[i];
+    e = eta_0-w;
+    R = w*theta;
+    this->current_P_L = this->P_L(e);
+    this->current_P_NL = this->P_NL(e);
+    vNL = variance_of_matter_within_R_NL_2D(R)*var_NL_rescale;
+    vL = this->variance_of_matter_within_R_2D(R);
+    dlnvL_dlnR = this->dvariance_of_matter_within_R_dR_2D(R)/vL*R;
+    
+    D_11 = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_of_delta, constants::order_of_interpolation);
+    D_22 = interpolate_neville_aitken(e, &this->eta, &this->Newtonian_growth_factor_second_order, constants::order_of_interpolation);
+    mu = 1.0 - D_22/D_11/D_11;
+    one_plus_mu = (1.0+mu);
+    
+    S_3 = 3.0*one_plus_mu + 1.5*dlnvL_dlnR;
+    skew_cylinder = S_3*vNL*vNL;
+    for(int f1 = 0; f1 < N_fields; f1++){
+      for(int f2 = 0; f2 < N_fields; f2++){
+        for(int f3 = 0; f3 < N_fields; f3++){
+          third_moments[f1][f2][f3] += dw*skew_cylinder*kernel_values[f1][i]*kernel_values[f2][i]*kernel_values[f3][i]; 
+        }
+      }
+    }  
+  }
+  cout << "Done.\n";
+  
+  return third_moments;
+  
+}
+
+
+
+
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_2nd_moments(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<vector<double> > kernel_values){
+  
+  if(f_NL != 0.0){
+    cerr << "CAREFUL: f_NL != 0 not yet implemented in return_LOS_integrated_skewness.\n";
+  }
+  
+  int n_time = w_values.size()-1;
+  int N_fields = kernel_values.size();
+  int kernel_positive = 0;
+  double a, e, eta_0, w, dw, R;
+  eta_0 = this->eta_at_a(1.0);
+  
+  vector<int> indeces_of_nonzero_kernel(0,0);
+  for(int i = 0; i < n_time; i++){
+    kernel_positive = 0;
+    for(int k = 0; k < N_fields; k++){
+      if(kernel_values[k][i] > 0.0) kernel_positive = 1;
+    }
+    if(kernel_positive == 1){
+      indeces_of_nonzero_kernel.push_back(i);
+    }
+  }
+  
+  int n_time_of_nonzero_kernel = indeces_of_nonzero_kernel.size();
+  vector<vector<double> > second_moments(N_fields, vector<double>(N_fields, 0.0));
+  
+  double D_11;
+  double D_22;
+  double mu;
+  double one_plus_mu;
+  double vNL, vL, dlnvL_dlnR, S_3, skew_cylinder;
+  
+  cout << "computing 2nd moments:\n";
+  
+  for(int t = 0; t < n_time_of_nonzero_kernel; t++){
+    int i = indeces_of_nonzero_kernel[t];
+    w = 0.5*(w_values[i+1]+w_values[i]);
+    dw = w_values[i+1]-w_values[i];
+    e = eta_0-w;
+    R = w*theta;
+    this->current_P_NL = this->P_NL(e);
+    vNL = variance_of_matter_within_R_NL_2D(R)*var_NL_rescale;
+    for(int f1 = 0; f1 < N_fields; f1++){
+      for(int f2 = f1; f2 < N_fields; f2++){
+        second_moments[f1][f2] += dw*vNL*kernel_values[f1][i]*kernel_values[f2][i];
+      }
+    }  
+  }
+  cout << "Done.\n";
+  
+  for(int f1 = 0; f1 < N_fields; f1++){
+    for(int f2 = f1; f2 < N_fields; f2++){
+      second_moments[f2][f1] = second_moments[f1][f2];
+    }
+  } 
+  cout << "Done.\n";
+  
+  return second_moments;
+  
+}
 

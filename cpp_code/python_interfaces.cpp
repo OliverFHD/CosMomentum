@@ -4,6 +4,7 @@
 #include "io_utils.h"
 #include "error_handling.h"
 #include "interpolators.h"
+#include "LA_utils.h"
 #include "FlatInhomogeneousUniverseLCDM.h"
 #include "GalaxySample3D.h"
 #include "ProjectedGalaxySample.h"
@@ -82,6 +83,10 @@ extern "C" double change_b2_to_minimise_negative_densities_3D(int index_of_galax
 
 extern "C" void update_3D_bias_model_from_br_parametrisation(int index_of_galaxy_sample, double b_tilde, double r, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale){
   global_universes.galaxy_samples_3D[index_of_galaxy_sample]->set_3D_bias_model_from_br_parametrisation(b_tilde, r, R_in_Mpc_over_h, f_NL, var_NL_rescale);
+}
+
+extern "C" void update_projected_bias_model_from_br_parametrisation(int index_of_galaxy_sample, double b_tilde, double r, double theta_in_arcmin, double f_NL, double var_NL_rescale){
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->set_projected_bias_model_from_br_parametrisation(b_tilde, r, theta_in_arcmin, f_NL, var_NL_rescale);
 }
 
 extern "C" void return_CiC_PDF_3D(double* P_of_N, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
@@ -336,7 +341,7 @@ extern "C" double return_var_L(double z, double R_in_Mpc_over_h, int index_of_un
   return global_universes.universes[index_of_universe]->return_linear_variance(z, R_in_Mpc_over_h);
 }
 
-extern "C" void compute_projected_PDF_incl_CMB_kappa(int *Nd, int *Nk, double theta_in_arcmin, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
+extern "C" void compute_projected_PDF_incl_CMB_kappa(int *Nd, int *Nk, double theta_in_arcmin, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, int index_of_galaxy_sample){
   vector<vector<double> > *d_grid = &global_universes.delta_grid;
   vector<vector<double> > *k_grid = &global_universes.kappa_grid;
   vector<vector<double> > *p_grid = &global_universes.PDF_grid;
@@ -344,7 +349,7 @@ extern "C" void compute_projected_PDF_incl_CMB_kappa(int *Nd, int *Nk, double th
   vector<double> kernel_values;
   vector<double> lensing_kernel_values;
   global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_LOS_data(&w_values, &kernel_values, &lensing_kernel_values);
-  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->pointer_to_universe()->compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(w_values, kernel_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, d_grid, k_grid, p_grid);
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->pointer_to_universe()->compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, w_values, kernel_values, d_grid, k_grid, p_grid);
   (*Nd) = p_grid->size();
   (*Nk) = (*p_grid)[0].size();
 }
@@ -361,6 +366,151 @@ extern "C" void return_projected_PDF_incl_CMB_kappa(double *delta_grid, double *
       index++;
     }
   }
+  
+}
+
+
+
+extern "C" void print_joint_PDF_Ng_kappaCMB(double theta_in_arcmin, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, int index_of_galaxy_sample){
+  
+  vector<vector<double> > n_grid;
+  vector<vector<double> > k_grid;
+  vector<vector<double> > p_grid;
+  
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_joint_saddle_point_PDF_Ng_kappaCMB_in_angular_tophat(theta_in_arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, &n_grid, &k_grid, &p_grid);
+  int NN = n_grid.size();
+  int Nk = n_grid[0].size();
+  int index = 0;
+  
+  cout << NN << '\n';
+  cout << Nk << '\n';
+  
+  FILE *F = fopen("PDF_test", "w");
+  fclose(F);
+  F = fopen("N_test", "w");
+  fclose(F);
+  F = fopen("kappa_test", "w");
+  fclose(F);
+  fstream out_n, out_k, out_p;
+  out_n.open("N_test");
+  out_k.open("kappa_test");
+  out_p.open("PDF_test");
+  out_n << scientific << setprecision(5);
+  out_k << scientific << setprecision(5);
+  out_p << scientific << setprecision(5);
+  
+  for(int n = 0; n < NN; n++){
+    for(int k = 0; k < Nk; k++){
+      out_n << n_grid[n][k] << "  ";
+      out_k << k_grid[n][k] << "  ";
+      out_p << p_grid[n][k] << "  ";
+    }
+    out_n << '\n';
+    out_k << '\n';
+    out_p << '\n';
+  }
+  
+  out_n.close();
+  out_k.close();
+  out_p.close();
+  
+}
+
+extern "C" void print_joint_PDF_Ng_kappaCMB_noisy(double theta_in_arcmin, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, double kappa_CMB_noise_variance, int index_of_galaxy_sample){
+  
+  vector<vector<double> > n_grid;
+  vector<vector<double> > k_grid;
+  vector<vector<double> > p_grid;
+  
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_joint_saddle_point_PDF_Ng_kappaCMB_noisy_in_angular_tophat(theta_in_arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, kappa_CMB_noise_variance, &n_grid, &k_grid, &p_grid);
+  int NN = n_grid.size();
+  int Nk = n_grid[0].size();
+  int index = 0;
+  
+  cout << NN << '\n';
+  cout << Nk << '\n';
+  
+  FILE *F = fopen("PDF_noisyKappa_test", "w");
+  fclose(F);
+  F = fopen("N_noisyKappa_test", "w");
+  fclose(F);
+  F = fopen("kappa_noisyKappa_test", "w");
+  fclose(F);
+  fstream out_n, out_k, out_p;
+  out_n.open("N_noisyKappa_test");
+  out_k.open("kappa_noisyKappa_test");
+  out_p.open("PDF_noisyKappa_test");
+  out_n << scientific << setprecision(5);
+  out_k << scientific << setprecision(5);
+  out_p << scientific << setprecision(5);
+  
+  for(int n = 0; n < NN; n++){
+    for(int k = 0; k < Nk; k++){
+      out_n << n_grid[n][k] << "  ";
+      out_k << k_grid[n][k] << "  ";
+      out_p << p_grid[n][k] << "  ";
+    }
+    out_n << '\n';
+    out_k << '\n';
+    out_p << '\n';
+  }
+  
+  out_n.close();
+  out_k.close();
+  out_p.close();
+  
+}
+
+extern "C" void print_joint_PDF_Ng_kappa_noisy(double theta_in_arcmin, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, double kappa_noise_variance, int index_of_lens_sample, int index_of_source_sample){
+  
+  
+  vector<double> w_values;
+  vector<double> kernel_values;
+  vector<double> lensing_kernel_values;
+  
+  global_universes.projected_galaxy_samples[index_of_source_sample]->return_LOS_data(&w_values, &kernel_values, &lensing_kernel_values);
+  
+  
+  vector<vector<double> > n_grid;
+  vector<vector<double> > k_grid;
+  vector<vector<double> > p_grid;
+  
+  global_universes.projected_galaxy_samples[index_of_lens_sample]->return_joint_saddle_point_PDF_Ng_kappa_noisy_in_angular_tophat(theta_in_arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, kappa_noise_variance, w_values, lensing_kernel_values, &n_grid, &k_grid, &p_grid);
+  int NN = n_grid.size();
+  int Nk = n_grid[0].size();
+  int index = 0;
+  
+  cout << NN << '\n';
+  cout << Nk << '\n';
+  
+  FILE *F = fopen("PDF_noisyKappa_test", "w");
+  fclose(F);
+  F = fopen("N_noisyKappa_test", "w");
+  fclose(F);
+  F = fopen("kappa_noisyKappa_test", "w");
+  fclose(F);
+  fstream out_n, out_k, out_p;
+  out_n.open("N_noisyKappa_test");
+  out_k.open("kappa_noisyKappa_test");
+  out_p.open("PDF_noisyKappa_test");
+  out_n << scientific << setprecision(5);
+  out_k << scientific << setprecision(5);
+  out_p << scientific << setprecision(5);
+  
+  for(int n = 0; n < NN; n++){
+    for(int k = 0; k < Nk; k++){
+      out_n << n_grid[n][k] << "  ";
+      out_k << k_grid[n][k] << "  ";
+      out_p << p_grid[n][k] << "  ";
+    }
+    out_n << '\n';
+    out_k << '\n';
+    out_p << '\n';
+  }
+  
+  out_n.close();
+  out_k.close();
+  out_p.close();
   
 }
 
@@ -414,6 +564,243 @@ extern "C" void return_convergence_PDF_from_source_sample(double* kappa_values, 
     kappa_values[d] = PDF_data[0][d];
     PDF[d] = PDF_data[1][d];
   }
+  
+}
+
+extern "C" void configure_FLASK_for_delta_g_and_CMB_kappa(int l_max, double theta_in_arcmin, double bias, double r, int index_of_galaxy_sample){
+  
+  FlatInhomogeneousUniverseLCDM* pointer_to_universe = global_universes.projected_galaxy_samples[index_of_galaxy_sample]->pointer_to_universe();
+
+  
+  vector<double> w_values;
+  vector<double> kernel_values;
+  vector<double> lensing_kernel_values;
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_LOS_data(&w_values, &kernel_values, &lensing_kernel_values);
+  
+  int n_time = w_values.size()-1;
+  double a, eta_0, w, dw, w_last_scattering;
+  eta_0 = pointer_to_universe->eta_at_a(1.0);
+  w_last_scattering = eta_0-pointer_to_universe->eta_at_a(1.0/(1.0+constants::z_last_scattering));
+  
+  // need to extend projection kernel to surface of last scattering:
+  vector<double> w_values_extended_to_last_scattering = w_values;
+  vector<double> kernel_values_extended_to_last_scattering = kernel_values;
+  dw = min(constants::maximal_dw, w_last_scattering - w_values_extended_to_last_scattering[n_time]);
+  w = w_values_extended_to_last_scattering[n_time] + dw;
+  while(w < w_last_scattering){
+    w_values_extended_to_last_scattering.push_back(w);
+    kernel_values_extended_to_last_scattering.push_back(0.0);
+    n_time = w_values_extended_to_last_scattering.size()-1;
+    dw = min(constants::maximal_dw, w_last_scattering - w);
+    w = w + dw;
+  }
+  w_values_extended_to_last_scattering.push_back(w);
+  kernel_values_extended_to_last_scattering.push_back(0.0);
+  n_time = w_values_extended_to_last_scattering.size()-1;
+  
+  vector<double> w_values_bin_center(n_time, 0.0);
+  for(int i = 0; i < n_time; i++){
+    w_values_bin_center[i] = 0.5*(w_values_extended_to_last_scattering[i+1]+w_values_extended_to_last_scattering[i]);
+  }
+  
+  vector<double> CMB_lensing_kernel(n_time, 0.0);
+  vector<double> CMB_lensing_kernel_overlap(n_time, 0.0);
+  vector<double> CMB_lensing_kernel_nonoverlap(n_time, 0.0);
+  double w_min = w_values_extended_to_last_scattering[0];
+  double w_max = w_values_extended_to_last_scattering[n_time];
+  double norm = 0.0;
+  for(int i = 0; i < n_time; i++){
+    w = w_values_bin_center[i];
+    a = pointer_to_universe->a_at_eta(eta_0-w);
+    CMB_lensing_kernel[i] = 1.5*pointer_to_universe->return_Omega_m()*w*(w_last_scattering-w)/w_last_scattering/a;
+    if(kernel_values_extended_to_last_scattering[i] > 0.0){
+      CMB_lensing_kernel_overlap[i] = CMB_lensing_kernel[i];
+    }
+    else{
+      CMB_lensing_kernel_nonoverlap[i] = CMB_lensing_kernel[i];
+    }
+      
+  }
+  
+  
+  vector<vector<double> > joint_kernel_values(4, vector<double>(n_time, 0.0));
+  
+  joint_kernel_values[0] = kernel_values_extended_to_last_scattering;
+  joint_kernel_values[1] = CMB_lensing_kernel;
+  joint_kernel_values[2] = CMB_lensing_kernel_overlap;
+  joint_kernel_values[3] = CMB_lensing_kernel_nonoverlap;
+  
+  
+  vector<vector<vector<double> > > C_ells = pointer_to_universe->return_LOS_integrated_C_ells(l_max, w_values_extended_to_last_scattering, joint_kernel_values);
+  
+  vector<vector<double> > second_moments = pointer_to_universe->return_LOS_integrated_2nd_moments(theta_in_arcmin*constants::arcmin, 0.0, 1.0, w_values_extended_to_last_scattering, joint_kernel_values);
+  
+  vector<vector<vector<double> > > third_moments = pointer_to_universe->return_LOS_integrated_3rd_moments(theta_in_arcmin*constants::arcmin, 0.0, 1.0, w_values_extended_to_last_scattering, joint_kernel_values);
+  
+  int N_ell = C_ells[0][0].size();
+  
+  cout << "Test 1\n";
+  
+  double lambda_m = lognormal_tools::get_delta0(second_moments[0][0], third_moments[0][0][0]);
+  double lambda_k_overlap_correlated = lognormal_tools::get_kappa0(lambda_m, second_moments[0][0], second_moments[0][1], third_moments[0][0][1]);
+  cout << "Test 1\n";
+  
+  double var_kappa_overlap = second_moments[2][2];
+  double var_kappa_overlap_correlated = lognormal_tools::get_var_kappa(lambda_m, lambda_k_overlap_correlated, second_moments[0][1], third_moments[0][1][1]);
+  double var_kappa_overlap_uncorrelated = var_kappa_overlap - var_kappa_overlap_correlated;
+  cout << "Test 2\n";
+
+  double skewness_kappa_overlap = third_moments[2][2][2];
+  double skewness_kappa_overlap_correlated = lognormal_tools::get_skew_from_delta_0(lambda_k_overlap_correlated, var_kappa_overlap_correlated);
+  double skewness_kappa_overlap_uncorrelated = skewness_kappa_overlap - skewness_kappa_overlap_correlated;
+  cout << "Test 3\n";
+  
+  double var_kappa_uncorrelated = second_moments[3][3] + var_kappa_overlap_uncorrelated;
+  double skewness_uncorrelated = third_moments[3][3][3] + skewness_kappa_overlap_uncorrelated;
+  double lambda_k_uncorrelated = lognormal_tools::get_delta0(var_kappa_uncorrelated, skewness_uncorrelated);
+  cout << "Test 4\n";
+  
+  
+  FILE *F = fopen("FLASK_config_Cells", "w");
+  fclose(F);
+  fstream out;
+  out.open("FLASK_config_Cells");
+  out << scientific << setprecision(5);
+  
+  out << "# variances: var_g = ";
+  out << second_moments[0][0]*bias*bias << " ;  cov_gk = ";
+  out << second_moments[0][1]*bias*r << " ;  var_k_correlated = ";
+  out << var_kappa_overlap_correlated << " ;  var_k_uncorrelated = ";
+  out << var_kappa_uncorrelated << "\n";
+  
+  out << "# shift params: lambda_g = ";
+  out << lambda_m*bias << " ;  lambda_k_correlated = ";
+  out << lambda_k_overlap_correlated << " ;  lambda_k_uncorrelated = ";
+  out << lambda_k_uncorrelated << "\n";
+  
+  out << "# ell          C_gg(ell)          C_gk(ell)          C_kk_correlated(ell)          C_kk_uncorrelated(ell)\n";
+  
+  for(int l = 0; l < N_ell; l++){
+    out << l << setw(15);
+    out << C_ells[0][0][l]*bias*bias << setw(15);
+    out << C_ells[0][1][l]*bias*r << setw(15);
+    out << C_ells[2][2][l]*var_kappa_overlap_correlated/var_kappa_overlap << setw(15);
+    out << C_ells[3][3][l] + C_ells[2][2][l]*(1.0-var_kappa_overlap_correlated/var_kappa_overlap) << '\n';
+  }
+  
+  out.close();
+  
+  
+}
+
+
+
+extern "C" void configure_FLASK_for_delta_g_and_kappa(int l_max, double theta_in_arcmin, double bias, double r, int index_of_lens_sample, int index_of_source_sample, const char *n_of_z_file){
+  
+  FlatInhomogeneousUniverseLCDM* pointer_to_universe = global_universes.projected_galaxy_samples[index_of_lens_sample]->pointer_to_universe();
+
+  
+  vector<double> w_values;
+  vector<double> w_values_1;
+  vector<double> w_values_2;
+  vector<double> kernel_values;
+  vector<double> lensing_kernel_values;
+  vector<double> dummy;
+  
+  global_universes.projected_galaxy_samples[index_of_lens_sample]->return_LOS_data(&w_values_1, &kernel_values, &dummy);
+  global_universes.projected_galaxy_samples[index_of_source_sample]->return_LOS_data(&w_values_2, &dummy, &lensing_kernel_values);
+  
+  vector<vector<double> > rebinned_data = return_joint_binning(w_values_1, kernel_values, w_values_2, lensing_kernel_values);
+  
+  w_values = rebinned_data[0];
+  kernel_values = rebinned_data[1];
+  lensing_kernel_values = rebinned_data[2];
+  int n_time = w_values.size()-1;
+    
+  vector<double> w_values_bin_center(n_time, 0.0);
+  for(int i = 0; i < n_time; i++){
+    w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
+  }
+  
+  vector<double> lensing_kernel_overlap(n_time, 0.0);
+  vector<double> lensing_kernel_nonoverlap(n_time, 0.0);
+  for(int i = 0; i < n_time; i++){
+    if(kernel_values[i] > 0.0){
+      lensing_kernel_overlap[i] = lensing_kernel_values[i];
+    }
+    else{
+      lensing_kernel_nonoverlap[i] = lensing_kernel_values[i];
+    }
+  }
+  
+  
+  vector<vector<double> > joint_kernel_values(4, vector<double>(n_time, 0.0));
+  
+  joint_kernel_values[0] = kernel_values;
+  joint_kernel_values[1] = lensing_kernel_values;
+  joint_kernel_values[2] = lensing_kernel_overlap;
+  joint_kernel_values[3] = lensing_kernel_nonoverlap;
+  
+  
+  vector<vector<vector<double> > > C_ells = pointer_to_universe->return_LOS_integrated_C_ells(l_max, w_values, joint_kernel_values);
+  
+  vector<vector<double> > second_moments = pointer_to_universe->return_LOS_integrated_2nd_moments(theta_in_arcmin*constants::arcmin, 0.0, 1.0, w_values, joint_kernel_values);
+  
+  vector<vector<vector<double> > > third_moments = pointer_to_universe->return_LOS_integrated_3rd_moments(theta_in_arcmin*constants::arcmin, 0.0, 1.0, w_values, joint_kernel_values);
+  
+  int N_ell = C_ells[0][0].size();
+  
+  cout << "Test 1\n";
+  
+  double lambda_m = lognormal_tools::get_delta0(second_moments[0][0], third_moments[0][0][0]);
+  double lambda_k_overlap_correlated = lognormal_tools::get_kappa0(lambda_m, second_moments[0][0], second_moments[0][1], third_moments[0][0][1]);
+  cout << "Test 1\n";
+  
+  double var_kappa_overlap = second_moments[2][2];
+  double var_kappa_overlap_correlated = lognormal_tools::get_var_kappa(lambda_m, lambda_k_overlap_correlated, second_moments[0][1], third_moments[0][1][1]);
+  double var_kappa_overlap_uncorrelated = var_kappa_overlap - var_kappa_overlap_correlated;
+  cout << "Test 2\n";
+
+  double skewness_kappa_overlap = third_moments[2][2][2];
+  double skewness_kappa_overlap_correlated = lognormal_tools::get_skew_from_delta_0(lambda_k_overlap_correlated, var_kappa_overlap_correlated);
+  double skewness_kappa_overlap_uncorrelated = skewness_kappa_overlap - skewness_kappa_overlap_correlated;
+  cout << "Test 3\n";
+  
+  double var_kappa_uncorrelated = second_moments[3][3] + var_kappa_overlap_uncorrelated;
+  double skewness_uncorrelated = third_moments[3][3][3] + skewness_kappa_overlap_uncorrelated;
+  double lambda_k_uncorrelated = lognormal_tools::get_delta0(var_kappa_uncorrelated, skewness_uncorrelated);
+  cout << "Test 4\n";
+  
+  
+  FILE *F = fopen(n_of_z_file, "w");
+  fclose(F);
+  fstream out;
+  out.open(string(n_of_z_file));
+  out << scientific << setprecision(5);
+  
+  out << "# variances: var_g = ";
+  out << second_moments[0][0]*bias*bias << " ;  cov_gk = ";
+  out << second_moments[0][1]*bias*r << " ;  var_k_correlated = ";
+  out << var_kappa_overlap_correlated << " ;  var_k_uncorrelated = ";
+  out << var_kappa_uncorrelated << "\n";
+  
+  out << "# shift params: lambda_g = ";
+  out << lambda_m*bias << " ;  lambda_k_correlated = ";
+  out << lambda_k_overlap_correlated << " ;  lambda_k_uncorrelated = ";
+  out << lambda_k_uncorrelated << "\n";
+  
+  out << "# ell          C_gg(ell)          C_gk(ell)          C_kk_correlated(ell)          C_kk_uncorrelated(ell)\n";
+  
+  for(int l = 0; l < N_ell; l++){
+    out << l << setw(15);
+    out << C_ells[0][0][l]*bias*bias << setw(15);
+    out << C_ells[0][1][l]*bias*r << setw(15);
+    out << C_ells[2][2][l]*var_kappa_overlap_correlated/var_kappa_overlap << setw(15);
+    out << C_ells[3][3][l] + C_ells[2][2][l]*(1.0-var_kappa_overlap_correlated/var_kappa_overlap) << '\n';
+  }
+  
+  out.close();
+  
   
 }
 

@@ -1,9 +1,5 @@
 #include <vector>
 #include <gsl/gsl_sf_bessel.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_linalg.h>
-#include <gsl/gsl_eigen.h>
-#include <gsl/gsl_cblas.h>
 
 
 using namespace std;
@@ -235,44 +231,6 @@ vector<double> factoria(int n){
   
   return fact;
   
-}
-
-
-void invert_matrix(vector<vector<double> > *matrix, vector<vector<double> > *inverse){
-	
-	int n_data = matrix->size();
-	
-	(*inverse) = vector<vector<double> >(n_data, vector<double>(n_data, 0.0));
-	
-	gsl_matrix * m = gsl_matrix_alloc (n_data, n_data);
-	gsl_matrix * mAux = gsl_matrix_alloc (n_data, n_data);
-	gsl_matrix * mInverse = gsl_matrix_alloc (n_data, n_data);
-	gsl_permutation * perm1 = gsl_permutation_alloc (n_data);
-	int s1;
-	
-	for(int i = 0; i < n_data; i++){
-		for(int j = 0; j < n_data; j++){
-			gsl_matrix_set(m, i, j, (*matrix)[i][j]);
-		}
-	}
-	
-	gsl_matrix_memcpy (mAux, m);
-	gsl_linalg_LU_decomp (mAux, perm1, &s1);
-	gsl_linalg_LU_invert (mAux, perm1, mInverse);
-	
-	
-	for(int i = 0; i < n_data; i++){
-		for(int j = 0; j < n_data; j++){
-			(*inverse)[i][j] = gsl_matrix_get(mInverse, i, j);
-		}
-	}
-	
-	
-	gsl_matrix_free(m);
-	gsl_matrix_free(mAux);
-	gsl_matrix_free(mInverse);
-	gsl_permutation_free(perm1);
-	
 }
 
 

@@ -553,6 +553,40 @@ double interpolate_Newton(double x0, vector<double> *x, vector<double> *f, int o
 
 
 
+double interpolate_grid_bilinear(double t0, double x0, vector<double> * t, vector<double> * x,
+				       vector<vector<double> > * f_of_t_x){
+  
+  int n_t = (*t).size();
+  int n_x = (*x).size();
+  int index_t = find_index(t0, t);
+  int index_x = find_index(x0, x);
+  if(index_t >= n_t - 1) index_t = n_t - 2;
+  if(index_x >= n_x - 1) index_x = n_x - 2;
+  
+  /*
+   * (index_t, index_x)---> p00  p01
+   *                        p10  
+   * ISSUE: this treatment is not isotropic.
+   */
+  
+  double dt = t0 - (*t)[index_t];
+  double dx = x0 - (*x)[index_x];
+  double dt1 = (*t)[index_t+1] - (*t)[index_t];
+  double dx1 = (*x)[index_x+1] - (*x)[index_x];
+  
+  /*
+   * f - f00 = df/dt*dt + df/dx*dx
+   */
+  
+  double f00 = (*f_of_t_x)[index_t][index_x];
+  double f10 = (*f_of_t_x)[index_t+1][index_x];
+  double f01 = (*f_of_t_x)[index_t][index_x+1];
+  
+  return f00 + dt*(f10-f00)/dt1 + dx*(f01-f00)/dx1;
+  
+}
+
+
 double interpolate_grid_biquadratic(double t0, double x0, vector<double> * t, vector<double> * x,
 				       vector<vector<double> > * f_of_t_x){
   
@@ -578,6 +612,101 @@ double interpolate_grid_biquadratic(double t0, double x0, vector<double> * t, ve
   double dt2 = (*t)[index_t+2] - (*t)[index_t];
   double dx1 = (*x)[index_x+1] - (*x)[index_x];
   double dx2 = (*x)[index_x+2] - (*x)[index_x];
+  
+  /*
+   * f - f00 = gt*dt + gx*dx + Htt*dt^2 + 2*Htx*dt*dx + Hxx*dx^2
+   * --> need 5D matrix
+   */
+  
+  double f00 = (*f_of_t_x)[index_t][index_x];
+  vector<double> f_reduced(5, 0.0);
+  vector<double> coeffs(5, 0.0);
+  /* f10_reduced: */ f_reduced[0] = (*f_of_t_x)[index_t+1][index_x]-f00;
+  /* f20_reduced: */ f_reduced[1] = (*f_of_t_x)[index_t+2][index_x]-f00;
+  /* f01_reduced: */ f_reduced[2] = (*f_of_t_x)[index_t][index_x+1]-f00;
+  /* f11_reduced: */ f_reduced[3] = (*f_of_t_x)[index_t+1][index_x+1]-f00;
+  /* f02_reduced: */ f_reduced[4] = (*f_of_t_x)[index_t][index_x+2]-f00;
+  vector<vector<double> > A(5, vector<double>(5, 0.0));
+  vector<vector<double> > A_inverse;
+  A[0][0] = dt1;
+  //A[0][1] = 0.0;
+  A[0][2] = dt1*dt1;
+  //A[0][3] = 0.0;
+  //A[0][4] = 0.0;
+  
+  A[1][0] = dt2;
+  //A[1][1] = 0.0;
+  A[1][2] = dt2*dt2;
+  //A[1][3] = 0.0;
+  //A[1][4] = 0.0;
+  
+  //A[2][0] = 0.0;
+  A[2][1] = dx1;
+  //A[2][2] = 0.0;
+  //A[2][3] = 0.0;
+  A[2][4] = dx1*dx1;
+  
+  A[3][0] = dt1;
+  A[3][1] = dx1;
+  A[3][2] = dt1*dt1;
+  A[3][3] = dt1*dx1;
+  A[3][4] = dx1*dx1;
+  
+  //A[4][0] = 0.0;
+  A[4][1] = dx2;
+  //A[4][2] = 0.0;
+  //A[4][3] = 0.0;
+  A[4][4] = dx2*dx2;
+  
+  
+  invert_matrix(&A, &A_inverse);
+  for(int i = 0; i < 5; i++){
+    for(int j = 0; j < 5; j++){
+      coeffs[i] += A_inverse[i][j]*f_reduced[j];
+    }
+  }
+  
+  // coeffs[3] = 2.0*Hxt
+  return f00 + coeffs[0]*dt + coeffs[1]*dx + coeffs[2]*dt*dt + coeffs[3]*dt*dx + coeffs[4]*dx*dx;
+  
+}
+
+
+double interpolate_grid_biquadratic_with_mask(double t0, double x0, vector<double> * t, vector<double> * x,
+				       vector<vector<double> > * f_of_t_x, vector<vector<int> > * mask){
+  
+  int n_t = (*t).size();
+  int n_x = (*x).size();
+  int index_t = find_index(t0, t);
+  int index_x = find_index(x0, x);
+  if(index_t >= n_t - 2) index_t = n_t - 3;
+  if(index_x >= n_x - 2) index_x = n_x - 3;
+  
+  /*
+   * (index_t, index_x)---> p00  p01  p02
+   *                        p10  p11
+   *                        p20
+   * ISSUE: this treatment is not isotropic.
+   * However, OF didn't want to go for bi-cubic interpolation,
+   * because it is so slow.
+   */
+  
+  double dt = t0 - (*t)[index_t];
+  double dx = x0 - (*x)[index_x];
+  double dt1 = (*t)[index_t+1] - (*t)[index_t];
+  double dt2 = (*t)[index_t+2] - (*t)[index_t];
+  double dx1 = (*x)[index_x+1] - (*x)[index_x];
+  double dx2 = (*x)[index_x+2] - (*x)[index_x];
+  
+  int masked = (*mask)[index_t][index_x];
+  masked *= (*mask)[index_t+1][index_x];
+  masked *= (*mask)[index_t+2][index_x];
+  masked *= (*mask)[index_t][index_x+1];
+  masked *= (*mask)[index_t+1][index_x+1];
+  masked *= (*mask)[index_t][index_x+2];
+  
+  if(masked == 0)
+    return 0.0;
   
   /*
    * f - f00 = gt*dt + gx*dx + Htt*dt^2 + 2*Htx*dt*dx + Hxx*dx^2

@@ -8,7 +8,7 @@
 #include "FlatInhomogeneousUniverseLCDM.h"
 #include "GalaxySample3D.h"
 #include "ProjectedGalaxySample.h"
-#include "/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/Python.h"
+//#include "/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/Python.h"
 
 
 class Global_Universes {

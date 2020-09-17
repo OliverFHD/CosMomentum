@@ -205,6 +205,7 @@ vector<double> ProjectedGalaxySample::return_CiC_PDF_in_angular_tophat(double th
   
 }
 
+
 /*
  * ProjectedGalaxySample::return_CiC_saddle_point_PDF_in_angular_tophat
  * 
@@ -238,7 +239,7 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappaCMB_in_angular
   vector<vector<double> > d_grid;
   vector<vector<double> > k_grid;
   vector<vector<double> > p_grid;
-  this->pointer_to_universe()->compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, this->w_values, this->n_of_w_values, &d_grid, &k_grid, &p_grid);
+  this->pointer_to_universe()->compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, 0.0, this->w_values, this->n_of_w_values, &d_grid, &k_grid, &p_grid);
 
   int N_delta = d_grid.size(); 
   int N_kappa = d_grid[0].size(); // in principle N_kappa should be == N_delta. But let's be ignorant on what the other class is doing.
@@ -288,7 +289,7 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappaCMB_noisy_in_a
   vector<vector<double> > d_grid;
   vector<vector<double> > k_grid;
   vector<vector<double> > p_grid;
-  this->pointer_to_universe()->compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, this->w_values, this->n_of_w_values, &d_grid, &k_grid, &p_grid);
+  this->pointer_to_universe()->compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, kappa_CMB_noise_variance, this->w_values, this->n_of_w_values, &d_grid, &k_grid, &p_grid);
 
   int N_delta = d_grid.size(); 
   int N_kappa = d_grid[0].size(); // in principle N_kappa should be == N_delta. But let's be ignorant on what the other class is doing.
@@ -316,7 +317,6 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappaCMB_noisy_in_a
   
   (*Ng_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
   (*kappa_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
-  vector<vector<double> > PDF_grid_no_noise(N_max+1, vector<double>(N_kappa, 0.0));
   (*PDF_grid) = vector<vector<double> >(N_max+1, vector<double>(N_kappa, 0.0));
   
   for(int k = 0; k < N_kappa; k++){
@@ -326,24 +326,7 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappaCMB_noisy_in_a
       for(int d = 0; d < N_delta-1; d++){
         d_delta = d_grid[d+1][0]-d_grid[d][0];
         integrand = 0.5*(P_of_N_given_delta[n][d]*p_grid[d][k] + P_of_N_given_delta[n][d+1]*p_grid[d+1][k]);
-        PDF_grid_no_noise[n][k] += d_delta*integrand;
-      }
-    }
-  }
-  
-  double kappa, kappa_tilde;
-  double integrand_normalisation = 1.0/sqrt(2.0*constants::pi*kappa_CMB_noise_variance);
-  for(int k = 0; k < N_kappa; k++){
-    kappa = k_grid[0][k];
-    for(int n = 0; n < N_max+1; n++){
-      for(int kk = 0; kk < N_kappa-1; kk++){
-        d_kappa = k_grid[0][kk+1]-k_grid[0][kk];
-        kappa_tilde = k_grid[0][kk];
-        integrand = 0.5*PDF_grid_no_noise[n][kk]*exp(-0.5*pow(kappa-kappa_tilde, 2)/kappa_CMB_noise_variance);
-        kappa_tilde = k_grid[0][kk+1];
-        integrand += 0.5*PDF_grid_no_noise[n][kk+1]*exp(-0.5*pow(kappa-kappa_tilde, 2)/kappa_CMB_noise_variance);
-        integrand *= integrand_normalisation;
-        (*PDF_grid)[n][k] += d_kappa*integrand;
+        (*PDF_grid)[n][k] += d_delta*integrand;
       }
     }
   }
@@ -447,6 +430,40 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappa_noisy_in_angu
 vector<vector<double> > ProjectedGalaxySample::return_kappa_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale){
   
   vector<vector<double> > PDF_data = this->pointer_to_universe()->compute_LOS_projected_PDF(this->w_values, this->lensing_kernel_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);
+  
+  return PDF_data;
+  
+}
+
+
+/*
+ * ProjectedGalaxySample::return_matter_PDF_in_angular_tophat
+ * 
+ * Returns an array whose 1st column contains values of line-of-sight projected \delta and whose
+ * 2nd column contains the PDF p(\deltas).
+ * 
+ */
+
+vector<vector<double> > ProjectedGalaxySample::return_matter_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale){
+  
+  vector<vector<double> > PDF_data = this->pointer_to_universe()->compute_LOS_projected_PDF(this->w_values, this->n_of_w_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);
+  
+  return PDF_data;
+  
+}
+
+
+/*
+ * ProjectedGalaxySample::return_matter_saddle_point_PDF_in_angular_tophat
+ * 
+ * Returns an array whose 1st column contains values of line-of-sight projected \delta and whose
+ * 2nd column contains the PDF p(\deltas).
+ * 
+ */
+
+vector<vector<double> > ProjectedGalaxySample::return_matter_saddle_point_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale){
+  
+  vector<vector<double> > PDF_data = this->pointer_to_universe()->compute_LOS_projected_PDF_saddle_point(this->w_values, this->n_of_w_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);
   
   return PDF_data;
   

@@ -21,6 +21,8 @@ class ProjectedGalaxySample : public GalaxySample {
    vector<double> return_CiC_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale);
    vector<double> return_CiC_saddle_point_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale);
    vector<vector<double> > return_kappa_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale);
+   vector<vector<double> > return_matter_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale);
+   vector<vector<double> > return_matter_saddle_point_PDF_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale);
    void return_joint_saddle_point_PDF_Ng_kappaCMB_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, vector<vector<double> > *Ng_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid);
    void return_joint_saddle_point_PDF_Ng_kappaCMB_noisy_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, double kappa_CMB_noise_variance, vector<vector<double> > *Ng_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid);
    void return_joint_saddle_point_PDF_Ng_kappa_noisy_in_angular_tophat(double theta_in_arcmin, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, double kappa_noise_variance, vector<double> w_values_lensing_kernel, vector<double> lensing_kernel, vector<vector<double> > *Ng_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid);

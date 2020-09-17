@@ -8,6 +8,7 @@
 #include "FlatInhomogeneousUniverseLCDM.h"
 #include "GalaxySample3D.h"
 #include "ProjectedGalaxySample.h"
+#include "/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/Python.h"
 
 
 class Global_Universes {
@@ -349,7 +350,7 @@ extern "C" void compute_projected_PDF_incl_CMB_kappa(int *Nd, int *Nk, double th
   vector<double> kernel_values;
   vector<double> lensing_kernel_values;
   global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_LOS_data(&w_values, &kernel_values, &lensing_kernel_values);
-  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->pointer_to_universe()->compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, w_values, kernel_values, d_grid, k_grid, p_grid);
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->pointer_to_universe()->compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, 0.0, w_values, kernel_values, d_grid, k_grid, p_grid);
   (*Nd) = p_grid->size();
   (*Nk) = (*p_grid)[0].size();
 }
@@ -461,6 +462,110 @@ extern "C" void print_joint_PDF_Ng_kappaCMB_noisy(double theta_in_arcmin, double
   
 }
 
+
+extern "C" void return_joint_PDF_Ng_kappaCMB_noisy(double* joint_rebinned_PDF, double theta_in_arcmin, double f_NL, double var_NL_rescale, double N_min, double N_max, double kappa_min, double kappa_max, double kappa_CMB_noise_variance, int N_bin, int index_of_galaxy_sample){
+  
+  vector<vector<double> > n_grid;
+  vector<vector<double> > k_grid;
+  vector<vector<double> > p_grid;
+  
+  // Need to use global kappa range here since convolution with kappa noise has to be done with the full PDF
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_joint_saddle_point_PDF_Ng_kappaCMB_noisy_in_angular_tophat(theta_in_arcmin, f_NL, var_NL_rescale, constants::kappa_CMB_min, constants::kappa_CMB_max, kappa_CMB_noise_variance, &n_grid, &k_grid, &p_grid);
+  
+  int NN = n_grid.size();
+  int Nk = n_grid[0].size();
+  
+  double dk = (constants::kappa_CMB_max - constants::kappa_CMB_min)/double(Nk-1);
+  double dN = 1.0;
+  double dV = dk*dN;
+  
+  double dk_rebin = (kappa_max - kappa_min)/double(N_bin);
+  double dN_rebin = (N_max - N_min)/double(N_bin);
+  double dV_rebin = dk_rebin*dN_rebin;
+  
+  cout << "TEST 1 \n";
+  cout << int(-0.4) << "\n";
+  cout << int(-0.5) << "\n";
+  cout << int(-0.6) << "\n";
+  vector<vector<double> > PDF_grid_rebin_N(N_bin, vector<double>(Nk,0.0));
+  int n_rebin;
+  double N;
+  double N_bin_min, N_bin_max;
+  double norm = 0.0;
+  for(int k = 0; k < Nk; k++){
+    for(int n = 0; n < NN; n++){
+      N = n_grid[n][k];
+      n_rebin = int((N - N_min)/dN_rebin);
+      if(n_rebin > -1 && n_rebin < N_bin && N >= N_min){
+        PDF_grid_rebin_N[n_rebin][k] += p_grid[n][k];
+        norm += p_grid[n][k]*dk*dN;
+      }
+    }
+    
+  }
+  
+  cout << "TEST 2 \n";
+  cout << norm << "\n";
+  vector<vector<double> > PDF_grid_rebinned(N_bin, vector<double>(N_bin,0.0));
+  int k_rebin;
+  double kappa;
+  double kappa_bin_min, kappa_bin_max;
+  
+  norm = 0.0;
+  for(int n = 0; n < N_bin; n++){
+    
+    for(int k = 0; k < Nk; k++){
+      kappa = k_grid[0][k];
+      k_rebin = int((kappa - kappa_min)/dk_rebin);
+      if(k_rebin > -1 && k_rebin < N_bin){
+        kappa_bin_min = kappa_min + double(k_rebin)*dk_rebin;
+        kappa_bin_max = kappa_min + double(k_rebin+1)*dk_rebin;
+        if(kappa >= kappa_bin_min + 0.5*dk && kappa < kappa_bin_max - 0.5*dk){
+          // if finer bin is fully contained in coarser bin:
+          PDF_grid_rebinned[n][k_rebin] += dk*PDF_grid_rebin_N[n][k];
+        }
+        else if(kappa >= kappa_bin_min && kappa < kappa_bin_min + 0.5*dk){
+          // if finer bin overlaps with coarser bin from below:
+          PDF_grid_rebinned[n][k_rebin] += (kappa+0.5*dk-kappa_bin_min)*PDF_grid_rebin_N[n][k];
+          if(k_rebin>0) PDF_grid_rebinned[n][k_rebin-1] += (kappa_bin_min - kappa + 0.5*dk)*PDF_grid_rebin_N[n][k];
+        }
+        else if(kappa >= kappa_bin_max - 0.5*dk && kappa < kappa_bin_max ){
+          // if finer bin overlaps with coarser bin from above:
+          PDF_grid_rebinned[n][k_rebin] += (kappa_bin_max-kappa+0.5*dk)*PDF_grid_rebin_N[n][k];
+          if(k_rebin<N_bin-1) PDF_grid_rebinned[n][k_rebin+1] += (kappa + 0.5*dk - kappa_bin_max)*PDF_grid_rebin_N[n][k];
+        }
+      }
+      else if(k_rebin == -1 && kappa > kappa_min - 0.5*dk){
+        PDF_grid_rebinned[n][0] += (kappa + 0.5*dk - kappa_min)*PDF_grid_rebin_N[n][k];
+      }
+      else if(k_rebin == N_bin && kappa < kappa_max + 0.5*dk){
+        PDF_grid_rebinned[n][N_bin-1] += (kappa_max - kappa + 0.5*dk)*PDF_grid_rebin_N[n][k];
+      }
+      
+      norm += PDF_grid_rebin_N[n][k]*dk;
+    }
+    
+    for(int k = 0; k < N_bin; k++){
+      PDF_grid_rebinned[n][k] /= dV_rebin;
+    }
+    
+  }
+  
+  cout << "TEST 3 \n";
+  cout << norm << "\n";
+  
+  int index = 0;
+  for(int n = 0; n < N_bin; n++){
+    for(int k = 0; k < N_bin; k++){
+      joint_rebinned_PDF[index] = PDF_grid_rebinned[n][k];
+      index++;
+    }
+  }
+  
+  cout << "TEST 4 \n";
+  
+}
+
 extern "C" void print_joint_PDF_Ng_kappa_noisy(double theta_in_arcmin, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, double kappa_noise_variance, int index_of_lens_sample, int index_of_source_sample){
   
   
@@ -562,6 +667,28 @@ extern "C" void return_convergence_PDF_from_source_sample(double* kappa_values, 
   
   for(int d = 0; d < PDF_data[0].size(); d++){
     kappa_values[d] = PDF_data[0][d];
+    PDF[d] = PDF_data[1][d];
+  }
+  
+}
+
+extern "C" void return_matter_PDF_from_tracer_sample(double* delta_values, double* PDF, double theta_in_arcmin, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
+  
+  vector<vector<double> > PDF_data = global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_matter_PDF_in_angular_tophat(theta_in_arcmin, f_NL, var_NL_rescale);
+  
+  for(int d = 0; d < PDF_data[0].size(); d++){
+    delta_values[d] = PDF_data[0][d];
+    PDF[d] = PDF_data[1][d];
+  }
+  
+}
+
+extern "C" void return_matter_saddle_point_PDF_from_tracer_sample(double* delta_values, double* PDF, double theta_in_arcmin, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
+  
+  vector<vector<double> > PDF_data = global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_matter_saddle_point_PDF_in_angular_tophat(theta_in_arcmin, f_NL, var_NL_rescale);
+  
+  for(int d = 0; d < PDF_data[0].size(); d++){
+    delta_values[d] = PDF_data[0][d];
     PDF[d] = PDF_data[1][d];
   }
   
@@ -686,6 +813,249 @@ extern "C" void configure_FLASK_for_delta_g_and_CMB_kappa(int l_max, double thet
     out << C_ells[0][1][l]*bias*r << setw(15);
     out << C_ells[2][2][l]*var_kappa_overlap_correlated/var_kappa_overlap << setw(15);
     out << C_ells[3][3][l] + C_ells[2][2][l]*(1.0-var_kappa_overlap_correlated/var_kappa_overlap) << '\n';
+  }
+  
+  out.close();
+  
+  
+}
+
+
+
+
+
+extern "C" void configure_FLASK_for_delta_g_and_CMB_kappa_2_uncorrelated_samples(int l_max, double theta_in_arcmin, double bias_sample_1, double r_sample_1, double bias_sample_2, double r_sample_2, int index_of_galaxy_sample_1, int index_of_galaxy_sample_2){
+  
+  FlatInhomogeneousUniverseLCDM* pointer_to_universe = global_universes.projected_galaxy_samples[index_of_galaxy_sample_1]->pointer_to_universe();
+
+  
+  vector<double> w_values_sample_1, w_values_sample_2;
+  vector<double> kernel_values_sample_1, kernel_values_sample_2;
+  vector<double> lensing_kernel_values_sample_1, lensing_kernel_values_sample_2;
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample_1]->return_LOS_data(&w_values_sample_1, &kernel_values_sample_1, &lensing_kernel_values_sample_1);
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample_2]->return_LOS_data(&w_values_sample_2, &kernel_values_sample_2, &lensing_kernel_values_sample_2);
+  
+  vector<vector<double> > rebinned_data = return_joint_binning(w_values_sample_1, kernel_values_sample_1, w_values_sample_2, kernel_values_sample_2);
+  
+  vector<double> w_values = rebinned_data[0];
+  kernel_values_sample_1 = rebinned_data[1];
+  kernel_values_sample_2 = rebinned_data[2];
+  
+  
+  int n_time = w_values.size()-1;
+  double a, eta_0, w, dw, w_last_scattering;
+  eta_0 = pointer_to_universe->eta_at_a(1.0);
+  w_last_scattering = eta_0-pointer_to_universe->eta_at_a(1.0/(1.0+constants::z_last_scattering));
+  
+  // need to extend projection kernel to surface of last scattering:
+  vector<double> w_values_extended_to_last_scattering = w_values;
+  vector<double> kernel_values_sample_1_extended_to_last_scattering = kernel_values_sample_1;
+  vector<double> kernel_values_sample_2_extended_to_last_scattering = kernel_values_sample_2;
+  dw = min(constants::maximal_dw, w_last_scattering - w_values_extended_to_last_scattering[n_time]);
+  w = w_values_extended_to_last_scattering[n_time] + dw;
+  while(w < w_last_scattering){
+    w_values_extended_to_last_scattering.push_back(w);
+    kernel_values_sample_1_extended_to_last_scattering.push_back(0.0);
+    kernel_values_sample_2_extended_to_last_scattering.push_back(0.0);
+    n_time = w_values_extended_to_last_scattering.size()-1;
+    dw = min(constants::maximal_dw, w_last_scattering - w);
+    w = w + dw;
+  }
+  w_values_extended_to_last_scattering.push_back(w);
+  kernel_values_sample_1_extended_to_last_scattering.push_back(0.0);
+  kernel_values_sample_2_extended_to_last_scattering.push_back(0.0);
+  n_time = w_values_extended_to_last_scattering.size()-1;
+  
+  vector<double> w_values_bin_center(n_time, 0.0);
+  for(int i = 0; i < n_time; i++){
+    w_values_bin_center[i] = 0.5*(w_values_extended_to_last_scattering[i+1]+w_values_extended_to_last_scattering[i]);
+  }
+  
+  vector<double> CMB_lensing_kernel(n_time, 0.0);
+  vector<double> CMB_lensing_kernel_overlap_sample_1(n_time, 0.0);
+  vector<double> CMB_lensing_kernel_overlap_sample_2(n_time, 0.0);
+  vector<double> CMB_lensing_kernel_nonoverlap(n_time, 0.0);
+  double w_min = w_values_extended_to_last_scattering[0];
+  double w_max = w_values_extended_to_last_scattering[n_time];
+  double norm = 0.0;
+  for(int i = 0; i < n_time; i++){
+    w = w_values_bin_center[i];
+    a = pointer_to_universe->a_at_eta(eta_0-w);
+    CMB_lensing_kernel[i] = 1.5*pointer_to_universe->return_Omega_m()*w*(w_last_scattering-w)/w_last_scattering/a;
+    if(kernel_values_sample_1_extended_to_last_scattering[i] > 0.0){
+      CMB_lensing_kernel_overlap_sample_1[i] = CMB_lensing_kernel[i];
+    }
+    if(kernel_values_sample_2_extended_to_last_scattering[i] > 0.0){
+      CMB_lensing_kernel_overlap_sample_2[i] = CMB_lensing_kernel[i];
+    }
+    if(kernel_values_sample_1_extended_to_last_scattering[i] == 0.0 && kernel_values_sample_2_extended_to_last_scattering[i] == 0.0){
+      CMB_lensing_kernel_nonoverlap[i] = CMB_lensing_kernel[i];
+    }
+      
+  }
+  
+  
+  vector<vector<double> > joint_kernel_values(6, vector<double>(n_time, 0.0));
+  
+  joint_kernel_values[0] = kernel_values_sample_1_extended_to_last_scattering;
+  joint_kernel_values[1] = kernel_values_sample_2_extended_to_last_scattering;
+  joint_kernel_values[2] = CMB_lensing_kernel;
+  joint_kernel_values[3] = CMB_lensing_kernel_overlap_sample_1;
+  joint_kernel_values[4] = CMB_lensing_kernel_overlap_sample_2;
+  joint_kernel_values[5] = CMB_lensing_kernel_nonoverlap;
+  
+  
+  vector<vector<vector<double> > > C_ells = pointer_to_universe->return_LOS_integrated_C_ells(l_max, w_values_extended_to_last_scattering, joint_kernel_values);
+  
+  vector<vector<double> > second_moments = pointer_to_universe->return_LOS_integrated_2nd_moments(theta_in_arcmin*constants::arcmin, 0.0, 1.0, w_values_extended_to_last_scattering, joint_kernel_values);
+  
+  vector<vector<vector<double> > > third_moments = pointer_to_universe->return_LOS_integrated_3rd_moments(theta_in_arcmin*constants::arcmin, 0.0, 1.0, w_values_extended_to_last_scattering, joint_kernel_values);
+  
+  int N_ell = C_ells[0][0].size();
+  
+  /***** FLASK configs for sample 1: *****/
+  double lambda_m_sample_1 = lognormal_tools::get_delta0(second_moments[0][0], third_moments[0][0][0]);
+  double lambda_k_overlap_sample_1_correlated = lognormal_tools::get_kappa0(lambda_m_sample_1, second_moments[0][0], second_moments[0][2], third_moments[0][0][2]);
+  
+  double var_kappa_overlap_sample_1 = second_moments[3][3];
+  double var_kappa_overlap_sample_1_correlated = lognormal_tools::get_var_kappa(lambda_m_sample_1, lambda_k_overlap_sample_1_correlated, second_moments[0][2], third_moments[0][2][2]);
+  double var_kappa_overlap_sample_1_uncorrelated = var_kappa_overlap_sample_1 - var_kappa_overlap_sample_1_correlated;
+  
+  double skewness_kappa_overlap_sample_1 = third_moments[3][3][3];
+  double skewness_kappa_overlap_sample_1_correlated = lognormal_tools::get_skew_from_delta_0(lambda_k_overlap_sample_1_correlated, var_kappa_overlap_sample_1);
+  double skewness_kappa_overlap_sample_1_uncorrelated = skewness_kappa_overlap_sample_1 - skewness_kappa_overlap_sample_1_correlated;
+  /***************************************/
+  
+  /***** FLASK configs for sample 2: *****/
+  double lambda_m_sample_2 = lognormal_tools::get_delta0(second_moments[1][1], third_moments[1][1][1]);
+  double lambda_k_overlap_sample_2_correlated = lognormal_tools::get_kappa0(lambda_m_sample_2, second_moments[1][1], second_moments[1][2], third_moments[1][1][2]);
+  
+  double var_kappa_overlap_sample_2 = second_moments[4][4];
+  double var_kappa_overlap_sample_2_correlated = lognormal_tools::get_var_kappa(lambda_m_sample_2, lambda_k_overlap_sample_2_correlated, second_moments[1][2], third_moments[1][2][2]);
+  double var_kappa_overlap_sample_2_uncorrelated = var_kappa_overlap_sample_2 - var_kappa_overlap_sample_2_correlated;
+  
+  double skewness_kappa_overlap_sample_2 = third_moments[4][4][4];
+  double skewness_kappa_overlap_sample_2_correlated = lognormal_tools::get_skew_from_delta_0(lambda_k_overlap_sample_2_correlated, var_kappa_overlap_sample_2);
+  double skewness_kappa_overlap_sample_2_uncorrelated = skewness_kappa_overlap_sample_2 - skewness_kappa_overlap_sample_2_correlated;
+  /***************************************/
+  
+  double var_kappa_uncorrelated = second_moments[5][5] + var_kappa_overlap_sample_1_uncorrelated + var_kappa_overlap_sample_2_uncorrelated;
+  double skewness_uncorrelated = third_moments[5][5][5] + skewness_kappa_overlap_sample_1_uncorrelated + skewness_kappa_overlap_sample_2_uncorrelated;
+  double lambda_k_uncorrelated = lognormal_tools::get_delta0(var_kappa_uncorrelated, skewness_uncorrelated);
+  
+  
+  FILE *F = fopen("FLASK_config_Cells", "w");
+  fclose(F);
+  fstream out;
+  out.open("FLASK_config_Cells");
+  out << scientific << setprecision(5);
+  
+  out << "# variances: ";
+  out << "var_g1 = " << second_moments[0][0]*bias_sample_1*bias_sample_1;
+  out << " ; var_g2 = " << second_moments[1][1]*bias_sample_2*bias_sample_2;
+  out << " ;  cov_g1k = " << second_moments[0][2]*bias_sample_1*r_sample_1;
+  out << " ;  cov_g2k = " << second_moments[1][2]*bias_sample_2*r_sample_2;
+  out << " ;  var_k_correlated_with_g1 = " << var_kappa_overlap_sample_1_correlated;
+  out << " ;  var_k_correlated_with_g2 = " << var_kappa_overlap_sample_2_correlated;
+  out << " ;  var_k_uncorrelated = " << var_kappa_uncorrelated << "\n";
+  
+  out << "# shift params: ";
+  out << "lambda_g1 = " << lambda_m_sample_1*bias_sample_1;
+  out << " ; lambda_g2 = " << lambda_m_sample_2*bias_sample_2;
+  out << " ; lambda_k_correlated_with_g1 = " << lambda_k_overlap_sample_1_correlated;
+  out << " ; lambda_k_correlated_with_g2 = " << lambda_k_overlap_sample_2_correlated;
+  out << " ; lambda_k_uncorrelated = " << lambda_k_uncorrelated << "\n";
+  
+  out << "# ell          C_g1g1(ell)          C_g1k(ell)          C_kk_correlated_with_g1(ell)          C_g2g2(ell)          C_g2k(ell)          C_kk_correlated_with_g2(ell)          C_kk_uncorrelated(ell)\n";
+  
+  for(int l = 0; l < N_ell; l++){
+    out << l << setw(15);
+    out << C_ells[0][0][l]*bias_sample_1*bias_sample_1 << setw(15);
+    out << C_ells[0][2][l]*bias_sample_1*r_sample_1 << setw(15);
+    out << C_ells[3][3][l]*var_kappa_overlap_sample_1_correlated/var_kappa_overlap_sample_1 << setw(15);
+    out << C_ells[1][1][l]*bias_sample_2*bias_sample_2 << setw(15);
+    out << C_ells[1][2][l]*bias_sample_2*r_sample_2 << setw(15);
+    out << C_ells[4][4][l]*var_kappa_overlap_sample_2_correlated/var_kappa_overlap_sample_2 << setw(15);
+    out << C_ells[5][5][l] + C_ells[3][3][l]*(1.0-var_kappa_overlap_sample_1_correlated/var_kappa_overlap_sample_1) + C_ells[4][4][l]*(1.0-var_kappa_overlap_sample_2_correlated/var_kappa_overlap_sample_2) << '\n';
+  }
+  
+  out.close();
+  
+  
+}
+
+
+
+extern "C" void return_CMB_kappa_C_ells(int l_max, double bias_sample_1, double r_sample_1, int index_of_galaxy_sample){
+  
+  FlatInhomogeneousUniverseLCDM* pointer_to_universe = global_universes.projected_galaxy_samples[index_of_galaxy_sample]->pointer_to_universe();
+  
+  vector<double> w_values;
+  vector<double> kernel_values;
+  vector<double> lensing_kernel_values;
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_LOS_data(&w_values, &kernel_values, &lensing_kernel_values);
+  
+  
+  int n_time = w_values.size()-1;
+  double a, eta_0, w, z, dw, w_last_scattering;
+  eta_0 = pointer_to_universe->eta_at_a(1.0);
+  w_last_scattering = eta_0-pointer_to_universe->eta_at_a(1.0/(1.0+constants::z_last_scattering));
+  
+  // need to extend projection kernel to surface of last scattering:
+  vector<double> w_values_extended_to_last_scattering = w_values;
+  vector<double> kernel_values_extended_to_last_scattering = kernel_values;
+  dw = min(constants::maximal_dw, w_last_scattering - w_values_extended_to_last_scattering[n_time]);
+  w = w_values_extended_to_last_scattering[n_time] + dw;
+  z = 1.0/pointer_to_universe->a_at_eta(eta_0 - w)-1.0;
+  while(w < w_last_scattering && z <= 2.35){ // 2.35 is for Buzzard
+    w_values_extended_to_last_scattering.push_back(w);
+    kernel_values_extended_to_last_scattering.push_back(0.0);
+    n_time = w_values_extended_to_last_scattering.size()-1;
+    dw = min(constants::maximal_dw, w_last_scattering - w);
+    w = w + dw;
+    z = 1.0/pointer_to_universe->a_at_eta(eta_0 - w)-1.0;
+  }
+  w_values_extended_to_last_scattering.push_back(w);
+  kernel_values_extended_to_last_scattering.push_back(0.0);
+  n_time = w_values_extended_to_last_scattering.size()-1;
+  
+  vector<double> w_values_bin_center(n_time, 0.0);
+  for(int i = 0; i < n_time; i++){
+    w_values_bin_center[i] = 0.5*(w_values_extended_to_last_scattering[i+1]+w_values_extended_to_last_scattering[i]);
+  }
+  
+  vector<double> CMB_lensing_kernel(n_time, 0.0);
+  double w_min = w_values_extended_to_last_scattering[0];
+  double w_max = w_values_extended_to_last_scattering[n_time];
+  double norm = 0.0;
+  for(int i = 0; i < n_time; i++){
+    w = w_values_bin_center[i];
+    a = pointer_to_universe->a_at_eta(eta_0-w);
+    CMB_lensing_kernel[i] = 1.5*pointer_to_universe->return_Omega_m()*w*(w_last_scattering-w)/w_last_scattering/a;
+  }
+  
+  
+  vector<vector<double> > joint_kernel_values(2, vector<double>(n_time, 0.0));
+  
+  joint_kernel_values[0] = kernel_values_extended_to_last_scattering;
+  joint_kernel_values[1] = CMB_lensing_kernel;
+  
+  
+  vector<vector<vector<double> > > C_ells = pointer_to_universe->return_LOS_integrated_C_ells(l_max, w_values_extended_to_last_scattering, joint_kernel_values);
+  int N_ell = C_ells[0][0].size();
+  
+  FILE *F = fopen("C_ells.dat", "w");
+  fclose(F);
+  fstream out;
+  out.open("C_ells.dat");
+  out << scientific << setprecision(5);
+  out << "# ell          C_g1g1(ell)          C_g1k(ell)          C_kk(ell)\n";
+  
+  for(int l = 0; l < N_ell; l++){
+    out << l << setw(15);
+    out << C_ells[0][0][l]*bias_sample_1*bias_sample_1 << setw(15);
+    out << C_ells[0][1][l]*bias_sample_1*r_sample_1 << setw(15);
+    out << C_ells[1][1][l] << "\n";
   }
   
   out.close();

@@ -442,6 +442,7 @@ void FlatInhomogeneousUniverseLCDM::set_cylindrical_collapse_evolution_of_delta(
   double delta_min = -1.5;
   double delta_max = 1.455;
   //double delta_max = 1.4;
+  //double ddelta = 0.001;
   double ddelta = 0.002;
   //double ddelta = 0.005;
   //double ddelta = 0.02;
@@ -857,7 +858,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lamb
   
   this->return_delta_NL_of_delta_L_and_dF_ddelta_2D(e, &delta_L_values, &delta_NL_values, &delta_NL_prime_values, &delta_NL_prime_prime_values);
   
-  vector<vector<double> > data(8, vector<double>(delta_L_values.size(), 0.0));
+  vector<vector<double> > data(10, vector<double>(delta_L_values.size(), 0.0));
   vector<double> lambda_of_delta = delta_L_values;
   vector<double> dlambda_ddelta = delta_L_values;
   vector<double> phi_of_delta = delta_L_values;
@@ -970,6 +971,15 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lamb
     data[7][d] = dF_dlambda;
     
   }
+  
+  
+  for(int d = 0; d < delta_L_values.size(); d++){
+    data[8][d] = interpolate_neville_aitken_derivative(delta_L_values[d], &delta_L_values, &data[7], constants::order_of_interpolation)/dlambda_ddelta[d];
+  }
+  for(int d = 0; d < delta_L_values.size(); d++){
+    data[9][d] = interpolate_neville_aitken_derivative(delta_L_values[d], &delta_L_values, &data[8], constants::order_of_interpolation)/dlambda_ddelta[d];
+  }
+  
   
   /*
    * Please don't delete:

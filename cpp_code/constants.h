@@ -64,7 +64,7 @@ static int ell_max = 20000;
 /***** Variable controlling the order of interpolation polynomials *****/
 
 //static int order_of_interpolation = 6;
-static int order_of_interpolation = 3;
+static int order_of_interpolation = 4;
 
 
 /***** Variable controlling maximal stepsize when integration expansion history *****/
@@ -82,7 +82,13 @@ static int generating_function_coeff_order = 19;
 /***** Variable controlling for how many delta values the PDF is computed *****/
 
 static int N_delta_values_for_PDFs = 600;
-  
+//static int N_delta_values_for_PDFs = 2000;
+
+
+/***** Variable controlling range over which PDF(kappa_CMB) is computed *****/
+static double kappa_CMB_min = -0.15;
+static double kappa_CMB_max = 0.17;
+
 
 /***** Variables controlling the precision of gsl integrators *****/
 

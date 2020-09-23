@@ -295,11 +295,12 @@ extern "C" void return_power_spectra(double* k_values, double* P_L, double* P_ha
   
 }
 
-extern "C" void return_CGF(double* delta_L, double* delta_NL, double* lambda, double* phi, double* lambda_Gauss, double* phi_Gauss, double* variances, double* skewnesses, double* R_L, double z, double R_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
+extern "C" void return_CGF(double* delta_L, double* delta_NL, double* lambda, double* phi, double* lambda_Gauss, double* phi_Gauss, double* variances, double* skewnesses, double* R_L, int* N_lambda_uncollapsed, double z, double R_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
   
   vector<vector<double> > phi_data = global_universes.universes[index_of_universe]->compute_phi_of_lambda_3D(z, R_in_comoving_Mpc/constants::c_over_e5, f_NL, var_NL_rescale);
-
-  for(int i = 0; i < phi_data[0].size(); i++){
+  
+  (*N_lambda_uncollapsed) = phi_data[0].size();
+  for(int i = 0; i < (*N_lambda_uncollapsed); i++){
     delta_L[i] = phi_data[0][i];
     delta_NL[i] = phi_data[1][i];
     lambda[i] = phi_data[2][i];
@@ -310,6 +311,34 @@ extern "C" void return_CGF(double* delta_L, double* delta_NL, double* lambda, do
     skewnesses[i] = phi_data[7][i];
     R_L[i] = phi_data[8][i];
   }
+  
+}
+
+extern "C" void return_CGF_2D(double* lambda, double* phi, double* phi_prime, double* phi_prime_prime, double* phi_prime_prime_prime, int* N_lambda_uncollapsed, double theta_in_arcmin, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
+  
+  
+  vector<double> w_values;
+  vector<double> kernel_values;
+  vector<double> lensing_kernel_values;
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_LOS_data(&w_values, &kernel_values, &lensing_kernel_values);
+  
+  FlatInhomogeneousUniverseLCDM* pointer_to_universe = global_universes.projected_galaxy_samples[index_of_galaxy_sample]->pointer_to_universe();
+  vector<vector<double> > phi_data = pointer_to_universe->return_LOS_integrated_phi_of_lambda(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, w_values, kernel_values);
+  
+  (*N_lambda_uncollapsed) = phi_data[0].size();
+  for(int i = 0; i < (*N_lambda_uncollapsed); i++){
+    lambda[i] = phi_data[0][i];
+    phi[i] = phi_data[1][i];
+    phi_prime[i] = phi_data[2][i];
+    phi_prime_prime[i] = phi_data[3][i];
+    phi_prime_prime_prime[i] = phi_data[4][i];
+  }
+  
+}
+
+extern "C" double return_variance_NL_2D(double theta_in_arcmin, double var_NL_rescale, int index_of_galaxy_sample){
+  
+  return global_universes.projected_galaxy_samples[index_of_galaxy_sample]->compute_variance_in_angular_tophat(theta_in_arcmin, var_NL_rescale);
   
 }
 
@@ -330,6 +359,10 @@ extern "C" int return_Ndelta(){
 
 extern "C" int return_Nlambda(int index_of_universe){
   return global_universes.universes[index_of_universe]->return_N_of_lambda();
+}
+
+extern "C" int return_Nlambda_2D(int index_of_universe){
+  return global_universes.universes[index_of_universe]->return_N_of_lambda_2D();
 }
 
 extern "C" double return_var_NL(double z, double R_in_Mpc_over_h, int index_of_universe){

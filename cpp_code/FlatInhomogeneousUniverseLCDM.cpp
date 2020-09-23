@@ -60,6 +60,8 @@ FlatInhomogeneousUniverseLCDM::FlatInhomogeneousUniverseLCDM(cosmological_model 
   this->set_cylindrical_collapse_evolution_of_delta();
   cout << "Done.\n";
   
+  cout << return_D_of_z(0.8) << '\n';
+  
 }
 
 FlatInhomogeneousUniverseLCDM::FlatInhomogeneousUniverseLCDM(cosmological_model cosmo, double a_min, double a_max, string file_for_transfer_function) : FlatHomogeneousUniverseLCDM(cosmo, a_min, a_max){
@@ -364,7 +366,8 @@ double FlatInhomogeneousUniverseLCDM::Newtonian_linear_power_spectrum(double k, 
 void FlatInhomogeneousUniverseLCDM::set_spherical_collapse_evolution_of_delta(){
 
   double delta_min = -10.0;
-  double delta_max = 1.67;
+  //double delta_max = 1.67;
+  double delta_max = 2.0;
   double ddelta = 0.01;
   double delta = delta_min-ddelta;
   
@@ -407,14 +410,22 @@ void FlatInhomogeneousUniverseLCDM::set_spherical_collapse_evolution_of_delta(){
     double y[6] = { delta*D_i, delta*D_prime_i, D_i, D_prime_i, 0.0, 0.0};
     for (int t = 0; t < number_of_time_steps; t++){
       double e_f = this->eta[t];
-      int status = gsl_odeiv2_driver_apply(d, &e_start, e_f, y);
-      if (status != GSL_SUCCESS){
-        printf ("error, return value=%d\n", status);
-        exit(1);
+      if(t > 0 && this->spherical_collapse_evolution_of_delta[i][t-1] < constants::max_contrast){
+        int status = gsl_odeiv2_driver_apply(d, &e_start, e_f, y);
+        if (status != GSL_SUCCESS){
+          printf ("error, return value=%d\n", status);
+          exit(1);
+        }
+        this->spherical_collapse_evolution_of_delta[i][t] = y[0];
+        this->spherical_collapse_evolution_of_delta_ddelta[i][t] = y[2];
+        this->spherical_collapse_evolution_of_delta_ddelta2[i][t] = y[4];
       }
-      this->spherical_collapse_evolution_of_delta[i][t] = y[0];
-      this->spherical_collapse_evolution_of_delta_ddelta[i][t] = y[2];
-      this->spherical_collapse_evolution_of_delta_ddelta2[i][t] = y[4];
+      else if(t>0){
+        this->spherical_collapse_evolution_of_delta[i][t] = constants::max_contrast;
+        this->spherical_collapse_evolution_of_delta_ddelta[i][t] = 0.0;
+        this->spherical_collapse_evolution_of_delta_ddelta2[i][t] = 0.0;
+        
+      }
     }
 
     gsl_odeiv2_driver_free(d);
@@ -441,13 +452,13 @@ void FlatInhomogeneousUniverseLCDM::set_cylindrical_collapse_evolution_of_delta(
   //double delta_min = -3.0;
   double delta_min = -1.5;
   double delta_max = 1.455;
+  delta_max = 2.0;
   //double delta_max = 1.4;
   //double ddelta = 0.001;
   double ddelta = 0.002;
   //double ddelta = 0.005;
   //double ddelta = 0.02;
   double delta = delta_min-ddelta;
-  double max_contrast = 100.0;
   
   /* ISSUE: THIS HARDCODING IS REALLY BAD!! */
   /* CHANGE REQUIRED                        */
@@ -488,14 +499,21 @@ void FlatInhomogeneousUniverseLCDM::set_cylindrical_collapse_evolution_of_delta(
     int status;
     for (int t = 0; t < number_of_time_steps; t++){
       double e_f = this->eta[t];
-      status = gsl_odeiv2_driver_apply(driver, &e_start, e_f, y);
-      if (status != GSL_SUCCESS){
-        printf ("error, return value=%d\n", status);
-        exit(1);
+      if(t > 0 && this->cylindrical_collapse_evolution_of_delta[d][t-1] < constants::max_contrast){
+        status = gsl_odeiv2_driver_apply(driver, &e_start, e_f, y);
+        if (status != GSL_SUCCESS){
+          printf ("error, return value=%d\n", status);
+          exit(1);
+        }
+        this->cylindrical_collapse_evolution_of_delta[d][t] = y[0];
+        this->cylindrical_collapse_evolution_of_delta_ddelta[d][t] = y[2];
+        this->cylindrical_collapse_evolution_of_delta_ddelta2[d][t] = y[4];
       }
-      this->cylindrical_collapse_evolution_of_delta[d][t] = y[0];
-      this->cylindrical_collapse_evolution_of_delta_ddelta[d][t] = y[2];
-      this->cylindrical_collapse_evolution_of_delta_ddelta2[d][t] = y[4];
+      else if(t > 0){
+        this->cylindrical_collapse_evolution_of_delta[d][t] = constants::max_contrast;
+        this->cylindrical_collapse_evolution_of_delta_ddelta[d][t] = 0.0;
+        this->cylindrical_collapse_evolution_of_delta_ddelta2[d][t] = 0.0;
+      }
     }
     gsl_odeiv2_driver_free(driver);
   }

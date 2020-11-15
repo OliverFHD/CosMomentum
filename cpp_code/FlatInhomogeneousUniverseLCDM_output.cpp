@@ -287,8 +287,13 @@ void FlatInhomogeneousUniverseLCDM::print_growth_history(string file_name){
   double Om_m = this->return_Omega_m();
   double Om_l = this->return_Omega_L();
   double Om_r = this->return_Omega_r();
-  double scale, e, t_val;
+  double scale, e, t_val, dF_ddelta, d2F_ddelta2;
   fstream growth_stream;
+  
+  vector<double> delta_L_values;
+  vector<double> delta_NL_values;
+  vector<double> delta_NL_prime_values;
+  vector<double> delta_NL_prime_prime_values;
   
   remove(file_name.c_str());
   FILE * F = fopen(file_name.c_str(), "w");
@@ -298,18 +303,23 @@ void FlatInhomogeneousUniverseLCDM::print_growth_history(string file_name){
   growth_stream << setprecision(10) << scientific;
   growth_stream << "#Cosmological Parameters: Om_m = " << Om_m << ", Om_l = " << Om_l << ", Om_r = " << Om_r << '\n';
   growth_stream << "#a_max = " << this->a_final << '\n';
-  growth_stream << "#eta(t)" << setw(20) << "t(eta)" << setw(20) << "w(eta)" << setw(20) << "z(eta)" << setw(20) << "a(eta)" << setw(20) << "D(eta)" << setw(20) << "D_prime(eta)\n";
+  growth_stream << "#eta(t)" << setw(20) << "t(eta)" << setw(20) << "w(eta)" << setw(20) << "z(eta)" << setw(20) << "a(eta)" << setw(20) << "D(eta)" << setw(20) << "D_prime(eta)" << setw(20) << " dF_ddelta_cyl(eta)" << setw(20) << " d2F_ddelta2_cyl(eta)\n";
   for(int i = 0; i < this->return_number_of_time_steps(); i++){
     t_val = this->t[i];
     e = this->eta[i];
     scale = this->a[i];
+    this->return_delta_NL_of_delta_L_and_dF_ddelta_2D(e, &delta_L_values, &delta_NL_values, &delta_NL_prime_values, &delta_NL_prime_prime_values);
+    dF_ddelta = interpolate_neville_aitken(0.0, &delta_L_values, &delta_NL_prime_values, constants::order_of_interpolation);
+    d2F_ddelta2 = interpolate_neville_aitken(0.0, &delta_L_values, &delta_NL_prime_prime_values, constants::order_of_interpolation);
     growth_stream << setw(20) << e;
     growth_stream << setw(20) << t_val;
     growth_stream << setw(20) << this->eta_at_a(1.0)-e;
     growth_stream << setw(20) << 1.0/scale - 1.0;
     growth_stream << setw(20) << scale;
     growth_stream << setw(20) << this->Newtonian_growth_factor_of_delta[i];
-    growth_stream << setw(20) << this->Newtonian_growth_factor_of_delta_prime[i] << '\n';
+    growth_stream << setw(20) << this->Newtonian_growth_factor_of_delta_prime[i];
+    growth_stream << setw(20) << dF_ddelta;
+    growth_stream << setw(20) << d2F_ddelta2 << '\n';
   }
     
   growth_stream.close();
@@ -1250,7 +1260,7 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_polynomial_coefficient
  * 
 *******************************************************************************************************************************************************/
 
-void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB_kappa(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values, vector<vector<double> > *phi_data_delta, vector<vector<double> > *phi_data_kappa, vector<vector<double> > *phi_grid, vector<vector<double> > *dphi_dldelta_grid, vector<vector<double> > *dphi_dlkappa_grid, vector<vector<double> > *d2phi_dldelta2_grid, vector<vector<double> > *d3phi_dldelta3_grid, vector<vector<double> > *d4phi_dldelta4_grid, vector<vector<double> > *d2phi_dldelta_dlkappa_grid, vector<vector<double> > *d2phi_dlkappa2_grid, vector<vector<int> > *grid_mask){
+void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB_kappa(double theta, double f_NL, double var_NL_rescale, vector<double> w_values, vector<double> kernel_values, vector<vector<double> > *phi_data_delta, vector<vector<double> > *phi_data_kappa, vector<vector<double> > *phi_grid, vector<vector<double> > *dphi_dldelta_grid, vector<vector<double> > *dphi_dlkappa_grid, vector<vector<double> > *d2phi_dldelta2_grid, vector<vector<double> > *d3phi_dldelta3_grid, vector<vector<double> > *d3phi_dldelta2_dlkappa_grid, vector<vector<double> > *d3phi_dldelta_dlkappa2_grid, vector<vector<double> > *d4phi_dldelta4_grid, vector<vector<double> > *d4phi_dldelta2_dlkappa2_grid, vector<vector<double> > *d2phi_dldelta_dlkappa_grid, vector<vector<double> > *d2phi_dlkappa2_grid, vector<vector<int> > *grid_mask){
   
   int n_lambda = this->delta_values_for_cylindrical_collapse.size();
   int n_time = w_values.size()-1;
@@ -1389,7 +1399,10 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
   (*dphi_dlkappa_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
   (*d2phi_dldelta2_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
   (*d3phi_dldelta3_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
+  (*d3phi_dldelta2_dlkappa_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
+  (*d3phi_dldelta_dlkappa2_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
   (*d4phi_dldelta4_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
+  (*d4phi_dldelta2_dlkappa2_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
   (*d2phi_dldelta_dlkappa_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
   (*d2phi_dlkappa2_grid) = vector<vector<double> >(N_ldelta, vector<double>(N_lkappa, 0.0));
   (*grid_mask) = vector<vector<int> >(N_ldelta, vector<int>(N_lkappa, 0));
@@ -1405,7 +1418,10 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
   double dphi_dlkappa;
   double d2phi_dldelta2;
   double d3phi_dldelta3;
+  double d3phi_dldelta2_dlkappa;
+  double d3phi_dldelta_dlkappa2;
   double d4phi_dldelta4;
+  double d4phi_dldelta2_dlkappa2;
   double d2phi_dldelta_dlkappa;
   double d2phi_dlkappa2;
   
@@ -1425,7 +1441,10 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
       dphi_dlkappa = interpolate_neville_aitken(lkappa, &phi_data_kappa_nonoverlap[0], &phi_data_kappa_nonoverlap[2], constants::order_of_interpolation);
       d2phi_dldelta2 = 0.0;
       d3phi_dldelta3 = 0.0;
+      d3phi_dldelta2_dlkappa = 0.0;
+      d3phi_dldelta_dlkappa2 = 0.0;
       d4phi_dldelta4 = 0.0;
+      d4phi_dldelta2_dlkappa2 = 0.0;
       d2phi_dldelta_dlkappa = 0.0;
       d2phi_dlkappa2 = interpolate_neville_aitken(lkappa, &phi_data_kappa_nonoverlap[0], &phi_data_kappa_nonoverlap[3], constants::order_of_interpolation);
       
@@ -1451,7 +1470,10 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
           phi_prime_prime_integrand = interpolate_neville_aitken(y, pointer_to_y_values, &phi_prime_prime_values[t], constants::order_of_interpolation);
           d2phi_dldelta2 += dw_times_kernel_delta*kernel_delta*phi_prime_prime_integrand;
           d3phi_dldelta3 += dw*pow(kernel_delta, 3)*interpolate_neville_aitken(y, pointer_to_y_values, &phi_3_values[t], constants::order_of_interpolation);
+          d3phi_dldelta2_dlkappa += dw_times_kernel_kappa*pow(kernel_delta, 2)*interpolate_neville_aitken(y, pointer_to_y_values, &phi_3_values[t], constants::order_of_interpolation);
+          d3phi_dldelta_dlkappa2 += dw_times_kernel_delta*pow(kernel_kappa, 2)*interpolate_neville_aitken(y, pointer_to_y_values, &phi_3_values[t], constants::order_of_interpolation);
           d4phi_dldelta4 += dw*pow(kernel_delta, 4)*interpolate_neville_aitken(y, pointer_to_y_values, &phi_4_values[t], constants::order_of_interpolation);
+          d4phi_dldelta2_dlkappa2 += dw*pow(kernel_delta, 2)*pow(kernel_kappa, 2)*interpolate_neville_aitken(y, pointer_to_y_values, &phi_4_values[t], constants::order_of_interpolation);
           d2phi_dldelta_dlkappa += dw_times_kernel_delta*kernel_kappa*phi_prime_prime_integrand;
           d2phi_dlkappa2 += dw_times_kernel_kappa*kernel_kappa*phi_prime_prime_integrand;
           (*grid_mask)[d][k] = 1;
@@ -1467,7 +1489,10 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
       (*dphi_dlkappa_grid)[d][k] = dphi_dlkappa;
       (*d2phi_dldelta2_grid)[d][k] = d2phi_dldelta2;
       (*d3phi_dldelta3_grid)[d][k] = d3phi_dldelta3;
+      (*d3phi_dldelta2_dlkappa_grid)[d][k] = d3phi_dldelta2_dlkappa;
+      (*d3phi_dldelta_dlkappa2_grid)[d][k] = d3phi_dldelta_dlkappa2;
       (*d4phi_dldelta4_grid)[d][k] = d4phi_dldelta4;
+      (*d4phi_dldelta2_dlkappa2_grid)[d][k] = d4phi_dldelta2_dlkappa2;
       (*d2phi_dldelta_dlkappa_grid)[d][k] = d2phi_dldelta_dlkappa;
       (*d2phi_dlkappa2_grid)[d][k] = d2phi_dlkappa2;
       
@@ -1499,13 +1524,22 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
   vector<vector<double> > dphi_dlkappa_grid;
   vector<vector<double> > d2phi_dldelta2_grid;
   vector<vector<double> > d3phi_dldelta3_grid;
+  vector<vector<double> > d3phi_dldelta2_dlkappa_grid;
+  vector<vector<double> > d3phi_dldelta_dlkappa2_grid;
   vector<vector<double> > d4phi_dldelta4_grid;
+  vector<vector<double> > d4phi_dldelta2_dlkappa2_grid;
   vector<vector<double> > d2phi_dldelta_dlkappa_grid;
   vector<vector<double> > d2phi_dlkappa2_grid;
   vector<vector<int> > grid_mask;
   
-  this->return_LOS_integrated_phi_of_lambda_incl_CMB_kappa(theta, f_NL, var_NL_rescale, w_values, kernel_values, &phi_data_delta, &phi_data_kappa, &phi_grid, &dphi_dldelta_grid, &dphi_dlkappa_grid, &d2phi_dldelta2_grid, &d3phi_dldelta3_grid, &d4phi_dldelta4_grid, &d2phi_dldelta_dlkappa_grid, &d2phi_dlkappa2_grid, &grid_mask);
+  this->return_LOS_integrated_phi_of_lambda_incl_CMB_kappa(theta, f_NL, var_NL_rescale, w_values, kernel_values, &phi_data_delta, &phi_data_kappa, &phi_grid, &dphi_dldelta_grid, &dphi_dlkappa_grid, &d2phi_dldelta2_grid, &d3phi_dldelta3_grid, &d3phi_dldelta2_dlkappa_grid, &d3phi_dldelta_dlkappa2_grid, &d4phi_dldelta4_grid, &d4phi_dldelta2_dlkappa2_grid, &d2phi_dldelta_dlkappa_grid, &d2phi_dlkappa2_grid, &grid_mask);
   
+  double covariance = interpolate_grid_biquadratic(0.0, 0.0, &phi_data_delta[0], &phi_data_kappa[0], &d2phi_dldelta_dlkappa_grid);
+  double dkk = interpolate_grid_biquadratic(0.0, 0.0, &phi_data_delta[0], &phi_data_kappa[0], &d3phi_dldelta_dlkappa2_grid);
+  double ddkk = interpolate_grid_biquadratic(0.0, 0.0, &phi_data_delta[0], &phi_data_kappa[0], &d4phi_dldelta2_dlkappa2_grid);
+  double ddk = interpolate_grid_biquadratic(0.0, 0.0, &phi_data_delta[0], &phi_data_kappa[0], &d3phi_dldelta2_dlkappa_grid);
+  double ddd = interpolate_grid_biquadratic(0.0, 0.0, &phi_data_delta[0], &phi_data_kappa[0], &d3phi_dldelta3_grid);
+  double dddd = interpolate_grid_biquadratic(0.0, 0.0, &phi_data_delta[0], &phi_data_kappa[0], &d4phi_dldelta4_grid);
   
   int N_lambda_delta = phi_grid.size();
   int N_lambda_kappa = phi_grid[0].size();
@@ -1544,7 +1578,6 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
     error_handling::general_warning("WARNING in compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point:\nYour intervall [kappa_min, kappa_max] might contain less than 3sigma of probability.");
   }
   
-  cout << "kappa variance = " << interpolate_neville_aitken(0.0, &phi_data_kappa[0], &phi_data_kappa[3], constants::order_of_interpolation)  << "\n";
   cout << N_lambda_delta << '\n';
   cout << phi_data_delta[2].size() << '\n';
   cout << N_lambda_kappa << '\n';
@@ -1800,6 +1833,14 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
   norm *= ddelta*dkappa;
   
   cout << scientific << setprecision(5);
+  cout << "kappa variance = " << var_kappa  << "\n";
+  cout << "delta variance = " << var_delta  << "\n";
+  cout << "covariance = " << covariance  << "\n";
+  cout << "dkk = " << dkk  << "\n";
+  cout << "ddkk = " << ddkk  << "\n";
+  cout << "ddd = " << ddd  << "\n";
+  cout << "dddd = " << dddd  << "\n";
+  cout << "ddk = " << ddk  << "\n";
   cout << "# norm:\n";
   cout << "# " << norm << '\n';
   cout << "# max:\n";

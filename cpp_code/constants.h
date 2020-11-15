@@ -82,6 +82,7 @@ static int generating_function_coeff_order = 19;
 /***** Variable controlling for how many delta values the PDF is computed *****/
 
 static int N_delta_values_for_PDFs = 600;
+//static int N_delta_values_for_PDFs = 200;
 static double max_contrast = 10.0;
 //static int N_delta_values_for_PDFs = 2000;
 
@@ -107,9 +108,11 @@ static double gsl_eps_relative = 1e-10; // gsl_eps_relative/gsl_hstart_relative 
 static int number_of_k = 4096;
 //static double minimal_wave_number = 1.0e-3;
 //static double maximal_wave_number = 1.0e3;
-static double minimal_wave_number = 0.158671E-04;
+//static double minimal_wave_number = 0.158671E-04;
+static double minimal_wave_number = 0.0001;
 //static double maximal_wave_number = 0.518697E+02;
-static double maximal_wave_number = 3360.0;
+//static double maximal_wave_number = 3360.0;
+static double maximal_wave_number = 4962.49;
 static double high_k_cutoff = maximal_wave_number;
 
 static double log_minimal_wave_number = log(minimal_wave_number);

@@ -276,6 +276,52 @@ void FlatInhomogeneousUniverseLCDM::set_cylinder_skewnesses(int PNG_modus){
     
 }
 
+
+void FlatInhomogeneousUniverseLCDM::compute_cylinder_skewnesses_for_unit_L_and_unit_fNL(int PNG_modus, double R_in_Mpc_over_h, double *skew, double *dskew_dR){
+  
+  double R = R_in_Mpc_over_h/constants::c_over_e5;
+  double prefactor = 3.0*this->return_Omega_m()/pow(constants::pi2, 5);
+  double skew_1, dskew_1;
+  double skew_2, dskew_2;
+  double skew_3, dskew_3;
+  
+  this->current_P_L = this->P_L(this->eta_at_a(1.0));
+  
+  skewness_of_matter_within_R_2D_for_multithread(R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &skew_1);
+  dskewness_of_matter_within_R_dR_2D_for_multithread(R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0, 0.0, &dskew_1);
+  
+  if(PNG_modus != 1){
+    skewness_of_matter_within_R_2D_for_multithread(R, this->return_n_s(), this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &skew_2);
+    dskewness_of_matter_within_R_dR_2D_for_multithread(R, this->return_n_s(), this, this->f_NL_rescaling_factor, 2.0/3.0, 2.0/3.0, 2.0/3.0, &dskew_2);
+    
+    skewness_of_matter_within_R_2D_for_multithread(R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &skew_3);
+    dskewness_of_matter_within_R_dR_2D_for_multithread(R, this->return_n_s(), this, this->f_NL_rescaling_factor, 1.0, 1.0/3.0, 2.0/3.0, &dskew_3);
+  }
+    
+  if(PNG_modus == 1){
+    (*skew) = 6.0*prefactor*skew_1;
+    (*dskew_dR) = 6.0*prefactor*dskew_1;
+  }
+  if(PNG_modus == 2){
+    (*skew)  = -18.0*prefactor*skew_1;
+    (*skew) += -12.0*prefactor*skew_2;
+    (*skew) +=  36.0*prefactor*skew_3;
+    (*dskew_dR)  = -18.0*prefactor*dskew_1;
+    (*dskew_dR) += -12.0*prefactor*dskew_2;
+    (*dskew_dR) +=  36.0*prefactor*dskew_3;
+  }
+  if(PNG_modus == 3){
+    (*skew)  = -54.0*prefactor*skew_1;
+    (*skew) += -48.0*prefactor*skew_2;
+    (*skew) +=  108.0*prefactor*skew_3;
+    (*dskew_dR)  = -54.0*prefactor*dskew_1;
+    (*dskew_dR) += -48.0*prefactor*dskew_2;
+    (*dskew_dR) +=  108.0*prefactor*dskew_3;
+  }
+
+}
+
+
 /*******************************************************************************************************************************************************
  * 1.7 set_sphere_skewnesses_from_eps3_powerlaw_approximation
  * Description:
@@ -589,6 +635,9 @@ void FlatInhomogeneousUniverseLCDM::set_cylinder_variances(){
   for(int i = 0; i < n; i++){
     this->d2top_hat_cylinder_variances_dR2[i] = interpolate_neville_aitken_derivative(R_values[i], &R_values, &this->dtop_hat_cylinder_variances_dR, constants::order_of_interpolation);
   }
+  
+  
+  this->log_top_hat_cylinder_radii_for_skewnesses = this->log_top_hat_cylinder_radii;
   
 }
 

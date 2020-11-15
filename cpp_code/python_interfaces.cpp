@@ -353,6 +353,50 @@ extern "C" void return_PDF(double* delta_values, double* PDF, double z, double R
   
 }
 
+
+extern "C" void return_PDF_2D(double* delta_values, double* PDF, double* bias_term_1, double* bias_term_2, double z, double z_collapse, double theta_in_arcmin, double L_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
+  
+  double theta = theta_in_arcmin*constants::pi/180.0/60.0;
+  double w = global_universes.universes[index_of_universe]->eta_at_a(1.0) - global_universes.universes[index_of_universe]->eta_at_a(1.0/(1.0+z));
+  double R_in_comoving_Mpc = theta*w*constants::c_over_e5;
+  cout << "R_in_comoving_Mpc = " << R_in_comoving_Mpc << '\n';
+  
+  vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_PDF_2D(z, z_collapse, R_in_comoving_Mpc, L_in_comoving_Mpc, f_NL, var_NL_rescale);
+  
+  for(int d = 0; d < PDF_data[0].size(); d++){
+    delta_values[d] = PDF_data[0][d];
+    PDF[d] = PDF_data[1][d];
+    bias_term_1[d] = PDF_data[2][d];
+    bias_term_2[d] = PDF_data[3][d];
+    // <delta_g | delta_m > = bias_term_1 + b_Lagrange*bias_term_2
+  }
+  
+}
+
+extern "C" void return_PDF_at_choses_deltas_2D(int N_delta, double* delta_values, double* PDF, double* bias_term_1, double* bias_term_2, double z, double z_collapse, double theta_in_arcmin, double L_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
+  
+  double theta = theta_in_arcmin*constants::pi/180.0/60.0;
+  double w = global_universes.universes[index_of_universe]->eta_at_a(1.0) - global_universes.universes[index_of_universe]->eta_at_a(1.0/(1.0+z));
+  double R_in_comoving_Mpc = theta*w*constants::c_over_e5;
+  cout << "R_in_comoving_Mpc = " << R_in_comoving_Mpc << '\n';
+  
+  vector<double> delta_vector(N_delta, 0.0);
+  for(int d = 0; d < N_delta; d++){
+    delta_vector[d] = delta_values[d];
+  }
+  
+  vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_PDF_at_choses_deltas_2D(&delta_vector, z, z_collapse, R_in_comoving_Mpc, L_in_comoving_Mpc, f_NL, var_NL_rescale);
+  
+  for(int d = 0; d < PDF_data[0].size(); d++){
+    delta_values[d] = PDF_data[0][d];
+    PDF[d] = PDF_data[1][d];
+    bias_term_1[d] = PDF_data[2][d];
+    bias_term_2[d] = PDF_data[3][d];
+    // <delta_g | delta_m > = bias_term_1 + b_Lagrange*bias_term_2
+  }
+  
+}
+
 extern "C" int return_Ndelta(){
   return constants::N_delta_values_for_PDFs;
 }
@@ -1206,5 +1250,38 @@ extern "C" void configure_FLASK_for_delta_g_and_kappa(int l_max, double theta_in
   
   
 }
+
+
+
+
+
+extern "C" void skewness_of_delta_L_in_cylindrical_aperture(double *skewness, double *dskewness_dR, double Omega_m, double Omega_b, double sigma_8, double n_s, double h_100, double f_NL, double R_in_Mpc_over_h, double L_in_Mpc_over_h, int PNG_modus){
+  
+  double a_initial = 0.000025;
+  double a_final = 1.0;
+  double Omega_r = 0.0; // assuming radiation content is negligible
+  double Omega_L = 1.0 - Omega_m; // assuming spatially flat Universe
+  double w0 = -1.0; // assuming dark energy is cosmological constant
+  double w1 = 0.0; // assuming dark energy is cosmological constant
+  
+  cosmological_model cosmo = set_cosmological_model(Omega_m, Omega_b, Omega_r, Omega_L, sigma_8, n_s, h_100, w0, w1);
+  
+  FlatInhomogeneousUniverseLCDM our_universe(cosmo, a_initial, a_final, 1);
+  
+  our_universe.compute_cylinder_skewnesses_for_unit_L_and_unit_fNL(PNG_modus, R_in_Mpc_over_h, skewness, dskewness_dR);
+  
+  (*skewness) *= f_NL;
+  (*dskewness_dR) *= f_NL;
+  
+  // the function compute_cylinder_skewnesses_for_unit_L_and_unit_fNL only returns
+  // skewness for cylinder of length c/H_0 ==> re-scale to desired length
+  // assuming L >> R .
+  (*skewness) *= pow(constants::c_over_e5/L_in_Mpc_over_h, 2.0);
+  (*dskewness_dR) *= pow(constants::c_over_e5/L_in_Mpc_over_h, 2.0);
+  
+}
+
+
+
 
 

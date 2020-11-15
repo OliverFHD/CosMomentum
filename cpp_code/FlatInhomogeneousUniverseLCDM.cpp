@@ -28,8 +28,46 @@ FlatInhomogeneousUniverseLCDM::FlatInhomogeneousUniverseLCDM(cosmological_model 
   
   this->set_initial_conditions_for_growth();
   this->initialize_linear_growth_factor_of_delta();
-  this->print_growth_history("linear_growth_history_2.dat");
-  this->print_background_cosmology("expansion_history_2.dat");
+  //this->print_background_cosmology("expansion_history.dat");
+  this->initialize_up_to_second_order_growth_factor_of_delta(2.0/7.0*this->D_initial*this->D_initial, 4.0/7.0*this->D_initial*this->D_prime_initial);
+  
+  // ISSUE: terrible that this is hard coded!!! At least put it into constants.h
+  double z_of_f_NL_rescale = 500.0;
+  double a_of_f_NL_rescale = 1.0/(1.0+z_of_f_NL_rescale);
+  double eta_of_f_NL_rescale = this->eta_at_a(a_of_f_NL_rescale);
+  this->f_NL_rescaling_factor = this->return_D_of_eta(eta_of_f_NL_rescale)/a_of_f_NL_rescale;
+  
+  this->set_wave_numbers();
+  if(this->return_Omega_b() != 0.0){
+    this->set_transfer_function_Eisenstein_and_Hu();
+  }
+  else{
+    this->set_transfer_function_Bond_and_Efstathiou();
+  }
+  //this->set_transfer_function_from_file("./Data/Aniks_new_Nbody_sims/transfer_function_z0.dat");
+  this->norm = this->variance_of_matter_within_R_before_norm_was_determined(8.0);
+  
+  cout << "Setting sphere variances.\n";
+  this->set_sphere_variances();
+  cout << "Setting cylinder variances.\n";
+  this->set_cylinder_variances();
+  this->skewness_initialisation = UNINITIALISED;
+  this->skewness_initialisation_2D = UNINITIALISED;
+  
+  cout << "Setting spherical collapse evolution.\n";
+  this->set_spherical_collapse_evolution_of_delta();
+  cout << "Setting cylindrical collapse evolution.\n";
+  this->set_cylindrical_collapse_evolution_of_delta();
+  cout << "Done.\n";
+  
+  
+}
+
+
+FlatInhomogeneousUniverseLCDM::FlatInhomogeneousUniverseLCDM(cosmological_model cosmo, double a_min, double a_max, int reduced_computation) : FlatHomogeneousUniverseLCDM(cosmo, a_min, a_max){
+  
+  this->set_initial_conditions_for_growth();
+  this->initialize_linear_growth_factor_of_delta();
   this->initialize_up_to_second_order_growth_factor_of_delta(2.0/7.0*this->D_initial*this->D_initial, 4.0/7.0*this->D_initial*this->D_prime_initial);
   
   // ISSUE: terrible that this is hard coded!!! At least put it into constants.h
@@ -47,20 +85,21 @@ FlatInhomogeneousUniverseLCDM::FlatInhomogeneousUniverseLCDM(cosmological_model 
   }
   this->norm = this->variance_of_matter_within_R_before_norm_was_determined(8.0);
   
-  cout << "Setting sphere variances.\n";
-  this->set_sphere_variances();
-  cout << "Setting cylinder variances.\n";
-  this->set_cylinder_variances();
-  this->skewness_initialisation = UNINITIALISED;
-  this->skewness_initialisation_2D = UNINITIALISED;
+  if(reduced_computation == 0){
+    cout << "Setting sphere variances.\n";
+    this->set_sphere_variances();
+    cout << "Setting cylinder variances.\n";
+    this->set_cylinder_variances();
+    this->skewness_initialisation = UNINITIALISED;
+    this->skewness_initialisation_2D = UNINITIALISED;
+    
+    cout << "Setting spherical collapse evolution.\n";
+    this->set_spherical_collapse_evolution_of_delta();
+    cout << "Setting cylindrical collapse evolution.\n";
+    this->set_cylindrical_collapse_evolution_of_delta();
+    cout << "Done.\n";
+  }
   
-  cout << "Setting spherical collapse evolution.\n";
-  this->set_spherical_collapse_evolution_of_delta();
-  cout << "Setting cylindrical collapse evolution.\n";
-  this->set_cylindrical_collapse_evolution_of_delta();
-  cout << "Done.\n";
-  
-  cout << return_D_of_z(0.8) << '\n';
   
 }
 
@@ -534,16 +573,16 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
   double lambda_c = phi_data[2][0];
   double delta_c = phi_data[1][0];
   double tau_c = 0.0;
-  for(int i = 1; i < phi_data[4].size(); i++){
-    if(phi_data[4][i-1] < phi_data[4][i]){
+  for(int i = 1; i < phi_data[2].size(); i++){
+    if(phi_data[2][i-1] < phi_data[2][i]){
       n_lambda = i+1;
-      lambda_c = phi_data[4][i];
+      lambda_c = phi_data[2][i];
       delta_c = phi_data[1][i];
-      if(phi_data[1][i]*phi_data[4][i] > phi_data[3][i])
-        tau_c = sqrt(2.0*(phi_data[1][i]*phi_data[4][i] - phi_data[3][i]));
+      if(phi_data[1][i]*phi_data[2][i] > phi_data[3][i])
+        tau_c = sqrt(2.0*(phi_data[1][i]*phi_data[2][i] - phi_data[3][i]));
     }
-    else{
-      i = 2*phi_data[4].size();
+    else if(phi_data[1][i] > 0.0){
+      i = 2*phi_data[2].size();
     }
   }
   
@@ -725,6 +764,571 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_3D(double z, 
     }while(abs(step/first_step) > 1.0e-5 || j < int(6.0/sigma_frac));
     
     PDF_data[1][i] /= constants::pi;
+    
+    cout << PDF_data[0][i] << "   ";
+    cout << PDF_data[1][i] << "\n";
+    
+  }
+  cout << "Done.\n";
+  
+  return PDF_data;
+  
+}
+
+
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_2D(double z, double z_collapse, double R_in_Mpc_over_h, double L_in_Mpc_over_h, double f_NL, double var_NL_rescale){
+  
+  cout << "Computing phi_data:\n";
+  cout.flush();
+  
+  // var(L=L_input) \approx var(L=c/H_0)*(c/H_0/L_input)
+  double L = L_in_Mpc_over_h/constants::c_over_e5;
+  double R = R_in_Mpc_over_h/constants::c_over_e5;
+  
+  double e = this->eta_at_a(1.0/(1.0+z));
+  cout << L << '\n';
+  cout << e << '\n';
+  vector<vector<double> > phi_data = this->compute_phi_tilde_of_lambda_2D(e, R, f_NL, var_NL_rescale/L);
+  
+  vector<double> delta_L_collapse_aux;
+  vector<double> delta_NL_collapse_aux;
+  vector<double> delta_NL_prime_collapse_aux;
+  vector<double> delta_NL_prime_prime_collapse_aux;
+  
+  double e_collapse = this->eta_at_a(1.0/(1.0+z_collapse));
+  this->return_delta_NL_of_delta_L_and_dF_ddelta_2D(e_collapse, &delta_L_collapse_aux, &delta_NL_collapse_aux, &delta_NL_prime_collapse_aux, &delta_NL_prime_prime_collapse_aux);
+  
+  
+  cout << "Computing phi_data done.\n";
+  
+  /*
+   * Determine critical point, where phi(lambda) splits into two branches on the complex plane. 
+   * 
+   */
+  
+  int n_lambda = 0;
+  double lambda_c = phi_data[2][0];
+  double delta_c = phi_data[1][0];
+  double tau_c = 0.0;
+  for(int i = 1; i < phi_data[2].size(); i++){
+    if(phi_data[2][i-1] < phi_data[2][i]){
+      n_lambda = i+1;
+      lambda_c = phi_data[2][i];
+      delta_c = phi_data[1][i];
+      if(phi_data[1][i]*phi_data[2][i] > phi_data[3][i])
+        tau_c = sqrt(2.0*(phi_data[1][i]*phi_data[2][i] - phi_data[3][i]));
+    }
+    else if(phi_data[1][i] > 0.0){
+      i = 2*phi_data[2].size();
+    }
+  }
+  
+  /*
+   * Extract phi_data up to the critical point.
+   * 
+   */
+  vector<double> delta_L_values(n_lambda, 0.0);
+  vector<double> delta_NL_values(n_lambda, 0.0);
+  vector<double> delta_NL_collapse(n_lambda, 0.0);
+  vector<double> lambda_values(n_lambda, 0.0);
+  vector<double> phi_values(n_lambda, 0.0);
+  vector<double> R_L_values(n_lambda, 0.0);
+  vector<double> tau_values(n_lambda, 0.0);
+  
+  //  data[0][d] = delta_L_values[d];
+  //  data[1][d] = delta_NL_values[d];
+  //  data[2][d] = lambda_of_delta[d];
+  //  data[3][d] = phi_of_delta[d];
+  //  data[4][d] = var_L_RL;
+  //  data[5][d] = skew_L_RL;
+  //  data[6][d] = RL*constants::c_over_e5;
+  //  data[7][d] = dF_dlambda;
+  
+  for(int i = 0; i < n_lambda; i++){
+    delta_L_values[i] = phi_data[0][i];
+    delta_NL_values[i] = phi_data[1][i];
+    delta_NL_collapse[i] = interpolate_neville_aitken(delta_L_values[i], &delta_L_collapse_aux , &delta_NL_collapse_aux, constants::order_of_interpolation);
+    lambda_values[i] = phi_data[2][i];
+    phi_values[i] = phi_data[3][i];
+    R_L_values[i] = phi_data[6][i];
+    if(phi_data[1][i]*phi_data[2][i] > phi_data[3][i]){
+      tau_values[i] = sqrt(2.0*(phi_data[1][i]*phi_data[2][i] - phi_data[3][i]));
+      if(lambda_values[i] < 0.0) tau_values[i] *= -1.0;
+    }
+  }
+  
+  
+  /*
+   * Extract phi_data with equal number and range of points left and right of tau = 0 (better for polynomial fit).
+   * 
+   */
+  
+  double tau_max = 0.9*tau_c;
+  double tau_min = 0.9*tau_values[0];
+  cout << tau_min << "  " << tau_max << '\n';
+  
+  double R_max = interpolate_neville_aitken(tau_max, &tau_values, &R_L_values, constants::order_of_interpolation);
+  double R_min = interpolate_neville_aitken(tau_min, &tau_values, &R_L_values, constants::order_of_interpolation);
+  
+  
+  if(R_max > exp(this->log_top_hat_cylinder_radii_for_skewnesses[this->log_top_hat_cylinder_radii_for_skewnesses.size()-1])*constants::c_over_e5){
+    tau_max = min(tau_max, interpolate_neville_aitken(exp(this->log_top_hat_cylinder_radii_for_skewnesses[this->log_top_hat_cylinder_radii_for_skewnesses.size()-1])*constants::c_over_e5, &R_L_values, &tau_values, constants::order_of_interpolation));
+  }
+  
+  if(R_min < exp(this->log_top_hat_cylinder_radii_for_skewnesses[0])*constants::c_over_e5){
+    tau_min = max(tau_min, interpolate_neville_aitken(exp(this->log_top_hat_cylinder_radii_for_skewnesses[0])*constants::c_over_e5, &R_L_values, &tau_values, constants::order_of_interpolation));
+  }
+  
+  cout << tau_min << "  " << tau_max << '\n';
+  cout << R_min << "  " << R_max << '\n';
+  
+  tau_c = tau_max;
+  
+  delta_c = interpolate_neville_aitken(tau_max, &tau_values, &delta_NL_values, constants::order_of_interpolation);
+  lambda_c = interpolate_neville_aitken(tau_max, &tau_values, &lambda_values, constants::order_of_interpolation);
+  
+  int n_tau = 4*constants::generating_function_coeff_order + 1; // has to be odd number in order to include tau=0 exactly.
+  // ISSUE: this shouldn't be hardcoded!
+  
+  vector<double> tau_for_fit(n_tau,0.0);
+  vector<double> tau_for_fit_collapse(0,0.0);
+  vector<double> phi_prime_for_fit(n_tau,0.0);
+  vector<double> delta_L_for_fit(n_tau,0.0);
+  vector<double> delta_NL_collapse_for_fit(0,0.0);
+  
+  double dt = -tau_min/double(n_tau/2);
+  for(int i = 0; i < n_tau/2; i++){
+    tau_for_fit[i] = tau_min+double(i)*dt;
+  }
+  tau_for_fit[n_tau/2] = 0.0;
+  dt = tau_max/double(n_tau/2);
+  for(int i = 0; i < n_tau/2; i++){
+    tau_for_fit[i+n_tau/2+1] = double(i+1)*dt;
+  }
+  
+  for(int i = 0; i < n_tau; i++){
+    phi_prime_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &delta_NL_values, constants::order_of_interpolation);
+    delta_L_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &delta_L_values, constants::order_of_interpolation);
+    if(delta_L_for_fit[i] <= delta_L_collapse_aux[delta_L_collapse_aux.size()-1]){
+      tau_for_fit_collapse.push_back(tau_for_fit[i]);
+      delta_NL_collapse_for_fit.push_back(interpolate_neville_aitken(tau_for_fit[i], &tau_values, &delta_NL_collapse, constants::order_of_interpolation));
+    }
+  }
+  
+  
+  cout << "Done.\n";
+  
+  /*
+   * Express functions as polynomials in tau.
+   * 
+   */
+  cout << "Computing tau coefficients:\n";
+  
+  int n_coeff = constants::generating_function_coeff_order;
+  
+  vector<double> coefficients_phi_prime_of_tau = return_coefficients(&tau_for_fit, &phi_prime_for_fit, n_coeff);
+  vector<double> coefficients_delta_L_of_tau = return_coefficients(&tau_for_fit, &delta_L_for_fit, n_coeff);
+  vector<double> coefficients_delta_NL_collapse_of_tau = return_coefficients(&tau_for_fit_collapse, &delta_NL_collapse_for_fit, n_coeff);
+  vector<double> coefficients_dphi_prime_of_dtau(coefficients_phi_prime_of_tau.size(), 0.0);
+  vector<double> coefficients_d2phi_prime_of_dtau2(coefficients_phi_prime_of_tau.size(), 0.0);
+  
+  cout << "Done.\n";
+  
+  /*
+   * Perform the inverse Laplace transform of phi(lambda) to compute p(delta).
+   * 
+   */
+  
+  int n_delta = constants::N_delta_values_for_PDFs;
+  double D = this->return_D_of_z(z);
+  double var = D*D*interpolate_neville_aitken(log(R), &this->log_top_hat_cylinder_radii, &this->top_hat_cylinder_variances, constants::order_of_interpolation)*var_NL_rescale/L;
+  double delta_min = interpolate_neville_aitken(tau_min, &tau_values, &delta_NL_values, constants::order_of_interpolation);
+  double delta_max = max(delta_c, 6.0*sqrt(var));
+  // --> ISSUE: choosing delta_max to be 6*sigma may not be 100% reasonable for very skewed PDFs
+  //            Maybe choose it by some quantile in a log-normal PDF that approximates the real PDF?
+  
+  /*
+   * ISSUE: one can enforce even more coefficients to their analytical value!
+   */
+  
+  coefficients_phi_prime_of_tau[0] = 0.0;
+  coefficients_phi_prime_of_tau[1] = sqrt(var);
+  coefficients_delta_L_of_tau[0] = 0.0;
+  coefficients_delta_NL_collapse_of_tau[0] = 0.0;
+  
+  for(int i = 0; i < coefficients_phi_prime_of_tau.size()-1; i++){
+    coefficients_dphi_prime_of_dtau[i] = coefficients_phi_prime_of_tau[i+1]*double(i+1);
+  }
+  for(int i = 0; i < coefficients_phi_prime_of_tau.size()-1; i++){
+    coefficients_d2phi_prime_of_dtau2[i] = coefficients_dphi_prime_of_dtau[i+1]*double(i+1);
+  }
+  
+  /*
+   * ISSUE: sometimes at delta=delta_max the code outputs PDF[i] = nan! Why is this? OF preliminarily fixed this by replacing "/double(n_delta-1)" with "/double(n_delta)" (hence avoiding delta=delta_max).
+   */
+  double ddelta = (delta_max-delta_min)/double(n_delta);
+  double delta;
+  double tau_0, lambda_0;
+  double dr;
+  
+  complex<double> lambda;
+  complex<double> lambda_next;
+  complex<double> tau, tau_next;
+  complex<double> phi_prime, phi_prime_next;
+  complex<double> d_L, d_L_next;
+  complex<double> d_NL_col, d_NL_col_next;
+  complex<double> exponent, exponent_next;
+  complex<double> dlambda;
+  complex<double> step, first_step;
+  
+  vector<vector<double> > PDF_data(4, vector<double>(n_delta));
+  
+  cout << "Computing PDF:\n";
+  for(int i = 0; i < n_delta; i++){
+    delta = delta_min + double(i)*ddelta;
+    
+    PDF_data[0][i] = delta;
+    PDF_data[1][i] = 0.0;
+      
+    if(delta < delta_c){
+      tau_0 = interpolate_Newton(delta, &delta_NL_values, &tau_values, constants::order_of_interpolation);
+      lambda_0 = interpolate_Newton(delta, &delta_NL_values, &lambda_values, constants::order_of_interpolation);
+    }
+    else{
+      tau_0 = tau_c;
+      lambda_0 = lambda_c;
+    }
+    lambda = complex<double>(lambda_0, 0.0);
+    tau = complex<double>(tau_0, 0.0);
+    exponent = exp(-0.5*pow(tau, 2));
+    phi_prime = return_polnomial_value(tau, &coefficients_phi_prime_of_tau);
+    d_L = return_polnomial_value(tau, &coefficients_delta_L_of_tau);
+    d_NL_col = return_polnomial_value(tau, &coefficients_delta_NL_collapse_of_tau);
+    
+    // sigma_r^2 \approx 1/phi''(lambda_0)
+    double sigma_frac = 0.001;
+    dr = sigma_frac/sqrt(interpolate_neville_aitken_derivative(lambda_0, &lambda_values, &delta_NL_values, constants::order_of_interpolation));
+    dlambda = complex<double>(0.0, dr);
+    int j = 0;
+    do{
+      lambda_next = lambda + 0.5*dlambda;
+      tau_next = get_tau_from_secant_method_complex_Bernardeau_notation_2D(lambda_next, tau, &coefficients_dphi_prime_of_dtau, &coefficients_d2phi_prime_of_dtau2);
+      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_prime_of_tau);
+      dlambda = -dr*conj(phi_prime_next-delta)/abs(phi_prime_next-delta);
+      lambda_next = lambda + dlambda;
+      tau_next = get_tau_from_secant_method_complex_Bernardeau_notation_2D(lambda_next, tau_next, &coefficients_dphi_prime_of_dtau, &coefficients_d2phi_prime_of_dtau2);
+      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_prime_of_tau);
+      exponent_next = exp(-lambda_next*(delta-phi_prime_next)-0.5*pow(tau_next, 2));
+      d_L_next = return_polnomial_value(tau_next, &coefficients_delta_L_of_tau);
+      d_NL_col_next = return_polnomial_value(tau_next, &coefficients_delta_NL_collapse_of_tau);
+      
+      step = 0.5*dlambda*(exponent_next+exponent);
+      PDF_data[1][i] += step.imag();
+      
+      //step = 0.5*dlambda*(exponent_next*phi_prime_next+exponent*phi_prime);
+      step = 0.5*dlambda*(exponent_next*phi_prime_next+exponent*phi_prime);
+      PDF_data[2][i] += step.imag();
+      
+      //step = 0.5*dlambda*(exponent_next*(1.0+phi_prime_next)*d_L_next+exponent*(1.0+phi_prime)*d_L);
+      step = 0.5*dlambda*(exponent_next*(1.0+phi_prime_next)*d_NL_col_next+exponent*(1.0+phi_prime)*d_NL_col);
+      PDF_data[3][i] += step.imag();
+      
+      dlambda = -dr*conj(phi_prime_next-delta)/abs(phi_prime_next-delta);
+      lambda = lambda_next;
+      tau = tau_next;
+      exponent = exponent_next;
+      phi_prime = phi_prime_next;
+      d_L = d_L_next;
+      d_NL_col = d_NL_col_next;
+      if(j == 0){
+        first_step = step;
+      }
+      j++;
+    }while(abs(step/first_step) > 1.0e-5 || j < int(6.0/sigma_frac));
+    
+    PDF_data[1][i] /= constants::pi;
+    PDF_data[2][i] /= constants::pi*PDF_data[1][i];
+    PDF_data[3][i] /= constants::pi*PDF_data[1][i];
+    
+    cout << PDF_data[0][i] << "   ";
+    cout << PDF_data[1][i] << "\n";
+    
+  }
+  cout << "Done.\n";
+  
+  return PDF_data;
+  
+}
+
+
+vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_at_choses_deltas_2D(vector<double>* chosen_deltas, double z, double z_collapse, double R_in_Mpc_over_h, double L_in_Mpc_over_h, double f_NL, double var_NL_rescale){
+  
+  cout << "Computing phi_data:\n";
+  cout.flush();
+  
+  // var(L=L_input) \approx var(L=c/H_0)*(c/H_0/L_input)
+  double L = L_in_Mpc_over_h/constants::c_over_e5;
+  double R = R_in_Mpc_over_h/constants::c_over_e5;
+  
+  double e = this->eta_at_a(1.0/(1.0+z));
+  cout << L << '\n';
+  cout << e << '\n';
+  vector<vector<double> > phi_data = this->compute_phi_tilde_of_lambda_2D(e, R, f_NL, var_NL_rescale/L);
+  
+  vector<double> delta_L_collapse_aux;
+  vector<double> delta_NL_collapse_aux;
+  vector<double> delta_NL_prime_collapse_aux;
+  vector<double> delta_NL_prime_prime_collapse_aux;
+  
+  double e_collapse = this->eta_at_a(1.0/(1.0+z_collapse));
+  this->return_delta_NL_of_delta_L_and_dF_ddelta_2D(e_collapse, &delta_L_collapse_aux, &delta_NL_collapse_aux, &delta_NL_prime_collapse_aux, &delta_NL_prime_prime_collapse_aux);
+  
+  
+  cout << "Computing phi_data done.\n";
+  
+  /*
+   * Determine critical point, where phi(lambda) splits into two branches on the complex plane. 
+   * 
+   */
+  
+  int n_lambda = 0;
+  double lambda_c = phi_data[2][0];
+  double delta_c = phi_data[1][0];
+  double tau_c = 0.0;
+  for(int i = 1; i < phi_data[2].size(); i++){
+    if(phi_data[2][i-1] < phi_data[2][i]){
+      n_lambda = i+1;
+      lambda_c = phi_data[2][i];
+      delta_c = phi_data[1][i];
+      if(phi_data[1][i]*phi_data[2][i] > phi_data[3][i])
+        tau_c = sqrt(2.0*(phi_data[1][i]*phi_data[2][i] - phi_data[3][i]));
+    }
+    else if(phi_data[1][i] > 0.0){
+      i = 2*phi_data[2].size();
+    }
+  }
+  
+  /*
+   * Extract phi_data up to the critical point.
+   * 
+   */
+  vector<double> delta_L_values(n_lambda, 0.0);
+  vector<double> delta_NL_values(n_lambda, 0.0);
+  vector<double> delta_NL_collapse(n_lambda, 0.0);
+  vector<double> lambda_values(n_lambda, 0.0);
+  vector<double> phi_values(n_lambda, 0.0);
+  vector<double> R_L_values(n_lambda, 0.0);
+  vector<double> tau_values(n_lambda, 0.0);
+  
+  //  data[0][d] = delta_L_values[d];
+  //  data[1][d] = delta_NL_values[d];
+  //  data[2][d] = lambda_of_delta[d];
+  //  data[3][d] = phi_of_delta[d];
+  //  data[4][d] = var_L_RL;
+  //  data[5][d] = skew_L_RL;
+  //  data[6][d] = RL*constants::c_over_e5;
+  //  data[7][d] = dF_dlambda;
+  
+  for(int i = 0; i < n_lambda; i++){
+    delta_L_values[i] = phi_data[0][i];
+    delta_NL_values[i] = phi_data[1][i];
+    delta_NL_collapse[i] = interpolate_neville_aitken(delta_L_values[i], &delta_L_collapse_aux , &delta_NL_collapse_aux, constants::order_of_interpolation);
+    lambda_values[i] = phi_data[2][i];
+    phi_values[i] = phi_data[3][i];
+    R_L_values[i] = phi_data[6][i];
+    if(phi_data[1][i]*phi_data[2][i] > phi_data[3][i]){
+      tau_values[i] = sqrt(2.0*(phi_data[1][i]*phi_data[2][i] - phi_data[3][i]));
+      if(lambda_values[i] < 0.0) tau_values[i] *= -1.0;
+    }
+  }
+  
+  
+  /*
+   * Extract phi_data with equal number and range of points left and right of tau = 0 (better for polynomial fit).
+   * 
+   */
+  
+  double tau_max = 0.9*tau_c;
+  double tau_min = 0.9*tau_values[0];
+  cout << tau_min << "  " << tau_max << '\n';
+  
+  double R_max = interpolate_neville_aitken(tau_max, &tau_values, &R_L_values, constants::order_of_interpolation);
+  double R_min = interpolate_neville_aitken(tau_min, &tau_values, &R_L_values, constants::order_of_interpolation);
+  
+  
+  if(R_max > exp(this->log_top_hat_cylinder_radii_for_skewnesses[this->log_top_hat_cylinder_radii_for_skewnesses.size()-1])*constants::c_over_e5){
+    tau_max = min(tau_max, interpolate_neville_aitken(exp(this->log_top_hat_cylinder_radii_for_skewnesses[this->log_top_hat_cylinder_radii_for_skewnesses.size()-1])*constants::c_over_e5, &R_L_values, &tau_values, constants::order_of_interpolation));
+  }
+  
+  if(R_min < exp(this->log_top_hat_cylinder_radii_for_skewnesses[0])*constants::c_over_e5){
+    tau_min = max(tau_min, interpolate_neville_aitken(exp(this->log_top_hat_cylinder_radii_for_skewnesses[0])*constants::c_over_e5, &R_L_values, &tau_values, constants::order_of_interpolation));
+  }
+  
+  cout << tau_min << "  " << tau_max << '\n';
+  cout << R_min << "  " << R_max << '\n';
+  
+  tau_c = tau_max;
+  
+  delta_c = interpolate_neville_aitken(tau_max, &tau_values, &delta_NL_values, constants::order_of_interpolation);
+  lambda_c = interpolate_neville_aitken(tau_max, &tau_values, &lambda_values, constants::order_of_interpolation);
+  
+  int n_tau = 4*constants::generating_function_coeff_order + 1; // has to be odd number in order to include tau=0 exactly.
+  // ISSUE: this shouldn't be hardcoded!
+  
+  vector<double> tau_for_fit(n_tau,0.0);
+  vector<double> tau_for_fit_collapse(0,0.0);
+  vector<double> phi_prime_for_fit(n_tau,0.0);
+  vector<double> delta_L_for_fit(n_tau,0.0);
+  vector<double> delta_NL_collapse_for_fit(0,0.0);
+  
+  double dt = -tau_min/double(n_tau/2);
+  for(int i = 0; i < n_tau/2; i++){
+    tau_for_fit[i] = tau_min+double(i)*dt;
+  }
+  tau_for_fit[n_tau/2] = 0.0;
+  dt = tau_max/double(n_tau/2);
+  for(int i = 0; i < n_tau/2; i++){
+    tau_for_fit[i+n_tau/2+1] = double(i+1)*dt;
+  }
+  
+  for(int i = 0; i < n_tau; i++){
+    phi_prime_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &delta_NL_values, constants::order_of_interpolation);
+    delta_L_for_fit[i] = interpolate_neville_aitken(tau_for_fit[i], &tau_values, &delta_L_values, constants::order_of_interpolation);
+    if(delta_L_for_fit[i] <= delta_L_collapse_aux[delta_L_collapse_aux.size()-1]){
+      tau_for_fit_collapse.push_back(tau_for_fit[i]);
+      delta_NL_collapse_for_fit.push_back(interpolate_neville_aitken(tau_for_fit[i], &tau_values, &delta_NL_collapse, constants::order_of_interpolation));
+    }
+  }
+  
+  
+  cout << "Done.\n";
+  
+  /*
+   * Express functions as polynomials in tau.
+   * 
+   */
+  cout << "Computing tau coefficients:\n";
+  
+  int n_coeff = constants::generating_function_coeff_order;
+  
+  vector<double> coefficients_phi_prime_of_tau = return_coefficients(&tau_for_fit, &phi_prime_for_fit, n_coeff);
+  vector<double> coefficients_delta_L_of_tau = return_coefficients(&tau_for_fit, &delta_L_for_fit, n_coeff);
+  vector<double> coefficients_delta_NL_collapse_of_tau = return_coefficients(&tau_for_fit_collapse, &delta_NL_collapse_for_fit, n_coeff);
+  vector<double> coefficients_dphi_prime_of_dtau(coefficients_phi_prime_of_tau.size(), 0.0);
+  vector<double> coefficients_d2phi_prime_of_dtau2(coefficients_phi_prime_of_tau.size(), 0.0);
+  
+  cout << "Done.\n";
+  
+  /*
+   * Perform the inverse Laplace transform of phi(lambda) to compute p(delta).
+   * 
+   */
+  
+  int n_delta = chosen_deltas->size();
+  double D = this->return_D_of_z(z);
+  double var = D*D*interpolate_neville_aitken(log(R), &this->log_top_hat_cylinder_radii, &this->top_hat_cylinder_variances, constants::order_of_interpolation)*var_NL_rescale/L;
+  
+  /*
+   * ISSUE: one can enforce even more coefficients to their analytical value!
+   */
+  
+  coefficients_phi_prime_of_tau[0] = 0.0;
+  coefficients_phi_prime_of_tau[1] = sqrt(var);
+  coefficients_delta_L_of_tau[0] = 0.0;
+  coefficients_delta_NL_collapse_of_tau[0] = 0.0;
+  
+  for(int i = 0; i < coefficients_phi_prime_of_tau.size()-1; i++){
+    coefficients_dphi_prime_of_dtau[i] = coefficients_phi_prime_of_tau[i+1]*double(i+1);
+  }
+  for(int i = 0; i < coefficients_phi_prime_of_tau.size()-1; i++){
+    coefficients_d2phi_prime_of_dtau2[i] = coefficients_dphi_prime_of_dtau[i+1]*double(i+1);
+  }
+  
+  /*
+   * ISSUE: sometimes at delta=delta_max the code outputs PDF[i] = nan! Why is this? OF preliminarily fixed this by replacing "/double(n_delta-1)" with "/double(n_delta)" (hence avoiding delta=delta_max).
+   */
+  double delta;
+  double tau_0, lambda_0;
+  double dr;
+  
+  complex<double> lambda;
+  complex<double> lambda_next;
+  complex<double> tau, tau_next;
+  complex<double> phi_prime, phi_prime_next;
+  complex<double> d_L, d_L_next;
+  complex<double> d_NL_col, d_NL_col_next;
+  complex<double> exponent, exponent_next;
+  complex<double> dlambda;
+  complex<double> step, first_step;
+  
+  vector<vector<double> > PDF_data(4, vector<double>(n_delta));
+  
+  cout << "Computing PDF:\n";
+  for(int i = 0; i < n_delta; i++){
+    delta = (*chosen_deltas)[i];
+    
+    PDF_data[0][i] = delta;
+    PDF_data[1][i] = 0.0;
+      
+    if(delta < delta_c){
+      tau_0 = interpolate_Newton(delta, &delta_NL_values, &tau_values, constants::order_of_interpolation);
+      lambda_0 = interpolate_Newton(delta, &delta_NL_values, &lambda_values, constants::order_of_interpolation);
+    }
+    else{
+      tau_0 = tau_c;
+      lambda_0 = lambda_c;
+    }
+    lambda = complex<double>(lambda_0, 0.0);
+    tau = complex<double>(tau_0, 0.0);
+    exponent = exp(-0.5*pow(tau, 2));
+    phi_prime = return_polnomial_value(tau, &coefficients_phi_prime_of_tau);
+    d_L = return_polnomial_value(tau, &coefficients_delta_L_of_tau);
+    d_NL_col = return_polnomial_value(tau, &coefficients_delta_NL_collapse_of_tau);
+    
+    // sigma_r^2 \approx 1/phi''(lambda_0)
+    double sigma_frac = 0.001;
+    dr = sigma_frac/sqrt(interpolate_neville_aitken_derivative(lambda_0, &lambda_values, &delta_NL_values, constants::order_of_interpolation));
+    dlambda = complex<double>(0.0, dr);
+    int j = 0;
+    do{
+      lambda_next = lambda + 0.5*dlambda;
+      tau_next = get_tau_from_secant_method_complex_Bernardeau_notation_2D(lambda_next, tau, &coefficients_dphi_prime_of_dtau, &coefficients_d2phi_prime_of_dtau2);
+      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_prime_of_tau);
+      dlambda = -dr*conj(phi_prime_next-delta)/abs(phi_prime_next-delta);
+      lambda_next = lambda + dlambda;
+      tau_next = get_tau_from_secant_method_complex_Bernardeau_notation_2D(lambda_next, tau_next, &coefficients_dphi_prime_of_dtau, &coefficients_d2phi_prime_of_dtau2);
+      phi_prime_next = return_polnomial_value(tau_next, &coefficients_phi_prime_of_tau);
+      exponent_next = exp(-lambda_next*(delta-phi_prime_next)-0.5*pow(tau_next, 2));
+      d_L_next = return_polnomial_value(tau_next, &coefficients_delta_L_of_tau);
+      d_NL_col_next = return_polnomial_value(tau_next, &coefficients_delta_NL_collapse_of_tau);
+      
+      step = 0.5*dlambda*(exponent_next+exponent);
+      PDF_data[1][i] += step.imag();
+      
+      //step = 0.5*dlambda*(exponent_next*phi_prime_next+exponent*phi_prime);
+      step = 0.5*dlambda*(exponent_next*phi_prime_next+exponent*phi_prime);
+      PDF_data[2][i] += step.imag();
+      
+      //step = 0.5*dlambda*(exponent_next*(1.0+phi_prime_next)*d_L_next+exponent*(1.0+phi_prime)*d_L);
+      step = 0.5*dlambda*(exponent_next*(1.0+phi_prime_next)*d_NL_col_next+exponent*(1.0+phi_prime)*d_NL_col);
+      PDF_data[3][i] += step.imag();
+      
+      dlambda = -dr*conj(phi_prime_next-delta)/abs(phi_prime_next-delta);
+      lambda = lambda_next;
+      tau = tau_next;
+      exponent = exponent_next;
+      phi_prime = phi_prime_next;
+      d_L = d_L_next;
+      d_NL_col = d_NL_col_next;
+      if(j == 0){
+        first_step = step;
+      }
+      j++;
+    }while(abs(step/first_step) > 1.0e-5 || j < int(6.0/sigma_frac));
+    
+    PDF_data[1][i] /= constants::pi;
+    PDF_data[2][i] /= constants::pi*PDF_data[1][i];
+    PDF_data[3][i] /= constants::pi*PDF_data[1][i];
     
     cout << PDF_data[0][i] << "   ";
     cout << PDF_data[1][i] << "\n";

@@ -129,6 +129,7 @@ int GalaxySample::return_N_max(double N_bar, double variance){
 
 double GalaxySample::return_P_of_N_given_delta(int N, double N_bar, double delta, double variance){
   double delta_g = this->linear_bias*delta + this->quadratic_bias*(delta*delta - variance);
+  
   if(delta_g<-1){
     delta_g=-1.0;
     if(this->get_error_flag_negative_density()==0){

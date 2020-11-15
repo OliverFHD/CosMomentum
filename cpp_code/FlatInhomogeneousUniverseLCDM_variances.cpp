@@ -130,7 +130,7 @@ void FlatInhomogeneousUniverseLCDM::set_sphere_skewnesses(int PNG_modus){
   this->current_P_L = this->P_L(this->eta_at_a(1.0));
   
   // f_NL is now set in the ipython interface
-  double prefactor = 3.0*this->return_Omega_m()/pow(constants::pi2, 4);//*this->f_NL_rescaling_factor;
+  double prefactor = -3.0*this->return_Omega_m()/pow(constants::pi2, 4);//*this->f_NL_rescaling_factor;
   double skew_1, dskew_1;
   double skew_2, dskew_2;
   double skew_3, dskew_3;
@@ -213,7 +213,7 @@ void FlatInhomogeneousUniverseLCDM::set_cylinder_skewnesses(int PNG_modus){
   this->current_P_L = this->P_L(this->eta_at_a(1.0));
   
   // f_NL is now set in the ipython interface
-  double prefactor = 3.0*this->return_Omega_m()/pow(constants::pi2, 5);//*this->f_NL_rescaling_factor;
+  double prefactor = -3.0*this->return_Omega_m()/pow(constants::pi2, 5);//*this->f_NL_rescaling_factor;
   double skew_1, dskew_1;
   double skew_2, dskew_2;
   double skew_3, dskew_3;
@@ -280,7 +280,7 @@ void FlatInhomogeneousUniverseLCDM::set_cylinder_skewnesses(int PNG_modus){
 void FlatInhomogeneousUniverseLCDM::compute_cylinder_skewnesses_for_unit_L_and_unit_fNL(int PNG_modus, double R_in_Mpc_over_h, double *skew, double *dskew_dR){
   
   double R = R_in_Mpc_over_h/constants::c_over_e5;
-  double prefactor = 3.0*this->return_Omega_m()/pow(constants::pi2, 5);
+  double prefactor = -3.0*this->return_Omega_m()/pow(constants::pi2, 5);
   double skew_1, dskew_1;
   double skew_2, dskew_2;
   double skew_3, dskew_3;
@@ -345,7 +345,7 @@ void FlatInhomogeneousUniverseLCDM::set_sphere_skewnesses_from_eps3_powerlaw_app
   this->current_P_L = this->P_L(this->eta_at_a(1.0));
   
   // f_NL is now set in the ipython interface
-  double prefactor = 3.0*this->return_Omega_m()/pow(constants::pi2, 4);//*this->f_NL_rescaling_factor;
+  double prefactor = -3.0*this->return_Omega_m()/pow(constants::pi2, 4);//*this->f_NL_rescaling_factor;
   double skew_1, dskew_1;
   double skew_2, dskew_2;
   double skew_3, dskew_3;
@@ -447,7 +447,7 @@ void FlatInhomogeneousUniverseLCDM::set_cylinder_skewnesses_from_eps3_powerlaw_a
   this->current_P_L = this->P_L(this->eta_at_a(1.0));
   
   // f_NL is now set in the ipython interface
-  double prefactor = 3.0*this->return_Omega_m()/pow(constants::pi2, 3);//*this->f_NL_rescaling_factor;
+  double prefactor = -3.0*this->return_Omega_m()/pow(constants::pi2, 3);//*this->f_NL_rescaling_factor;
   double skew_1, dskew_1;
   double skew_2, dskew_2;
   double skew_3, dskew_3;

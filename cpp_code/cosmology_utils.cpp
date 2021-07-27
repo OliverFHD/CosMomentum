@@ -7,6 +7,7 @@ using namespace constants;
 
 
 struct cosmological_model{
+
   int collapse;
   
   double Omega_m;
@@ -22,7 +23,7 @@ struct cosmological_model{
   
   double n_s;
   double sigma_8;
-  
+
 };
 
 

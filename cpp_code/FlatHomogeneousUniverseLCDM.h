@@ -26,6 +26,9 @@ class FlatHomogeneousUniverseLCDM : public FriedmannUniverse {
   double return_theta_27(){return this->cosmology.theta_27;};
   cosmological_model return_cosmology();
   
+  double Mass_within_R_in_Mpc_over_h(double R_in_Mpc_over_h);
+  double R_in_Mpc_over_h_enclosing_M(double M_in_Msol_over_h);
+  
   static void expansion_in_flat_matter_dominated_universe(double a, double Omega_m, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime);
   static void expansion_in_flat_radiation_dominated_universe(double a, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime);
   static void expansion_in_flat_Lambda_dominated_universe(double a, double *t_phys, double *eta, double *H_conformal, double *H_conformal_prime);

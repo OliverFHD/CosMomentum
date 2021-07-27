@@ -618,19 +618,51 @@ void FlatInhomogeneousUniverseLCDM::set_cylinder_variances(){
   
   this->log_top_hat_cylinder_radii.resize(n, 0.0);
   this->top_hat_cylinder_variances.resize(n, 0.0);
+  this->average_of_squared_cylinder_saddle_point.resize(n, 0.0);
   this->dtop_hat_cylinder_variances_dR.resize(n, 0.0);
   this->d2top_hat_cylinder_variances_dR2.resize(n, 0.0);
   this->current_P_L = this->P_L(this->eta_at_a(1.0));
+  
   vector<double> R_values(n, 0.0);
+  
+  
+  for(int i = 0; i < n; i++){
+    R_values[i] = 1.0/wave_numbers[8*(n-1-i)];
+    this->log_top_hat_cylinder_radii[i] = -log(wave_numbers[8*(n-1-i)]);
+    this->top_hat_cylinder_variances[i] = this->variance_of_matter_within_R_2D(1.0/wave_numbers[8*(n-1-i)]);
+    //this->average_of_squared_cylinder_saddle_point[i] = this->average_of_squared_saddle_point_within_R_2D(1.0/wave_numbers[8*(n-1-i)]);
+    //this->average_of_squared_cylinder_saddle_point[i] /= pow(this->top_hat_cylinder_variances[i],2);
+    this->dtop_hat_cylinder_variances_dR[i] = this->dvariance_of_matter_within_R_dR_2D(1.0/wave_numbers[8*(n-1-i)]);
+    //cout << i << "  " << R_values[i]*constants::c_over_e5 << "  " <<  this->top_hat_cylinder_variances[i] << "  " <<  this->dtop_hat_cylinder_variances_dR[i] << '\n';
+  }
+  /*
+  
+  vector<double> P_L_2D = this->current_P_L;
+  int n_k = P_L_2D.size();
+  double L = 150.0/constants::c_over_e5;
+  
+  for(int i = 0; i < n_k; i++){
+    double prefactors = L/constants::pi;
+    integration_parameters params;
+    params.top_hat_length = L;
+    params.k = wave_numbers[i];
+    params.n_s = this->return_n_s();
+    params.pointer_to_Universe = this;
+    integration_parameters * pointer_to_params = &params;
+    P_L_2D[i] = prefactors*int_gsl_integrate_medium_precision(P_to_P2D_derivs_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
+    cout << i << "  " << wave_numbers[i]/constants::c_over_e5 << "  " <<  P_L_2D[i] << "  " <<  this->current_P_L[i] << '\n';
+  }
+  
+  this->current_P_L = P_L_2D;
   
   for(int i = 0; i < n; i++){
     R_values[i] = 1.0/wave_numbers[8*(n-1-i)];
     this->log_top_hat_cylinder_radii[i] = -log(wave_numbers[8*(n-1-i)]);
     this->top_hat_cylinder_variances[i] = this->variance_of_matter_within_R_2D(1.0/wave_numbers[8*(n-1-i)]);
     this->dtop_hat_cylinder_variances_dR[i] = this->dvariance_of_matter_within_R_dR_2D(1.0/wave_numbers[8*(n-1-i)]);
-    //this->d2top_hat_cylinder_variances_dR2[i] = this->d2variance_of_matter_within_R_dR2_2D(1.0/wave_numbers[8*(n-1-i)]);
+    cout << i << "  " << R_values[i]*constants::c_over_e5 << "  " <<  this->top_hat_cylinder_variances[i] << "  " <<  this->dtop_hat_cylinder_variances_dR[i] << '\n';
   }
-  
+  */
   
   for(int i = 0; i < n; i++){
     this->d2top_hat_cylinder_variances_dR2[i] = interpolate_neville_aitken_derivative(R_values[i], &R_values, &this->dtop_hat_cylinder_variances_dR, constants::order_of_interpolation);
@@ -747,6 +779,24 @@ double FlatInhomogeneousUniverseLCDM::variance_of_matter_within_R_2D(double R){
   
 }
 
+double FlatInhomogeneousUniverseLCDM::average_of_squared_saddle_point_within_R_2D(double R){
+ 
+  double s_sq = 0.0;
+  double prefactors;
+  
+  prefactors = 2.0/pow(R,2)/pow(2.0*constants::pi, 2);
+  integration_parameters params;
+  params.top_hat_radius = R;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
+  integration_parameters * pointer_to_params = &params;
+
+  s_sq = int_gsl_integrate_medium_precision(squared_saddle_point_derivs_2D_gsl,(void*)pointer_to_params,1.0/maximal_wave_number_in_H0_units,R,NULL,1000);
+
+  return prefactors*s_sq;
+  
+}
+
 double FlatInhomogeneousUniverseLCDM::variance_of_matter_within_R_NL_2D(double R){
  
   double s_sq = 0.0;
@@ -760,6 +810,63 @@ double FlatInhomogeneousUniverseLCDM::variance_of_matter_within_R_NL_2D(double R
   integration_parameters * pointer_to_params = &params;
 
   s_sq = int_gsl_integrate_medium_precision(var_NL_derivs_2D_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
+
+  return prefactors*s_sq;
+  
+}
+
+double FlatInhomogeneousUniverseLCDM::variance_of_matter_within_R_NL_2D(double R, double L){
+ 
+  double s_sq = 0.0;
+  double prefactors;
+  
+  prefactors = 1.0/(2.0*constants::pi_sq); // now pi_sq instead of pi, because of how sinc^2 approximates the delta function.
+  integration_parameters params;
+  params.top_hat_radius = R;
+  params.top_hat_length = L;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
+  integration_parameters * pointer_to_params = &params;
+
+  s_sq = int_gsl_integrate_medium_precision(var_NL_derivs_2D_1_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
+
+  return prefactors*s_sq;
+  
+}
+
+double FlatInhomogeneousUniverseLCDM::variance_of_matter_within_R_2D(double R, double L){
+ 
+  double s_sq = 0.0;
+  double prefactors;
+  
+  prefactors = 1.0/(2.0*constants::pi_sq); // now pi_sq instead of pi, because of how sinc^2 approximates the delta function.
+  integration_parameters params;
+  params.top_hat_radius = R;
+  params.top_hat_length = L;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
+  integration_parameters * pointer_to_params = &params;
+
+  s_sq = int_gsl_integrate_medium_precision(var_derivs_2D_1_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
+
+  return prefactors*s_sq;
+  
+}
+
+double FlatInhomogeneousUniverseLCDM::dvariance_of_matter_within_R_dR_2D(double R, double L){
+ 
+  double s_sq = 0.0;
+  double prefactors;
+  
+  prefactors = 1.0/(2.0*constants::pi_sq); // now pi_sq instead of pi, because of how sinc^2 approximates the delta function.
+  integration_parameters params;
+  params.top_hat_radius = R;
+  params.top_hat_length = L;
+  params.n_s = this->return_n_s();
+  params.pointer_to_Universe = this;
+  integration_parameters * pointer_to_params = &params;
+
+  s_sq = int_gsl_integrate_medium_precision(dvar_dR_derivs_2D_1_gsl,(void*)pointer_to_params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
 
   return prefactors*s_sq;
   

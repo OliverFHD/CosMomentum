@@ -21,8 +21,7 @@ class FlatInhomogeneousUniverseLCDM : public FlatHomogeneousUniverseLCDM {
   double return_n_s(){return this->cosmology.n_s;};
 
   void print_Newtonian_growth_factor(string file_name);
-  void return_delta_NL_of_delta_L_and_dF_ddelta_3D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values);
-  void return_delta_NL_of_delta_L_and_dF_ddelta_2D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values);
+  void return_delta_NL_of_delta_L_and_dF_ddelta_3D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values, vector<double> *delta_NL_prime_prime_values);
   void return_delta_NL_of_delta_L_and_dF_ddelta_2D(double eta, vector<double> *delta_L_values, vector<double> *delta_NL_values, vector<double> *delta_NL_prime_values, vector<double> *delta_NL_prime_prime_values);
   
   double Newtonian_linear_power_spectrum(double k, double e);
@@ -43,9 +42,13 @@ class FlatInhomogeneousUniverseLCDM : public FlatHomogeneousUniverseLCDM {
   double dvariance_of_matter_within_R_dR(double R);
   double variance_of_matter_within_R_NL(double R);
   double variance_of_matter_within_R_2D(double R);
+  double variance_of_matter_within_R_2D(double R, double L);
+  double average_of_squared_saddle_point_within_R_2D(double R);
   double dvariance_of_matter_within_R_dR_2D(double R);
+  double dvariance_of_matter_within_R_dR_2D(double R, double L);
   double d2variance_of_matter_within_R_dR2_2D(double R);
   double variance_of_matter_within_R_NL_2D(double R);
+  double variance_of_matter_within_R_NL_2D(double R, double L);
   
   double return_D_of_z(double z);
   double return_D_of_eta(double eta);
@@ -57,7 +60,9 @@ class FlatInhomogeneousUniverseLCDM : public FlatHomogeneousUniverseLCDM {
   void growth_of_DM_fluctuations_in_flat_radiation_dominated_universe(double a, double *eta, double *D, double *D_prime);
   void growth_of_DM_fluctuations_in_flat_Lambda_dominated_universe(double a, double *eta, double *D, double *D_prime);
   
-  vector<vector<double> > return_power_spectra(double eta, double R);
+  double delta_crit(double a, double Delta);
+  
+  vector<vector<double> > return_power_spectra(double eta);
   
   /*
    * Computing generating functions
@@ -74,8 +79,9 @@ class FlatInhomogeneousUniverseLCDM : public FlatHomogeneousUniverseLCDM {
    * 
    */
   vector<vector<double> > compute_PDF_3D(double z, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale);
-  vector<vector<double> > compute_PDF_2D(double z, double z_collapse, double R_in_Mpc_over_h, double L_in_Mpc_over_h, double f_NL, double var_NL_rescale);
-  vector<vector<double> > compute_PDF_at_choses_deltas_2D(vector<double>* chosen_deltas, double z, double z_collapse, double R_in_Mpc_over_h, double L_in_Mpc_over_h, double f_NL, double var_NL_rescale);
+  vector<vector<double> > compute_PDF_2D(double z, double R_in_Mpc_over_h, double L_in_Mpc_over_h, double f_NL, double var_NL_rescale);
+  vector<vector<double> > compute_PDF_at_chosen_deltas_2D(vector<double>* chosen_deltas, double z, double R_in_Mpc_over_h, double L_in_Mpc_over_h, double f_NL, double var_NL_rescale);
+  vector<vector<double> > compute_PDF_from_CGF(vector<double>* delta_values, vector<vector<double> >* CGF_data);
   vector<vector<double> > compute_LOS_projected_PDF(vector<double> w_values, vector<double> kernel_values, double theta, double f_NL, double var_NL_rescale);
   vector<vector<double> > compute_LOS_projected_PDF_saddle_point(vector<double> w_values, vector<double> kernel_values, double theta, double f_NL, double var_NL_rescale);
   void compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point(double theta, double f_NL, double var_NL_rescale, double kappa_min, double kappa_max, double kappa_noise_variance, vector<double> w_values, vector<double> kernel_values, vector<vector<double> > *delta_grid, vector<vector<double> > *kappa_grid, vector<vector<double> > *PDF_grid);
@@ -125,12 +131,14 @@ class FlatInhomogeneousUniverseLCDM : public FlatHomogeneousUniverseLCDM {
   vector<double> log_top_hat_radii;
   vector<double> top_hat_sphere_variances;
   vector<double> dtop_hat_sphere_variances_dR;
+  vector<double> d2top_hat_sphere_variances_dR2;
   vector<double> log_top_hat_radii_for_skewnesses;
   vector<double> top_hat_sphere_skewnesses;
   vector<double> dtop_hat_sphere_skewnesses_dR;
   
   vector<double> log_top_hat_cylinder_radii;
   vector<double> top_hat_cylinder_variances;
+  vector<double> average_of_squared_cylinder_saddle_point;
   vector<double> dtop_hat_cylinder_variances_dR;
   vector<double> d2top_hat_cylinder_variances_dR2;
   vector<double> log_top_hat_cylinder_radii_for_skewnesses;

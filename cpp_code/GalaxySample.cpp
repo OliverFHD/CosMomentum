@@ -1,8 +1,8 @@
 
-GalaxySample::GalaxySample(FlatInhomogeneousUniverseLCDM* universe, double b1, double b2, double a0, double a1){
+GalaxySample::GalaxySample(FlatInhomogeneousUniverseLCDM* universe, double b1, double b2, double a0, double a1, BIAS_MODEL b_model){
   
   this->set_universe(universe);
-  this->set_parameters(b1, b2, a0, a1);
+  this->set_parameters(b1, b2, a0, a1, b_model);
   
 }
 
@@ -19,38 +19,22 @@ GalaxySample::~GalaxySample(){
  * 
  */
 
-void GalaxySample::set_parameters(double b1, double b2, double a0, double a1){
-  this->linear_bias = b1;
-  this->quadratic_bias = b2;
+void GalaxySample::set_parameters(double b1, double b2, double a0, double a1, BIAS_MODEL b_model){
+  this->bias_model = b_model;
+  if(b_model == EULERIAN){
+    this->linear_bias = b1;
+    this->quadratic_bias = b2;
+    this->linear_Lagrangian_bias = -1.0;
+    this->quadratic_Lagrangian_bias = -1.0;
+  }
+  else{
+    this->linear_Lagrangian_bias = b1;
+    this->quadratic_Lagrangian_bias = b2;
+    this->linear_bias = -1.0;
+    this->quadratic_bias = -1.0;
+  }
   this->alpha_0 = a0;
   this->alpha_1 = a1;
-}
-
-
-/*
- * GalaxySample::set_bias_model_from_br_parametrisation
- * 
- * Translating the br-parametrisation of bias and shot-noise (cf. https://arxiv.org/pdf/1710.05162.pdf) to the b-alpha_0-alpha_1 parametrisation.
- * 
- * 
- */
-
-void GalaxySample::set_bias_model_from_br_parametrisation(double b_tilde, double r, double N_bar, double variance, double skewness){
-  
-  this->linear_bias = b_tilde*r;
-  //if(this->quadratic_bias != 0.0){
-  //  this->quadratic_bias = 0.0;
-  //  cerr << "CAREFUL: currently, b_2 = 0 is still enforced when calling set_bias_model_from_br_parametrisation.\n";
-  //}
-  double delta_m0 = lognormal_tools::get_delta0(variance, skewness);
-  
-  this->alpha_0 = lognormal_tools::return_alpha_0(r, b_tilde, N_bar, variance, delta_m0);
-  this->alpha_1 = lognormal_tools::return_alpha_1(r, b_tilde, N_bar, variance, delta_m0);
-  cout << this->alpha_0 << '\n';
-  cout << this->alpha_1 << '\n';
-  cout << variance << '\n';
-  cout << skewness << '\n';
-  cout << delta_m0 << '\n';
 }
 
 
@@ -78,16 +62,24 @@ void GalaxySample::set_universe(FlatInhomogeneousUniverseLCDM* universe){
 
 double GalaxySample::set_b2_to_minimise_negative_densities(double variance){
   
-  if(this->linear_bias>1.0)
-    this->quadratic_bias = min(0.5*this->linear_bias,(this->linear_bias-1.0)/(1.0-variance));
-  else
-    this->quadratic_bias = 0.0;
+  double b_lin = this->linear_bias;
+  double b_quad = this->quadratic_bias;
+  if(this->bias_model == LAGRANGIAN){
+    b_lin = 1.0 + this->linear_Lagrangian_bias;
+    b_quad = this->quadratic_Lagrangian_bias + 8.0/21.0*this->linear_Lagrangian_bias;
+  }
   
-  cout << " b1 = " << this->linear_bias << '\n';
-  cout << " b2 = " << this->quadratic_bias << '\n';
-  cout << "var = " << variance << '\n';
+  double b_quad_new = 2.0*min(0.5*b_lin,(b_lin-1.0)/(1.0-variance));
   
-  return this->quadratic_bias;
+  if(this->bias_model == LAGRANGIAN){
+    this->quadratic_Lagrangian_bias += b_quad_new - b_quad;
+    return this->quadratic_Lagrangian_bias;
+  }
+  else{
+    this->quadratic_bias = b_quad_new;
+  }
+  
+  return b_quad_new;
 }
 
 
@@ -106,9 +98,18 @@ int GalaxySample::return_N_max(double N_bar, double variance){
   
   double var_Gauss = log(1.0+variance);
   double delta_max = (exp(-0.5*var_Gauss + 5.0*sqrt(var_Gauss))-1.0);
-  double delta_g_max = this->linear_bias*delta_max + this->quadratic_bias*(delta_max*delta_max - variance);
-  if(this->quadratic_bias < 0.0){
-    delta_g_max = -0.5*this->linear_bias/this->quadratic_bias;
+  double b_lin = this->linear_bias;
+  double b_quad = this->quadratic_bias;
+  if(this->bias_model == LAGRANGIAN){
+    // Approximate relations between b_Euler and b_Lagrange
+    // (Not vital that this is 100% accurate, since we're only
+    // calculating N_max up to which CiC histogram is calculated.)
+    b_lin = 1.0 + this->linear_Lagrangian_bias;
+    b_quad = this->quadratic_Lagrangian_bias + 8.0/21.0*this->linear_Lagrangian_bias;
+  }
+  double delta_g_max = b_lin*delta_max + b_quad/2.0*(delta_max*delta_max - variance);
+  if(b_quad < 0.0){
+    delta_g_max = -0.5*b_lin/(b_quad/2.0);
   }
   
   double N_bar_max = N_bar*(1.0+delta_g_max);
@@ -119,16 +120,62 @@ int GalaxySample::return_N_max(double N_bar, double variance){
 }
 
 
-
 /*
- * GalaxySample::P_of_N_given_delta
+ * GalaxySample::return_bias_model
  * 
- * Given the matter density contrast delta within a volume V, compute the probability of finding N galaxies in that volume. The variance is only relevant when quadratic_bias != 0.
+ * Returns GalaxySample.return_bias_model (= EULERIAN or LAGRANGIAN).
  * 
  */
 
-double GalaxySample::return_P_of_N_given_delta(int N, double N_bar, double delta, double variance){
-  double delta_g = this->linear_bias*delta + this->quadratic_bias*(delta*delta - variance);
+BIAS_MODEL GalaxySample::return_bias_model(){
+  return this->bias_model;
+};
+
+
+
+/*
+ * GalaxySample::delta_g_Eulerian
+ * 
+ * Given the matter density contrast delta within a volume V, return the galaxy density contrast in the same volume.
+ * The variance is meant to be <\delta_{m,V}^2> and is only relevant when quadratic_bias != 0.
+ * This function uses the Eulerian bias parametrisation.
+ * 
+ */
+
+double GalaxySample::delta_g_Eulerian(double delta, double variance){
+  return this->linear_bias*delta + this->quadratic_bias/2.0*(delta*delta - variance);
+}
+
+
+/*
+ * GalaxySample::delta_g_Lagrangian
+ * 
+ * Given the matter density contrast delta within a volume V, return the galaxy density contrast in the same volume.
+ * PDF_data is in the PDF-output format of class FlatInhomogeneousUniverseLCDM.
+ * This function uses the Lagrangian bias parametrisation.
+ * 
+ */
+
+vector<vector<double> > GalaxySample::delta_g_Lagrangian(vector<vector<double> > *PDF_data){
+  int N_delta = (*PDF_data)[0].size();
+  vector<vector<double> > delta_m_and_g(2, vector<double>(N_delta, 0.0));
+  delta_m_and_g[0] = (*PDF_data)[0];
+  
+  for(int d = 0; d < N_delta; d++){
+    delta_m_and_g[1][d] = (*PDF_data)[0][d] + (*PDF_data)[2][d]*this->linear_Lagrangian_bias + (*PDF_data)[3][d]*this->quadratic_Lagrangian_bias/2.0;
+  }
+  return delta_m_and_g;
+}
+
+
+/*
+ * GalaxySample::return_P_of_N_given_delta_g
+ * 
+ * Given the (shot-noise free) galaxy density contrast delta_g within a volume V, compute the probability of finding N galaxies in that volume.
+ * 
+ */
+
+double GalaxySample::return_P_of_N_given_delta_g(int N, double N_bar, double delta_m, double delta_g){
   
   if(delta_g<-1){
     delta_g=-1.0;
@@ -144,7 +191,7 @@ double GalaxySample::return_P_of_N_given_delta(int N, double N_bar, double delta
     return 1.;
   }
   
-  double galaxy_per_Poisson_halo = this->alpha_0 + this->alpha_1*delta; // In the convention of https://arxiv.org/abs/1710.05162 this uses indeed delta==delta_matter.
+  double galaxy_per_Poisson_halo = this->alpha_0 + this->alpha_1*delta_m; // In the convention of https://arxiv.org/abs/1710.05162 this uses indeed delta==delta_matter.
   
   if(galaxy_per_Poisson_halo == 1.0) return gsl_ran_poisson_pdf(N, N_bar*(1.0+delta_g)); // galaxy_per_Poisson_halo == 1.0 ==> shot-noise is Poisson
   if(galaxy_per_Poisson_halo <= 0.0) {
@@ -178,14 +225,36 @@ vector<double> GalaxySample::return_CIC_from_matter_density_PDF(double N_bar, ve
   // ISSUE: maybe make variance a parameter of this function instead
   int N_max = this->return_N_max(N_bar, variance);
   
+  /* 
+   * If using Lagrangian bias parametrisation,
+   * then we need information on bias_term_1 and bias_term_2
+   * (cf. class FlatInhomogeneousUniverseLCDM)
+   * 
+   */
+  vector<vector<double> > delta_m_and_g;
+  if(this->return_bias_model() == LAGRANGIAN){
+    delta_m_and_g = this->delta_g_Lagrangian(&PDF_data);
+  }
   
   vector<double> P_of_N(N_max+1, 0.0);
   vector<vector<double> > P_of_N_given_delta(N_max+1, vector<double>(n_delta, 0.0));
   
+  double norm;
+  double delta_g;
   for(int d = 0; d < n_delta; d++){
-    double norm = 0.0;
+    norm = 0.0;
+    if(this->return_bias_model() == EULERIAN){
+      delta_g = this->delta_g_Eulerian(PDF_data[0][d], variance);
+    }
+    else if(this->return_bias_model() == LAGRANGIAN){
+      delta_g = interpolate_neville_aitken(PDF_data[0][d], &delta_m_and_g[0], &delta_m_and_g[1], constants::order_of_interpolation);
+    }
+    else{
+      error_handling::general_error_message("Invalid value for GalaxySample.bias_model in function GalaxySample.return_CIC_from_matter_density_PDF .");
+    }
+
     for(int n = 0; n < N_max+1; n++){
-      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta(n, N_bar, PDF_data[0][d], variance);
+      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta_g(n, N_bar, PDF_data[0][d], delta_g);
       norm += P_of_N_given_delta[n][d];
     }
     for(int n = 0; n < N_max+1; n++){

@@ -1,6 +1,6 @@
 
 
-ProjectedGalaxySample::ProjectedGalaxySample(FlatInhomogeneousUniverseLCDM* universe, double density_in_arcmin_squared, double b1, double b2, double a0, double a1, string n_of_z_input_file) : GalaxySample(universe, b1, b2, a0, a1){
+ProjectedGalaxySample::ProjectedGalaxySample(FlatInhomogeneousUniverseLCDM* universe, double density_in_arcmin_squared, double b1, double b2, double a0, double a1, BIAS_MODEL b_model, string n_of_z_input_file) : GalaxySample(universe, b1, b2, a0, a1, b_model){
   this->set_n_of_w_data(n_of_z_input_file);
   this->density = density_in_arcmin_squared/pow(constants::pi/(180.0*60.0), 2);
 }
@@ -11,21 +11,10 @@ ProjectedGalaxySample::~ProjectedGalaxySample(){
 
 
 
-void ProjectedGalaxySample::set_parameters_projected(double density_in_arcmin_squared, double b1, double b2, double a0, double a1, string n_of_z_input_file){
+void ProjectedGalaxySample::set_parameters_projected(double density_in_arcmin_squared, double b1, double b2, double a0, double a1, BIAS_MODEL b_model, string n_of_z_input_file){
   this->set_n_of_w_data(n_of_z_input_file);
   this->density = density_in_arcmin_squared/pow(constants::pi/(180.0*60.0), 2);
-  this->set_parameters(b1, b2, a0, a1);
-}
-
-
-
-void ProjectedGalaxySample::set_projected_bias_model_from_br_parametrisation(double b_tilde, double r, double theta_in_arcmin, double f_NL, double var_NL_rescale){
-  double A = 2.0*constants::pi*(1.0-cos(theta_in_arcmin*constants::arcmin));
-  double N_bar = A*this->density;
-  double variance = this->compute_variance_in_angular_tophat(theta_in_arcmin, var_NL_rescale);
-  double skewness = this->compute_skewness_in_angular_tophat(theta_in_arcmin, f_NL, var_NL_rescale);
-  
-  this->set_bias_model_from_br_parametrisation(b_tilde, r, N_bar, variance, skewness);
+  this->set_parameters(b1, b2, a0, a1, b_model);
 }
 
 
@@ -248,8 +237,20 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappaCMB_in_angular
   double N_bar = A*this->density;
   double variance = this->compute_variance_in_angular_tophat(theta_in_arcmin, var_NL_rescale);
   double norm;
-  double d_delta, integrand;
+  double delta_g, d_delta, integrand;
   int N_max = this->return_N_max(N_bar, variance);
+  
+  /* 
+   * If using Lagrangian bias parametrisation,
+   * then we need information on bias_term_1 and bias_term_2
+   * (cf. class FlatInhomogeneousUniverseLCDM)
+   * 
+   */
+  vector<vector<double> > delta_m_and_g;
+  if(this->return_bias_model() == LAGRANGIAN){
+    vector<vector<double> > PDF_data = this->pointer_to_universe()->compute_LOS_projected_PDF(this->w_values, this->n_of_w_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);
+    delta_m_and_g = this->delta_g_Lagrangian(&PDF_data);
+  }
   
   vector<vector<double> > P_of_N_given_delta(N_max+1, vector<double>(N_delta, 0.0));
   
@@ -257,7 +258,16 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappaCMB_in_angular
   for(int d = 0; d < N_delta; d++){
     norm = 0.0;
     for(int n = 0; n < N_max+1; n++){
-      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta(n, N_bar, d_grid[d][0], variance);
+      if(this->return_bias_model() == EULERIAN){
+        delta_g = this->delta_g_Eulerian(d_grid[d][0], variance);
+      }
+      else if(this->return_bias_model() == LAGRANGIAN){
+        delta_g = interpolate_neville_aitken(d_grid[d][0], &delta_m_and_g[0], &delta_m_and_g[1], constants::order_of_interpolation);
+      }
+      else{
+        error_handling::general_error_message("Invalid value for ProjectedGalaxySample.bias_model in function ProjectedGalaxySample.return_joint_saddle_point_PDF_Ng_kappaCMB_in_angular_tophat .");
+      }
+      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta_g(n, N_bar, d_grid[d][0], delta_g);
       norm += P_of_N_given_delta[n][d];
     }
     for(int n = 0; n < N_max+1; n++){
@@ -298,8 +308,20 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappaCMB_noisy_in_a
   double N_bar = A*this->density;
   double variance = this->compute_variance_in_angular_tophat(theta_in_arcmin, var_NL_rescale);
   double norm;
-  double d_delta, d_kappa, integrand;
+  double delta_g, d_delta, d_kappa, integrand;
   int N_max = this->return_N_max(N_bar, variance);
+  
+  /* 
+   * If using Lagrangian bias parametrisation,
+   * then we need information on bias_term_1 and bias_term_2
+   * (cf. class FlatInhomogeneousUniverseLCDM)
+   * 
+   */
+  vector<vector<double> > delta_m_and_g;
+  if(this->return_bias_model() == LAGRANGIAN){
+    vector<vector<double> > PDF_data = this->pointer_to_universe()->compute_LOS_projected_PDF(this->w_values, this->n_of_w_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);
+    delta_m_and_g = this->delta_g_Lagrangian(&PDF_data);
+  }
   
   vector<vector<double> > P_of_N_given_delta(N_max+1, vector<double>(N_delta, 0.0));
   
@@ -307,7 +329,16 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappaCMB_noisy_in_a
   for(int d = 0; d < N_delta; d++){
     norm = 0.0;
     for(int n = 0; n < N_max+1; n++){
-      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta(n, N_bar, d_grid[d][0], variance);
+      if(this->return_bias_model() == EULERIAN){
+        delta_g = this->delta_g_Eulerian(d_grid[d][0], variance);
+      }
+      else if(this->return_bias_model() == LAGRANGIAN){
+        delta_g = interpolate_neville_aitken(d_grid[d][0], &delta_m_and_g[0], &delta_m_and_g[1], constants::order_of_interpolation);
+      }
+      else{
+        error_handling::general_error_message("Invalid value for ProjectedGalaxySample.bias_model in function ProjectedGalaxySample.return_joint_saddle_point_PDF_Ng_kappaCMB_noisy_in_angular_tophat .");
+      }
+      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta_g(n, N_bar, d_grid[d][0], delta_g);
       norm += P_of_N_given_delta[n][d];
     }
     for(int n = 0; n < N_max+1; n++){
@@ -358,8 +389,20 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappa_noisy_in_angu
   double N_bar = A*this->density;
   double variance = this->compute_variance_in_angular_tophat(theta_in_arcmin, var_NL_rescale);
   double norm;
-  double d_delta, d_kappa, integrand;
+  double delta_g, d_delta, d_kappa, integrand;
   int N_max = this->return_N_max(N_bar, variance);
+  
+  /* 
+   * If using Lagrangian bias parametrisation,
+   * then we need information on bias_term_1 and bias_term_2
+   * (cf. class FlatInhomogeneousUniverseLCDM)
+   * 
+   */
+  vector<vector<double> > delta_m_and_g;
+  if(this->return_bias_model() == LAGRANGIAN){
+    vector<vector<double> > PDF_data = this->pointer_to_universe()->compute_LOS_projected_PDF(this->w_values, this->n_of_w_values, theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale);
+    delta_m_and_g = this->delta_g_Lagrangian(&PDF_data);
+  }
   
   vector<vector<double> > P_of_N_given_delta(N_max+1, vector<double>(N_delta, 0.0));
   
@@ -367,7 +410,16 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappa_noisy_in_angu
   for(int d = 0; d < N_delta; d++){
     norm = 0.0;
     for(int n = 0; n < N_max+1; n++){
-      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta(n, N_bar, d_grid[d][0], variance);
+      if(this->return_bias_model() == EULERIAN){
+        delta_g = this->delta_g_Eulerian(d_grid[d][0], variance);
+      }
+      else if(this->return_bias_model() == LAGRANGIAN){
+        delta_g = interpolate_neville_aitken(d_grid[d][0], &delta_m_and_g[0], &delta_m_and_g[1], constants::order_of_interpolation);
+      }
+      else{
+        error_handling::general_error_message("Invalid value for ProjectedGalaxySample.bias_model in function ProjectedGalaxySample.return_joint_saddle_point_PDF_Ng_kappa_noisy_in_angular_tophat .");
+      }
+      P_of_N_given_delta[n][d] = this->return_P_of_N_given_delta_g(n, N_bar, d_grid[d][0], delta_g);
       norm += P_of_N_given_delta[n][d];
     }
     for(int n = 0; n < N_max+1; n++){

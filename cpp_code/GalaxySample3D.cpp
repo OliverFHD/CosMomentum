@@ -1,6 +1,6 @@
 
 
-GalaxySample3D::GalaxySample3D(FlatInhomogeneousUniverseLCDM* universe, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1) : GalaxySample(universe, b1, b2, a0, a1){
+GalaxySample3D::GalaxySample3D(FlatInhomogeneousUniverseLCDM* universe, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1, BIAS_MODEL b_model) : GalaxySample(universe, b1, b2, a0, a1, b_model){
   
   this->redshift = z;
   this->density = density_in_Mpc_over_h_cubed*pow(constants::c_over_e5, 3); // changing from Mpc/h to units with c/H_0 == 1
@@ -11,20 +11,10 @@ GalaxySample3D::GalaxySample3D(FlatInhomogeneousUniverseLCDM* universe, double z
 GalaxySample3D::~GalaxySample3D(){
 }
 
-void GalaxySample3D::set_parameters_3D(double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1){
+void GalaxySample3D::set_parameters_3D(double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1, BIAS_MODEL b_model){
   this->density = density_in_Mpc_over_h_cubed*pow(constants::c_over_e5, 3); // changing from Mpc/h to units with c/H_0 == 1
   this->redshift = z;
-  this->set_parameters(b1, b2, a0, a1);
-}
-
-
-void GalaxySample3D::set_3D_bias_model_from_br_parametrisation(double b_tilde, double r, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale){
-  double V = 4.0*constants::pi/3.0*pow(R_in_Mpc_over_h/constants::c_over_e5, 3);
-  double N_bar = V*this->density;
-  double variance = this->compute_variance_in_3D_tophat(R_in_Mpc_over_h, var_NL_rescale);
-  double skewness = this->pointer_to_universe()->return_3D_skewness(this->redshift, R_in_Mpc_over_h, f_NL, var_NL_rescale);
-  
-  this->set_bias_model_from_br_parametrisation(b_tilde, r, N_bar, variance, skewness);
+  this->set_parameters(b1, b2, a0, a1, b_model);
 }
 
 
@@ -72,6 +62,7 @@ double GalaxySample3D::set_b2_to_minimise_negative_densities_in_3D_tophat(double
   return this->set_b2_to_minimise_negative_densities(variance);
   
 }
+
 /*
  * GalaxySample3D::return_CiC_PDF_in_3D_tophat
  * 

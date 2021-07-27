@@ -292,6 +292,32 @@ double FlatHomogeneousUniverseLCDM::w_L_of_a(double a){
   
 }
   
+  
+/*******************************************************************************************************************************************************
+ * FlatHomogeneousUniverseLCDM::w_L_of_a
+ * Description:
+ * - Mass within a given radius according to critical density [in M_solar/h]
+ * Arguments:
+ *  - R_in_Mpc_over_h: radius
+ * 
+*******************************************************************************************************************************************************/
+
+double FlatHomogeneousUniverseLCDM::Mass_within_R_in_Mpc_over_h(double R_in_Mpc_over_h){
+  double R = R_in_Mpc_over_h/constants::c_over_e5; //changing to units of c/H_0
+  double M0_crit = constants::M0_crit_in_Hubble_radius_in_Msol_over_h*pow(R,3);
+  double M0 = M0_crit*this->cosmology.Omega_m;
+  
+  return M0;
+  
+}
+
+
+double FlatHomogeneousUniverseLCDM::R_in_Mpc_over_h_enclosing_M(double M_in_Msol_over_h){
+  double R = pow(M_in_Msol_over_h/(constants::M0_crit_in_Hubble_radius_in_Msol_over_h*this->cosmology.Omega_m), 1.0/3.0);
+  double R_in_Mpc_over_h = R*constants::c_over_e5;
+  
+  return R_in_Mpc_over_h;
+}
 
 
 

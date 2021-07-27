@@ -15,12 +15,14 @@ enum PDF_MODUS {BERNARDEAU, LOGNORMAL, LOGNORMAL_FIX_D0, GAUSSIAN, INVALID_PDF};
 enum BINNING {LIN, LOG};
 enum ON_OFF {ON, OFF};
 enum INITIALISATION {INITIALISED, UNINITIALISED};
+enum BIAS_MODEL {EULERIAN, LAGRANGIAN};
 
 const char *SHOT_NOISE_types[] = {"BA0A1", "BR", "INVALID_SHOTNOISE"};
 const char *PDF_types[] = {"BERNARDEAU", "LOGNORMAL", "LOGNORMAL_FIX_D0", "GAUSSIAN", "INVALID_PDF"};
 const char *BINNING_types[] = {"LIN", "LOG"};
 const char *ON_OFF_types[] = {"ON", "OFF"};
 const char *INITIALISATION_types[] = {"INITIALISED", "UNINITIALISED"};
+const char *BIAS_MODEL_types[] = {"EULERIAN", "LAGRANGIAN"};
   
 
 /***** General constants *****/
@@ -34,9 +36,11 @@ static double one_over_2_pi_sq = 1.0/(2.0*pi_sq); // = 1.0/(2.0*pi^2)
 static double sqrt2 = 1.414213562373095;
 static double sqrt2_plus_1 = 2.414213562373095;
 static double rad = pi/(3600*180);
-static double c_in_si =  2.99792458e8;
+static double c_in_si_over_e8 = 2.99792458;
+static double c_in_si =  c_in_si_over_e8*1.0e8;
 static double c_over_e5 = c_in_si/1.0e5;
 static double c_over_e5_sq = c_over_e5*c_over_e5;
+static double M0_crit_in_Hubble_radius_in_Msol_over_h = 0.5*pow(c_in_si_over_e8,3)/4.3009*1.0e22; // critical mass within Hubble radius today; in units of M_solar/h
 
   /*
     TOM WAS HERE
@@ -70,20 +74,21 @@ static int order_of_interpolation = 4;
 /***** Variable controlling maximal stepsize when integration expansion history *****/
 
 static double maximal_da = 0.001;
+//static double maximal_da = 0.01;
 
 
 /***** Variable controlling the order of interpolating polynomials for generating functions *****/
 
-static int generating_function_coeff_order = 19;
+//static int generating_function_coeff_order = 19;
 //static int generating_function_coeff_order = 15;
 //static int generating_function_coeff_order = 10;
-//static int generating_function_coeff_order = 7;
+static int generating_function_coeff_order = 7;
 
 /***** Variable controlling for how many delta values the PDF is computed *****/
 
 static int N_delta_values_for_PDFs = 600;
 //static int N_delta_values_for_PDFs = 200;
-static double max_contrast = 10.0;
+static double max_contrast = 500.0;
 //static int N_delta_values_for_PDFs = 2000;
 
 
@@ -106,12 +111,7 @@ static double gsl_eps_relative = 1e-10; // gsl_eps_relative/gsl_hstart_relative 
 //static double maximal_wave_number = 336.0;
 
 static int number_of_k = 4096;
-//static double minimal_wave_number = 1.0e-3;
-//static double maximal_wave_number = 1.0e3;
-//static double minimal_wave_number = 0.158671E-04;
 static double minimal_wave_number = 0.0001;
-//static double maximal_wave_number = 0.518697E+02;
-//static double maximal_wave_number = 3360.0;
 static double maximal_wave_number = 4962.49;
 static double high_k_cutoff = maximal_wave_number;
 
@@ -119,7 +119,7 @@ static double log_minimal_wave_number = log(minimal_wave_number);
 static double log_maximal_wave_number = log(maximal_wave_number);
 
 //static double product_of_kmax_and_R = 1.0e2;//1.0e3;
-static double product_of_kmax_and_R = 1.0e3;//1.0e3;
+static double product_of_kmax_and_R = 0.5e2;//1.0e3;
 
 // values of wave numbers in H_0/c
 static double high_k_cutoff_in_H0_units = high_k_cutoff*c_over_e5;
@@ -143,7 +143,9 @@ static double max_relative_bin_width = 0.02;
 /***** NOTE: this should be changed in the future, to integrate redshift histograms with variable stepsizes! ****/
 
 static int minimal_n_w = 300;
+//static int minimal_n_w = 150;
 static double maximal_dw = 0.01;
+//static double maximal_dw = 0.02;
 static double z_last_scattering = 1090.30; // from https://arxiv.org/pdf/1807.06209.pdf , TT-only
 
 };

@@ -150,6 +150,50 @@ double var_derivs_2D_gsl(double lnk, void *params){
   
 }
 
+double cov_derivs_2D_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
+  
+  double k = exp(lnk);
+  double index = 2.0;
+  double WR1 = w_R_2D(k, integration_params->top_hat_radius);
+  double WR2 = w_R_2D(k, integration_params->second_top_hat_radius);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  
+  return pow(k,index)*P*WR1*WR2;
+  
+}
+
+double dcov_dR2_derivs_2D_gsl(double lnk, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
+  
+  double k = exp(lnk);
+  double index = 2.0;
+  double WR1 = w_R_2D(k, integration_params->top_hat_radius);
+  double dWR2_dR2 = deriv_of_w_R_2D(k, integration_params->second_top_hat_radius);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  
+  return pow(k,index)*P*WR1*dWR2_dR2;
+  
+}
+
+double squared_saddle_point_derivs_2D_gsl(double R, void *params){
+ 
+  integration_parameters *integration_params = (integration_parameters *) params;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
+  
+  double R_lin = integration_params->top_hat_radius;
+  integration_params->second_top_hat_radius = R;
+  double Cov = int_gsl_integrate_medium_precision(cov_derivs_2D_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
+  double dCov_dR = int_gsl_integrate_medium_precision(dcov_dR2_derivs_2D_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
+  
+  return R*pow(Cov + 0.5*R*dCov_dR, 2);
+  
+}
+
 double var_NL_derivs_2D_gsl(double lnk, void *params){
  
   integration_parameters *integration_params = (integration_parameters *) params;
@@ -189,7 +233,7 @@ double var_NL_derivs_2D_1_gsl(double lnk, void *params){
   double WL = w_L_1D(k, integration_params->top_hat_length);
   integration_params->k = k;
   
-  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(var_NL_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);;
+  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(var_NL_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
   
 }
 
@@ -279,9 +323,24 @@ double dvar_dR_derivs_2D_1_gsl(double lnk, void *params){
   double WL = w_L_1D(k, integration_params->top_hat_length);
   integration_params->k = k;
   
-  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(dvar_dR_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);;
+  return pow(k,index)*WL*WL*int_gsl_integrate_medium_precision(dvar_dR_derivs_2D_2_gsl,params,log(minimal_wave_number_in_H0_units),log(maximal_wave_number_in_H0_units),NULL,1000);
   
 }
+
+double P_to_P2D_derivs_gsl(double lnk_parallel, void *params){
+  
+  integration_parameters *integration_params = (integration_parameters *) params;
+  FlatInhomogeneousUniverseLCDM* pointer_to_Universe = integration_params->pointer_to_Universe;
+  
+  double k_parallel = exp(lnk_parallel);
+  double lnk = 0.5*log(k_parallel*k_parallel+pow(integration_params->k,2));
+  double index = 1.0;
+  double WL = w_L_1D(k_parallel, integration_params->top_hat_length);
+  double P = pointer_to_Universe->current_P_L_at(lnk);
+  
+  return pow(k_parallel,index)*WL*WL*P;
+}
+
 
 double skewness_integral_3_derivs_gsl(double lnk, void *params){
  

@@ -66,28 +66,22 @@ extern "C" void initialise_new_Universe(double a_initial, double a_final, double
 }
 
 
-extern "C" void add_3D_galaxy_sample(int index_of_universe, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1){
-  global_universes.galaxy_samples_3D.push_back(new GalaxySample3D(global_universes.universes[index_of_universe], z, density_in_Mpc_over_h_cubed, b1, b2, a0, a1));
+extern "C" void add_3D_galaxy_sample(int index_of_universe, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1, int bias_model){
+  BIAS_MODEL b_model = static_cast<BIAS_MODEL>(bias_model);
+  global_universes.galaxy_samples_3D.push_back(new GalaxySample3D(global_universes.universes[index_of_universe], z, density_in_Mpc_over_h_cubed, b1, b2, a0, a1, b_model));
 }
 
 extern "C" int return_N_max_3D(int index_of_galaxy_sample, double R_in_Mpc_over_h, double var_NL_rescale){
   return global_universes.galaxy_samples_3D[index_of_galaxy_sample]->return_N_max_in_3D_tophat(R_in_Mpc_over_h, var_NL_rescale);
 }
 
-extern "C" void change_parameters_of_3D_galaxy_sample(int index_of_galaxy_sample, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1){
-  global_universes.galaxy_samples_3D[index_of_galaxy_sample]->set_parameters_3D(z, density_in_Mpc_over_h_cubed, b1, b2, a0, a1);
+extern "C" void change_parameters_of_3D_galaxy_sample(int index_of_galaxy_sample, double z, double density_in_Mpc_over_h_cubed, double b1, double b2, double a0, double a1, int bias_model){
+  BIAS_MODEL b_model = static_cast<BIAS_MODEL>(bias_model);
+  global_universes.galaxy_samples_3D[index_of_galaxy_sample]->set_parameters_3D(z, density_in_Mpc_over_h_cubed, b1, b2, a0, a1, b_model);
 }
 
 extern "C" double change_b2_to_minimise_negative_densities_3D(int index_of_galaxy_sample, double R_in_Mpc_over_h, double var_NL_rescale){
   return global_universes.galaxy_samples_3D[index_of_galaxy_sample]->set_b2_to_minimise_negative_densities_in_3D_tophat(R_in_Mpc_over_h, var_NL_rescale);
-}
-
-extern "C" void update_3D_bias_model_from_br_parametrisation(int index_of_galaxy_sample, double b_tilde, double r, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale){
-  global_universes.galaxy_samples_3D[index_of_galaxy_sample]->set_3D_bias_model_from_br_parametrisation(b_tilde, r, R_in_Mpc_over_h, f_NL, var_NL_rescale);
-}
-
-extern "C" void update_projected_bias_model_from_br_parametrisation(int index_of_galaxy_sample, double b_tilde, double r, double theta_in_arcmin, double f_NL, double var_NL_rescale){
-  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->set_projected_bias_model_from_br_parametrisation(b_tilde, r, theta_in_arcmin, f_NL, var_NL_rescale);
 }
 
 extern "C" void return_CiC_PDF_3D(double* P_of_N, double R_in_Mpc_over_h, double f_NL, double var_NL_rescale, int index_of_galaxy_sample){
@@ -103,16 +97,18 @@ extern "C" void return_CiC_PDF_3D(double* P_of_N, double R_in_Mpc_over_h, double
 }
 
 
-extern "C" void add_projected_galaxy_sample(int index_of_universe, const char *n_of_z_file, double density_in_arcmin_squared, double b1, double b2, double a0, double a1){
-  global_universes.projected_galaxy_samples.push_back(new ProjectedGalaxySample(global_universes.universes[index_of_universe], density_in_arcmin_squared, b1, b2, a0, a1, string(n_of_z_file)));
+extern "C" void add_projected_galaxy_sample(int index_of_universe, const char *n_of_z_file, double density_in_arcmin_squared, double b1, double b2, double a0, double a1, int bias_model){
+  BIAS_MODEL b_model = static_cast<BIAS_MODEL>(bias_model);
+  global_universes.projected_galaxy_samples.push_back(new ProjectedGalaxySample(global_universes.universes[index_of_universe], density_in_arcmin_squared, b1, b2, a0, a1, b_model, string(n_of_z_file)));
 }
 
 extern "C" int return_N_max_projected(int index_of_galaxy_sample, double theta, double var_NL_rescale){
   return global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_N_max_in_angular_tophat(theta, var_NL_rescale);
 }
 
-extern "C" void change_parameters_of_projected_galaxy_sample(int index_of_galaxy_sample, double density_in_arcmin_squared, double b1, double b2, double a0, double a1, const char *n_of_z_file){
-  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->set_parameters_projected(density_in_arcmin_squared, b1, b2, a0, a1, string(n_of_z_file));
+extern "C" void change_parameters_of_projected_galaxy_sample(int index_of_galaxy_sample, double density_in_arcmin_squared, double b1, double b2, double a0, double a1, int bias_model, const char *n_of_z_file){
+  BIAS_MODEL b_model = static_cast<BIAS_MODEL>(bias_model);
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->set_parameters_projected(density_in_arcmin_squared, b1, b2, a0, a1, b_model, string(n_of_z_file));
 }
 
 extern "C" double change_b2_to_minimise_negative_densities_projected(int index_of_galaxy_sample, double theta, double var_NL_rescale){
@@ -281,11 +277,11 @@ extern "C" int return_n_k(){
   return constants::number_of_k;
 }
 
-extern "C" void return_power_spectra(double* k_values, double* P_L, double* P_halofit, int index_of_universe, double z, double R){
+extern "C" void return_power_spectra(double* k_values, double* P_L, double* P_halofit, int index_of_universe, double z){
   
   double eta = global_universes.universes[index_of_universe]->eta_at_a(1.0/(1.0+z));
   
-  vector<vector<double> > power_spectra = global_universes.universes[index_of_universe]->return_power_spectra(eta, R);
+  vector<vector<double> > power_spectra = global_universes.universes[index_of_universe]->return_power_spectra(eta);
   
   for(int i = 0; i < constants::number_of_k; i++){
     k_values[i] = power_spectra[0][i];
@@ -295,21 +291,17 @@ extern "C" void return_power_spectra(double* k_values, double* P_L, double* P_ha
   
 }
 
-extern "C" void return_CGF(double* delta_L, double* delta_NL, double* lambda, double* phi, double* lambda_Gauss, double* phi_Gauss, double* variances, double* skewnesses, double* R_L, int* N_lambda_uncollapsed, double z, double R_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
+extern "C" void return_CGF(double* delta_L, double* lambda, double* phi, double* phi_prime, double* phi_prime_prime, int* N_lambda_uncollapsed, double z, double R_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
   
   vector<vector<double> > phi_data = global_universes.universes[index_of_universe]->compute_phi_of_lambda_3D(z, R_in_comoving_Mpc/constants::c_over_e5, f_NL, var_NL_rescale);
   
   (*N_lambda_uncollapsed) = phi_data[0].size();
   for(int i = 0; i < (*N_lambda_uncollapsed); i++){
-    delta_L[i] = phi_data[0][i];
-    delta_NL[i] = phi_data[1][i];
-    lambda[i] = phi_data[2][i];
-    phi[i] = phi_data[3][i];
-    lambda_Gauss[i] = phi_data[4][i];
-    phi_Gauss[i] = phi_data[5][i];
-    variances[i] = phi_data[6][i];
-    skewnesses[i] = phi_data[7][i];
-    R_L[i] = phi_data[8][i];
+    lambda[i] = phi_data[0][i];
+    phi[i] = phi_data[1][i];
+    phi_prime[i] = phi_data[2][i];
+    phi_prime_prime[i] = phi_data[3][i];
+    delta_L[i] = phi_data[5][i]/(1.0+phi_prime[i]);
   }
   
 }
@@ -353,27 +345,60 @@ extern "C" void return_PDF(double* delta_values, double* PDF, double z, double R
   
 }
 
-
-extern "C" void return_PDF_2D(double* delta_values, double* PDF, double* bias_term_1, double* bias_term_2, double z, double z_collapse, double theta_in_arcmin, double L_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
+extern "C" void return_PDF_2D_Lagrangian_bias_terms(double* delta_values, double* PDF, double* bias_term_1, double* bias_term_2, double* bias_term_3, double z, double theta_in_arcmin, double L_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
   
   double theta = theta_in_arcmin*constants::pi/180.0/60.0;
   double w = global_universes.universes[index_of_universe]->eta_at_a(1.0) - global_universes.universes[index_of_universe]->eta_at_a(1.0/(1.0+z));
   double R_in_comoving_Mpc = theta*w*constants::c_over_e5;
   cout << "R_in_comoving_Mpc = " << R_in_comoving_Mpc << '\n';
-  
-  vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_PDF_2D(z, z_collapse, R_in_comoving_Mpc, L_in_comoving_Mpc, f_NL, var_NL_rescale);
+  vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_PDF_2D(z, R_in_comoving_Mpc, L_in_comoving_Mpc, f_NL, var_NL_rescale);
   
   for(int d = 0; d < PDF_data[0].size(); d++){
     delta_values[d] = PDF_data[0][d];
     PDF[d] = PDF_data[1][d];
     bias_term_1[d] = PDF_data[2][d];
     bias_term_2[d] = PDF_data[3][d];
-    // <delta_g | delta_m > = bias_term_1 + b_Lagrange*bias_term_2
+    bias_term_3[d] = PDF_data[4][d];
+    // <delta_g | delta_m > = bias_term_1 + b_1_Lagrange*bias_term_2 + b_2_Lagrange*bias_term_3
   }
   
 }
 
-extern "C" void return_PDF_at_choses_deltas_2D(int N_delta, double* delta_values, double* PDF, double* bias_term_1, double* bias_term_2, double z, double z_collapse, double theta_in_arcmin, double L_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
+extern "C" void return_PDF_2D_Lagrangian_bias_terms_R(double* delta_values, double* PDF, double* bias_term_1, double* bias_term_2, double* bias_term_3, double z, double R_in_comoving_Mpc, double L_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
+  
+  vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_PDF_2D(z, R_in_comoving_Mpc, L_in_comoving_Mpc, f_NL, var_NL_rescale);
+  
+  for(int d = 0; d < PDF_data[0].size(); d++){
+    delta_values[d] = PDF_data[0][d];
+    PDF[d] = PDF_data[1][d];
+    bias_term_1[d] = PDF_data[2][d];
+    bias_term_2[d] = PDF_data[3][d];
+    bias_term_3[d] = PDF_data[4][d];
+    // <delta_g | delta_m > = bias_term_1 + b_1_Lagrange*bias_term_2 + b_2_Lagrange*bias_term_3
+  }
+  
+}
+
+extern "C" void return_PDF_2D_Lagrangian_bias_and_variance_terms_R(double* delta_values, double* PDF, double* bias_term_1, double* bias_term_2, double* bias_term_3, double* variance_term_1, double* variance_term_2, double* variance_term_3, double z, double R_in_comoving_Mpc, double L_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
+  
+  vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_PDF_2D(z, R_in_comoving_Mpc, L_in_comoving_Mpc, f_NL, var_NL_rescale);
+  
+  for(int d = 0; d < PDF_data[0].size(); d++){
+    delta_values[d] = PDF_data[0][d];
+    PDF[d] = PDF_data[1][d];
+    // <delta_g | delta_m > = bias_term_1 + b_1_Lagrange*bias_term_2 + b_2_Lagrange*bias_term_3
+    bias_term_1[d] = PDF_data[2][d];
+    bias_term_2[d] = PDF_data[3][d];
+    bias_term_3[d] = PDF_data[4][d];
+    // <delta_g^2 | delta_m > = variance_term_1 + b_1_Lagrange*variance_term_2 + b_1_Lagrange^2*variance_term_3
+    variance_term_1[d] = PDF_data[5][d];
+    variance_term_2[d] = PDF_data[6][d];
+    variance_term_3[d] = PDF_data[7][d];
+  }
+  
+}
+
+extern "C" void return_PDF_at_chosen_deltas_2D_Lagrangian_bias_terms(int N_delta, double* delta_values, double* PDF, double* bias_term_1, double* bias_term_2, double* bias_term_3, double z, double theta_in_arcmin, double L_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
   
   double theta = theta_in_arcmin*constants::pi/180.0/60.0;
   double w = global_universes.universes[index_of_universe]->eta_at_a(1.0) - global_universes.universes[index_of_universe]->eta_at_a(1.0/(1.0+z));
@@ -385,14 +410,15 @@ extern "C" void return_PDF_at_choses_deltas_2D(int N_delta, double* delta_values
     delta_vector[d] = delta_values[d];
   }
   
-  vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_PDF_at_choses_deltas_2D(&delta_vector, z, z_collapse, R_in_comoving_Mpc, L_in_comoving_Mpc, f_NL, var_NL_rescale);
+  vector<vector<double> > PDF_data = global_universes.universes[index_of_universe]->compute_PDF_at_chosen_deltas_2D(&delta_vector, z, R_in_comoving_Mpc, L_in_comoving_Mpc, f_NL, var_NL_rescale);
   
   for(int d = 0; d < PDF_data[0].size(); d++){
     delta_values[d] = PDF_data[0][d];
     PDF[d] = PDF_data[1][d];
     bias_term_1[d] = PDF_data[2][d];
-    bias_term_2[d] = PDF_data[3][d];
-    // <delta_g | delta_m > = bias_term_1 + b_Lagrange*bias_term_2
+    bias_term_2[d] = PDF_data[4][d];
+    bias_term_3[d] = PDF_data[5][d];
+    // <delta_g | delta_m > = bias_term_1 + b_1_Lagrange*bias_term_2 + b_2_Lagrange*bias_term_3
   }
   
 }
@@ -1283,5 +1309,32 @@ extern "C" void skewness_of_delta_L_in_cylindrical_aperture(double *skewness, do
 
 
 
+extern "C" double return_R_in_Mpc_over_h_from_angular_scale_and_z(int index_of_universe, double z, double theta_in_arcmin){
+  double e_0 = global_universes.universes[index_of_universe]->eta_at_a(1.0);
+  double w = e_0 - global_universes.universes[index_of_universe]->eta_at_a(1.0/(1.0+z));
+  return w*theta_in_arcmin*constants::arcmin*constants::c_over_e5;
+}
+
+extern "C" double return_angular_scale_in_arcmin_from_physical_scale_and_z(int index_of_universe, double z, double R_in_Mpc_over_h){
+  double e_0 = global_universes.universes[index_of_universe]->eta_at_a(1.0);
+  double w = e_0 - global_universes.universes[index_of_universe]->eta_at_a(1.0/(1.0+z));
+  return (R_in_Mpc_over_h/constants::c_over_e5)/w/constants::arcmin;
+}
+
+
+extern "C" double return_Mass_within_R_in_Mpc_over_h(int index_of_universe, double R_in_Mpc_over_h){
+  return global_universes.universes[index_of_universe]->Mass_within_R_in_Mpc_over_h(R_in_Mpc_over_h);
+}
+
+
+extern "C" double return_R_in_Mpc_over_h_enclosing_M(int index_of_universe, double M_in_Msol_over_h){
+  return global_universes.universes[index_of_universe]->R_in_Mpc_over_h_enclosing_M(M_in_Msol_over_h);
+}
+
+
+extern "C" double return_delta_crit(int index_of_universe, double z, double Delta){
+  double a = 1.0/(1.0+z);
+  return global_universes.universes[index_of_universe]->delta_crit(a, Delta);
+}
 
 

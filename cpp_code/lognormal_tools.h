@@ -111,7 +111,7 @@ extern "C" double get_delta0(double twoPt, double threePt){
 
 double get_skew_from_delta_0(double d0, double twoPt){
   
-  return 2.0*pow(twoPt, 2)/d0 + pow(twoPt/d0, 3);
+  return 3.0*pow(twoPt, 2)/d0 + pow(twoPt/d0, 3);
   
 }
 

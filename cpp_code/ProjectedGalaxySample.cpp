@@ -112,10 +112,6 @@ void ProjectedGalaxySample::set_n_of_w_data(string n_of_z_input_file){
       this->lensing_kernel_values[i] += dw*0.5*(w*(w_2-w)/w_2);
     }
     this->lensing_kernel_values[i] *= 1.5*this->pointer_to_universe()->return_Omega_m()/scale;
-  
-    cout << i << "   ";
-    cout << this->w_values[i] << "   ";
-    cout << this->lensing_kernel_values[i] << "\n";
   }
 }
 
@@ -372,13 +368,6 @@ void ProjectedGalaxySample::return_joint_saddle_point_PDF_Ng_kappa_noisy_in_angu
   vector<vector<double> > p_grid;
   
   vector<vector<double> > rebinned_data = return_joint_binning(this->w_values, this->n_of_w_values, w_values_lensing_kernel, lensing_kernel_values);
-  
-  for(int t = 0; t < rebinned_data[0].size(); t++){
-    cout << t << "   ";
-    cout << rebinned_data[0][t] << "   ";
-    cout << rebinned_data[1][t] << "   ";
-    cout << rebinned_data[2][t] << "\n";
-  }
   
   this->pointer_to_universe()->compute_LOS_projected_PDF_incl_kappa_saddle_point(theta_in_arcmin*constants::arcmin, f_NL, var_NL_rescale, kappa_min, kappa_max, rebinned_data[0], rebinned_data[1], rebinned_data[2], &d_grid, &k_grid, &p_grid);
 

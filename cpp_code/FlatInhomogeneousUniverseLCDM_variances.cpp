@@ -509,9 +509,7 @@ void FlatInhomogeneousUniverseLCDM::set_cylinder_skewnesses_from_eps3_powerlaw_a
   
   double var, dvar_dR;
   this->return_2nd_moment_and_derivative_2D(R_0, &var, &dvar_dR);
-  
-  cout << var << "   " << dvar_dR << '\n';
-  
+    
   cout << "Variance computed.\n";
   
   double A_eps3, n_eps3;
@@ -633,7 +631,6 @@ void FlatInhomogeneousUniverseLCDM::set_cylinder_variances(){
     //this->average_of_squared_cylinder_saddle_point[i] = this->average_of_squared_saddle_point_within_R_2D(1.0/wave_numbers[8*(n-1-i)]);
     //this->average_of_squared_cylinder_saddle_point[i] /= pow(this->top_hat_cylinder_variances[i],2);
     this->dtop_hat_cylinder_variances_dR[i] = this->dvariance_of_matter_within_R_dR_2D(1.0/wave_numbers[8*(n-1-i)]);
-    //cout << i << "  " << R_values[i]*constants::c_over_e5 << "  " <<  this->top_hat_cylinder_variances[i] << "  " <<  this->dtop_hat_cylinder_variances_dR[i] << '\n';
   }
   /*
   

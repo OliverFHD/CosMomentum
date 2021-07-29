@@ -366,14 +366,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi
     n_lambda = y_values[t].size();
     for(int l = 0; l < n_lambda; l++){
       y_values[t][l] /= kernel_values[i];
-      //cout << l << "   ";
-      //cout << y_values[t][l] << "   ";
-      //cout << phi_values[t][l] << "   ";
-      //cout << phi_prime_values[t][l] << "   ";
-      //cout << phi_prime_prime_values[t][l] << "   ";
-      //cout << phi_prime_prime_prime_values[t][l] << "\n";
     }
-    //exit(1);
     
     // Determining the boundaries of y over which we can perform the projection intergral.
     // Also, finding the maximal lambda to which primary branch of CGF(\lambda) extends.
@@ -738,7 +731,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
    */
   double ddelta = (delta_max-delta_min)/double(n_delta);
   double delta, lambda, phi, phi_prime_prime, phi_prime_prime_prime, phi_4;
-  double var_lambda;
   
   cout << "delta_min = " << delta_min << '\n';
   cout << "delta_max = " << delta_max << '\n';
@@ -778,16 +770,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF
       PDF_data[1][i] *= next_to_leading_correction;
     //else
     //  PDF_data[1][i] = 0.0;
-    
-    var_lambda = 1.0/phi_prime_prime;
-    cout << PDF_data[0][i] << "   ";
-    cout << lambda << "   ";
-    cout << phi << "   ";
-    cout << phi_prime_prime << "   ";
-    cout << phi_prime_prime_prime << "   ";
-    cout << phi_4 << "   ";
-    cout << next_to_leading_correction << "   ";
-    cout << PDF_data[1][i] << "\n";
   }
   cout << "Done.\n";
   
@@ -934,17 +916,6 @@ void FlatInhomogeneousUniverseLCDM::compute_polynomial_coefficients_from_CGF(dou
   for(int i = polynomial_order; i > 0; i--){
     (*coeffs_phi_of_lambda)[i] = (*coeffs_phi_prime_of_lambda)[i-1]/double(i);
   }
-  
-  /*this->current_P_L = this->P_L(e);
-  double vL = this->variance_of_matter_within_R_NL_2D(R);
-  double vL_2 = dsigma_R1_squared_dlogR = interpolate_neville_aitken_derivative(0.0, &y_values_reduced, &F_values_reduced, constants::order_of_interpolation);
-  for(int i = 0; i < polynomial_order+1; i++){
-    cout << vL << " , ";
-    cout << vL_2 << " , ";
-    cout << (*coeffs_phi_prime_of_lambda)[i] << " , ";
-    cout << (*coeffs_phi_of_lambda)[i] << "\n";
-  }
-  cout << '\n';*/
   
 }
 
@@ -1104,7 +1075,6 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
     a = this->a_at_eta(eta_0-w);
     z = 1.0/a-1.0;
     CMB_lensing_kernel[i] = 1.5*this->return_Omega_m()*w*(w_last_scattering-w)/w_last_scattering/a;
-    cout << i << "  " << z << "  " << w << "  " << CMB_lensing_kernel[i] << "  " << w_last_scattering << '\n';
   }
   
   cout << "computing CGF grid & cutting out 1st branch\n";
@@ -1126,23 +1096,19 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
   cout << "computing CGF grid & cutting out 1st branch\n";
   
   for(int t = 0; t < n_time; t++){
-    cout << w << "  ";
-    cout.flush();
     w = w_values_bin_center[t];
     eta = eta_0-w;
     R = w*theta;
-    cout << w << "  ";
-    cout.flush();
     dummy_data = compute_phi_tilde_of_lambda_2D(eta, R, f_NL, var_NL_rescale);
-    cout << t << "  ";
-    cout.flush();
-    // ISSUE: this order of indeces in confusing.
-    y_values[t] = dummy_data[2];
-    phi_values[t] = dummy_data[3];
-    phi_prime_values[t] = dummy_data[1];
-    phi_prime_prime_values[t] = dummy_data[7];
-    phi_3_values[t] = dummy_data[8];
-    phi_4_values[t] = dummy_data[9];
+    y_values[t] = dummy_data[0];
+    phi_values[t] = dummy_data[1];
+    phi_prime_values[t] = dummy_data[2];
+    phi_prime_prime_values[t] = dummy_data[3];
+    phi_3_values[t] = dummy_data[4];
+    for(int l = 0; l < phi_4_values[t].size(); l++){
+      phi_4_values[t][l] = interpolate_neville_aitken_derivative(y_values[t][l], &y_values[t], &phi_3_values[t], constants::order_of_interpolation);
+    }
+    
     
     // Determining the boundaries of y over which we can perform the projection intergral.
     // Also, finding the maximal lambda to which primary branch of CGF(\lambda) extends.
@@ -1170,8 +1136,6 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
     phi_3_values[t] = vector<double>(&phi_3_values[t][0], &phi_3_values[t][lambda_index_y_max]+1);
     phi_4_values[t] = vector<double>(&phi_4_values[t][0], &phi_4_values[t][lambda_index_y_max]+1);
     
-    cout << n_time << '\n';
-    cout.flush();
   }
   
   cout << "computing ranges of lambda_delta and lambda_kappa & resizing phi_grids accordingly\n";
@@ -1226,8 +1190,12 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
   double phi_prime_prime_integrand;
   vector<double> * pointer_to_y_values;
   
+  cout << "Projecting 2D CGF:\n";
+
+  
   for(int d = 0; d < N_ldelta; d++){
-    cout << d << '\n';
+    cout << "\r" << int(10000.0*double(d)/double(N_ldelta))/100.0 << "%";
+    cout.flush();
     ldelta = (*phi_data_delta)[0][d];
     for(int k = 0; k < N_lkappa; k++){
       lkappa = (*phi_data_kappa)[0][k];
@@ -1295,6 +1263,7 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_CMB
       
     }
   }
+  cout << "\r100%         \n";
   
 }
 
@@ -1375,10 +1344,6 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
     error_handling::general_warning("WARNING in compute_LOS_projected_PDF_incl_CMB_kappa_saddle_point:\nYour intervall [kappa_min, kappa_max] might contain less than 3sigma of probability.");
   }
   
-  cout << N_lambda_delta << '\n';
-  cout << phi_data_delta[2].size() << '\n';
-  cout << N_lambda_kappa << '\n';
-  cout << phi_data_kappa[2].size() << '\n';
   vector<vector<double> > PDF_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
   vector<vector<double> > logPDF_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
   vector<vector<double> > delta_Gauss_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
@@ -1400,17 +1365,14 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
   double d2phi_dlkappa_dldelta;
   double d2phi_dlkappa2;
   double determinant;
-  cout << "test 1\n";
   double next_to_leading_correction;
   
   for(int d = 0; d < N_lambda_delta; d++){
     for(int k = 0; k < N_lambda_kappa; k++){
-      
       // Adding kappa noise variance
       phi_grid[d][k] += 0.5*kappa_noise_variance*pow(phi_data_kappa[0][k],2);
       dphi_dlkappa_grid[d][k] += kappa_noise_variance*phi_data_kappa[0][k];
       d2phi_dlkappa2_grid[d][k] += kappa_noise_variance;
-      
       
       phi = phi_grid[d][k];
       dphi_dldelta = dphi_dldelta_grid[d][k];
@@ -1442,7 +1404,8 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
         grid_mask[d][k] = 0;
       }
       
-      if(dphi_dldelta>0.0 && dphi_dlkappa > 0.0 && PDF_on_lambda_grid[d-1][k] <= 0.0){
+      //if(dphi_dldelta>0.0 && dphi_dlkappa > 0.0 && PDF_on_lambda_grid[d-1][k] <= 0.0){
+      if(dphi_dldelta>0.0 && dphi_dlkappa > 0.0 && PDF_on_lambda_grid[d][k] <= 0.0){
         PDF_on_lambda_grid[d][k] = 0.0;
       }
       //if(dphi_dldelta>-std_delta && dphi_dlkappa > -std_kappa && PDF_on_lambda_grid[d][k-1] <= 0.0){
@@ -1451,21 +1414,6 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
       
     }
   }
-  cout << "test 2\n";
-  
-  
-  FILE* F = fopen("Data/test_PDF_on_lambda_grid.dat", "w");
-  fclose(F);
-  fstream out;
-  out.open("Data/test_PDF_on_lambda_grid.dat");
-  out << scientific << setprecision(10);
-  for(int d = 0; d < N_lambda_delta; d++){
-    for(int k = 0; k < N_lambda_kappa; k++){
-      out << PDF_on_lambda_grid[d][k] << setw(20);
-    }
-    out << '\n';
-  }
-  out.close();
   
   vector<vector<double> > dphi_dlkappa_cutout(0);
   vector<vector<double> > dphi_dldelta_cutout(0);
@@ -1502,14 +1450,6 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
     }
   }
   
-  cout << "test 3\n";
-  
-  
-  F = fopen("Data/test_PDF_grid_when_forcing_delta_and_kappa.dat", "w");
-  fclose(F);
-  out.open("Data/test_PDF_grid_when_forcing_delta_and_kappa.dat");
-  out << scientific << setprecision(10);
-  
   for(int d = 0; d < N_lambda_delta; d++){
     for(int k = 0; k < N_lambda_kappa; k++){
       if(cutout_from_delta_grid_when_forcing_kappa[k].size()>0){
@@ -1526,12 +1466,8 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
       //  PDF_grid_when_forcing_delta_and_kappa[d][k] = 0.0;
       //}
       
-      out << PDF_grid_when_forcing_delta_and_kappa[d][k] << setw(20);
     }
-    out << '\n';
   }
-  out.close();
-  cout << "test 4\n";
   
   
   vector<vector<int> > mask_for_biquadratic_interpolation = grid_mask;
@@ -1571,8 +1507,9 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
     kappa_values[i] = kappa_min + double(i)*dkappa;
   }
   
-  F = fopen("Data/test_PDF_on_physical_grid.dat", "w");
+  FILE *F = fopen("Data/test_PDF_on_physical_grid.dat", "w");
   fclose(F);
+  fstream out;
   out.open("Data/test_PDF_on_physical_grid.dat");
   out << scientific << setprecision(10);
   
@@ -1581,7 +1518,6 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_CMB_kappa_sad
   for(int d = 0; d < n_delta; d++){
     delta = delta_values[d];
     delta_Gauss = log(1.0 + delta/lognormal_shift_delta);
-    cout << "delta = " << delta << "\n";
     for(int k = 0; k < n_kappa; k++){
       kappa = kappa_values[k];
       kappa_Gauss = log(1.0 + kappa/lognormal_shift_kappa);
@@ -1690,21 +1626,14 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_kap
   cout << "computing CGF grid & cutting out 1st branch\n";
   
   for(int t = 0; t < n_time; t++){
-    cout << w << "  ";
-    cout.flush();
     w = w_values_bin_center[t];
     eta = eta_0-w;
     R = w*theta;
-    cout << w << "  ";
-    cout.flush();
     dummy_data = compute_phi_tilde_of_lambda_2D(eta, R, f_NL, var_NL_rescale);
-    cout << t << "  ";
-    cout.flush();
-    // ISSUE: this order of indeces in confusing.
-    y_values[t] = dummy_data[2];
-    phi_values[t] = dummy_data[3];
-    phi_prime_values[t] = dummy_data[1];
-    phi_prime_prime_values[t] = dummy_data[7];
+    y_values[t] = dummy_data[0];
+    phi_values[t] = dummy_data[1];
+    phi_prime_values[t] = dummy_data[2];
+    phi_prime_prime_values[t] = dummy_data[3];
     
     // Determining the boundaries of y over which we can perform the projection intergral.
     // Also, finding the maximal lambda to which primary branch of CGF(\lambda) extends.
@@ -1730,8 +1659,6 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_kap
     phi_prime_values[t] = vector<double>(&phi_prime_values[t][0], &phi_prime_values[t][lambda_index_y_max]+1);
     phi_prime_prime_values[t] = vector<double>(&phi_prime_prime_values[t][0], &phi_prime_prime_values[t][lambda_index_y_max]+1);
     
-    cout << n_time << '\n';
-    cout.flush();
   }
   
   cout << "computing ranges of lambda_delta and lambda_kappa & resizing phi_grids accordingly\n";
@@ -1776,8 +1703,12 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_kap
   double phi_prime_prime_integrand;
   vector<double> * pointer_to_y_values;
   
+  cout << "Projecting 2D CGF:\n";
+  
   for(int d = 0; d < N_ldelta; d++){
-    cout << d << '\n';
+    cout << "\r" << int(10000.0*double(d)/double(N_ldelta))/100.0 << "%";
+    cout.flush();
+    
     ldelta = (*phi_data_delta)[0][d];
     for(int k = 0; k < N_lkappa; k++){
       lkappa = (*phi_data_kappa)[0][k];
@@ -1827,6 +1758,7 @@ void FlatInhomogeneousUniverseLCDM::return_LOS_integrated_phi_of_lambda_incl_kap
       
     }
   }
+  cout << "\r100%         \n";
   
 }
 
@@ -1864,10 +1796,6 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_kappa_saddle_
   int N_lambda_delta = phi_grid.size();
   int N_lambda_kappa = phi_grid[0].size();
   
-  cout << N_lambda_delta << '\n';
-  cout << phi_data_delta[2].size() << '\n';
-  cout << N_lambda_kappa << '\n';
-  cout << phi_data_kappa[2].size() << '\n';
   vector<vector<double> > PDF_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
   vector<vector<double> > logPDF_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
   vector<vector<double> > delta_Gauss_on_lambda_grid(N_lambda_delta, vector<double>(N_lambda_kappa,0.0));
@@ -1889,7 +1817,6 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_kappa_saddle_
   double d2phi_dlkappa_dldelta;
   double d2phi_dlkappa2;
   double determinant;
-  cout << "test 1\n";
   for(int d = 0; d < N_lambda_delta; d++){
     for(int k = 0; k < N_lambda_kappa; k++){
       phi = phi_grid[d][k];
@@ -1911,7 +1838,6 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_kappa_saddle_
       }
     }
   }
-  cout << "test 2\n";
   
   
   for(int d = 0; d < N_lambda_delta; d++){
@@ -1924,7 +1850,6 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_kappa_saddle_
     }
   }
   
-  cout << "test 3\n";
   
   for(int d = 0; d < N_lambda_delta; d++){
     for(int k = 0; k < N_lambda_kappa; k++){
@@ -1934,7 +1859,6 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_kappa_saddle_
         PDF_grid_when_forcing_delta_and_kappa[d][k] = max(0.0,interpolate_neville_aitken(delta_on_lambda_grid[d][k], &delta_grid_when_forcing_kappa_transposed[k], &PDF_grid_when_forcing_kappa_transposed[k], constants::order_of_interpolation));
     }
   }
-  cout << "test 4\n";
   
   // on delta-axis we need to compute the PDF on a 5sigma intervall, because
   // shot-noise makes counts-in-cells histogram sensitive to wide range in delta.
@@ -1990,7 +1914,6 @@ void FlatInhomogeneousUniverseLCDM::compute_LOS_projected_PDF_incl_kappa_saddle_
   
   for(int d = 0; d < n_delta; d++){
     delta = delta_values[d];
-    cout << "delta = " << delta << "\n";
     for(int k = 0; k < n_kappa; k++){
       kappa = kappa_values[k];
       
@@ -2305,7 +2228,6 @@ double FlatInhomogeneousUniverseLCDM::delta_crit(double a, double Delta){
   for(int i = 0; i < delta_NL_aux.size(); i++){
       if(delta_NL_aux[i] > dNL_max) dNL_max = delta_NL_aux[i];
   }
-  cout << Delta << "   " << dNL_max << '\n';
   
   return D_growth*interpolate_neville_aitken(Delta, &delta_NL_aux, &delta_L_today_aux, constants::order_of_interpolation);
   

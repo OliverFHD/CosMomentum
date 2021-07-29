@@ -24,7 +24,7 @@ class GalaxySample {
    int return_N_max(double N_bar, double variance);
    double delta_g_Eulerian(double delta, double variance);
    vector<vector<double> > delta_g_Lagrangian(vector<vector<double> > *PDF_data);
-   double return_P_of_N_given_delta_g(int N, double N_bar, double delta_m, double delta_g); // variance only used when quadratic_bias != 0
+   double return_P_of_N_given_delta_g(int N, double N_bar, double delta_m, double delta_g);
    vector<double> return_CIC_from_matter_density_PDF(double N_bar, vector<vector<double> > PDF_data);
    
    FlatInhomogeneousUniverseLCDM* pointer_to_universe(){return this->universe;};

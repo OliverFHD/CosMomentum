@@ -4,6 +4,13 @@ GalaxySample::GalaxySample(FlatInhomogeneousUniverseLCDM* universe, double b1, d
   this->set_universe(universe);
   this->set_parameters(b1, b2, a0, a1, b_model);
   
+  if(this->bias_model == LAGRANGIAN){
+    cout << "LAGRANGIAN bias model.\n";
+  }
+  else{
+    cout << "EULERIAN bias model.\n";
+  }
+  
 }
 
 

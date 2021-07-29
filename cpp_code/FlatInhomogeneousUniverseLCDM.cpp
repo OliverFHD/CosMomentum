@@ -47,8 +47,6 @@ FlatInhomogeneousUniverseLCDM::FlatInhomogeneousUniverseLCDM(cosmological_model 
   //this->set_transfer_function_from_file("./Data/Aniks_new_Nbody_sims/transfer_function_z0.dat");
   //cout << "Set Anik's tranfer function.\n";
   this->norm = this->variance_of_matter_within_R_before_norm_was_determined(8.0);
-  cout << "Norm = " << this->norm << '\n';
-  cout << "Norm/c_over_e5 = " << this->norm/constants::c_over_e5 << '\n';
   
   cout << "Setting sphere variances.\n";
   this->set_sphere_variances();
@@ -937,11 +935,11 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_from_CGF(vect
     PDF_data[5][i] /= constants::pi*PDF_data[1][i];
     PDF_data[6][i] /= constants::pi*PDF_data[1][i];
     
-    cout << PDF_data[0][i] << "   ";
-    cout << PDF_data[1][i] << "\n";
+    cout << "\r" << PDF_data[0][i] << "   " << PDF_data[1][i] << "        ";
+    cout.flush();
     
   }
-  cout << "Done.\n";
+  cout << "\rDone.                        \n";
   
   return PDF_data;
   
@@ -1097,7 +1095,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_of_lambda_3D(
      * 
      */
     data[5][d] = (1.0+data[2][d])*delta_L_at_z; // bias term 1
-    data[6][d] = data[4][d]*delta_L_at_z;       // bias term 2
+    data[6][d] = data[5][d]*delta_L_at_z;       // bias term 2
     /* 
      * variance terms, needed when calculating
      * <delta_g^2 | delta_m> = variance_term_1 + b_1^L variance_term_2 + (b_1^L)^2 variance_term_3
@@ -1281,7 +1279,7 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_phi_tilde_of_lamb
      * 
      */
     data[5][d] = (1.0+data[2][d])*delta_L_at_z; // bias term 1
-    data[6][d] = data[4][d]*delta_L_at_z;       // bias term 2
+    data[6][d] = data[5][d]*delta_L_at_z;       // bias term 2
     /* 
      * variance terms, needed when calculating
      * <delta_g^2 | delta_m> = variance_term_1 + b_1^L variance_term_2 + (b_1^L)^2 variance_term_3

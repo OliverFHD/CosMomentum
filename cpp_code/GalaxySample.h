@@ -34,11 +34,12 @@ class GalaxySample {
 
    FlatInhomogeneousUniverseLCDM* pointer_to_universe(){return this->universe;};
 
+   double linear_bias;
 
  private:
 
    BIAS_MODEL bias_model = EULERIAN;
-   double linear_bias;
+
    double quadratic_bias;
    double linear_Lagrangian_bias;
    double quadratic_Lagrangian_bias;

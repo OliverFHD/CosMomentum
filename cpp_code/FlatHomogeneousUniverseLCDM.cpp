@@ -294,7 +294,7 @@ double FlatHomogeneousUniverseLCDM::w_L_of_a(double a){
   
   
 /*******************************************************************************************************************************************************
- * FlatHomogeneousUniverseLCDM::w_L_of_a
+ * FlatHomogeneousUniverseLCDM::Mass_within_R_in_Mpc_over_h
  * Description:
  * - Mass within a given radius according to critical density [in M_solar/h]
  * Arguments:

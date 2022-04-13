@@ -28,7 +28,7 @@ FlatInhomogeneousUniverseLCDM::FlatInhomogeneousUniverseLCDM(cosmological_model 
   
   this->set_initial_conditions_for_growth();
   this->initialize_linear_growth_factor_of_delta();
-  //this->print_background_cosmology("expansion_history.dat");
+  this->print_background_cosmology("expansion_history.dat");
   this->initialize_up_to_second_order_growth_factor_of_delta(2.0/7.0*this->D_initial*this->D_initial, 4.0/7.0*this->D_initial*this->D_prime_initial);
   
   // ISSUE: terrible that this is hard coded!!! At least put it into constants.h
@@ -694,7 +694,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_from_CGF(vect
    * Determine critical point, where phi(lambda) splits into two branches on the complex plane. 
    * 
    */
-  
   int n_lambda = 0;
   double lambda_c = (*CGF_data)[0][0];
   double delta_c = (*CGF_data)[2][0];
@@ -714,7 +713,6 @@ vector<vector<double> > FlatInhomogeneousUniverseLCDM::compute_PDF_from_CGF(vect
   
   /*
    * Extract phi_data up to the critical point.
-   * 
    * 0 = lambda
    * 1 = phi
    * 2 = phi'

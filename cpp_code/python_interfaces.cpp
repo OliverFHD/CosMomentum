@@ -345,6 +345,25 @@ extern "C" void return_PDF(double* delta_values, double* PDF, double z, double R
   
 }
 
+extern "C" double return_variance_L_3D(double z, double R_in_comoving_Mpc, int index_of_universe){
+  
+  return global_universes.universes[index_of_universe]->return_linear_variance(z, R_in_comoving_Mpc);
+  
+}
+
+extern "C" double return_variance_NL_3D(double z, double R_in_comoving_Mpc, double var_NL_rescale, int index_of_universe){
+  
+  return global_universes.universes[index_of_universe]->return_non_linear_variance(z, R_in_comoving_Mpc, var_NL_rescale);
+  
+}
+
+extern "C" double return_skewness_NL_3D(double z, double R_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
+  
+  return global_universes.universes[index_of_universe]->return_3D_skewness(z, R_in_comoving_Mpc, f_NL, var_NL_rescale);
+  
+}
+
+
 extern "C" void return_PDF_2D_Lagrangian_bias_terms(double* delta_values, double* PDF, double* bias_term_1, double* bias_term_2, double* bias_term_3, double z, double theta_in_arcmin, double L_in_comoving_Mpc, double f_NL, double var_NL_rescale, int index_of_universe){
   
   double theta = theta_in_arcmin*constants::pi/180.0/60.0;
@@ -586,10 +605,6 @@ extern "C" void return_joint_PDF_Ng_kappaCMB_noisy(double* joint_rebinned_PDF, d
   double dN_rebin = (N_max - N_min)/double(N_bin);
   double dV_rebin = dk_rebin*dN_rebin;
   
-  cout << "TEST 1 \n";
-  cout << int(-0.4) << "\n";
-  cout << int(-0.5) << "\n";
-  cout << int(-0.6) << "\n";
   vector<vector<double> > PDF_grid_rebin_N(N_bin, vector<double>(Nk,0.0));
   int n_rebin;
   double N;
@@ -607,8 +622,6 @@ extern "C" void return_joint_PDF_Ng_kappaCMB_noisy(double* joint_rebinned_PDF, d
     
   }
   
-  cout << "TEST 2 \n";
-  cout << norm << "\n";
   vector<vector<double> > PDF_grid_rebinned(N_bin, vector<double>(N_bin,0.0));
   int k_rebin;
   double kappa;
@@ -654,9 +667,6 @@ extern "C" void return_joint_PDF_Ng_kappaCMB_noisy(double* joint_rebinned_PDF, d
     
   }
   
-  cout << "TEST 3 \n";
-  cout << norm << "\n";
-  
   int index = 0;
   for(int n = 0; n < N_bin; n++){
     for(int k = 0; k < N_bin; k++){
@@ -664,8 +674,6 @@ extern "C" void return_joint_PDF_Ng_kappaCMB_noisy(double* joint_rebinned_PDF, d
       index++;
     }
   }
-  
-  cout << "TEST 4 \n";
   
 }
 
@@ -869,26 +877,21 @@ extern "C" void configure_FLASK_for_delta_g_and_CMB_kappa(int l_max, double thet
   
   int N_ell = C_ells[0][0].size();
   
-  cout << "Test 1\n";
   
   double lambda_m = lognormal_tools::get_delta0(second_moments[0][0], third_moments[0][0][0]);
   double lambda_k_overlap_correlated = lognormal_tools::get_kappa0(lambda_m, second_moments[0][0], second_moments[0][1], third_moments[0][0][1]);
-  cout << "Test 1\n";
   
   double var_kappa_overlap = second_moments[2][2];
   double var_kappa_overlap_correlated = lognormal_tools::get_var_kappa(lambda_m, lambda_k_overlap_correlated, second_moments[0][1], third_moments[0][1][1]);
   double var_kappa_overlap_uncorrelated = var_kappa_overlap - var_kappa_overlap_correlated;
-  cout << "Test 2\n";
 
   double skewness_kappa_overlap = third_moments[2][2][2];
   double skewness_kappa_overlap_correlated = lognormal_tools::get_skew_from_delta_0(lambda_k_overlap_correlated, var_kappa_overlap_correlated);
   double skewness_kappa_overlap_uncorrelated = skewness_kappa_overlap - skewness_kappa_overlap_correlated;
-  cout << "Test 3\n";
   
   double var_kappa_uncorrelated = second_moments[3][3] + var_kappa_overlap_uncorrelated;
   double skewness_uncorrelated = third_moments[3][3][3] + skewness_kappa_overlap_uncorrelated;
   double lambda_k_uncorrelated = lognormal_tools::get_delta0(var_kappa_uncorrelated, skewness_uncorrelated);
-  cout << "Test 4\n";
   
   
   FILE *F = fopen("FLASK_config_Cells", "w");
@@ -1195,6 +1198,7 @@ extern "C" void configure_FLASK_for_delta_g_and_kappa(int l_max, double theta_in
     w_values_bin_center[i] = 0.5*(w_values[i+1]+w_values[i]);
   }
   
+  
   vector<double> lensing_kernel_overlap(n_time, 0.0);
   vector<double> lensing_kernel_nonoverlap(n_time, 0.0);
   for(int i = 0; i < n_time; i++){
@@ -1223,26 +1227,21 @@ extern "C" void configure_FLASK_for_delta_g_and_kappa(int l_max, double theta_in
   
   int N_ell = C_ells[0][0].size();
   
-  cout << "Test 1\n";
   
   double lambda_m = lognormal_tools::get_delta0(second_moments[0][0], third_moments[0][0][0]);
   double lambda_k_overlap_correlated = lognormal_tools::get_kappa0(lambda_m, second_moments[0][0], second_moments[0][1], third_moments[0][0][1]);
-  cout << "Test 1\n";
   
   double var_kappa_overlap = second_moments[2][2];
   double var_kappa_overlap_correlated = lognormal_tools::get_var_kappa(lambda_m, lambda_k_overlap_correlated, second_moments[0][1], third_moments[0][1][1]);
   double var_kappa_overlap_uncorrelated = var_kappa_overlap - var_kappa_overlap_correlated;
-  cout << "Test 2\n";
 
   double skewness_kappa_overlap = third_moments[2][2][2];
   double skewness_kappa_overlap_correlated = lognormal_tools::get_skew_from_delta_0(lambda_k_overlap_correlated, var_kappa_overlap_correlated);
   double skewness_kappa_overlap_uncorrelated = skewness_kappa_overlap - skewness_kappa_overlap_correlated;
-  cout << "Test 3\n";
   
   double var_kappa_uncorrelated = second_moments[3][3] + var_kappa_overlap_uncorrelated;
   double skewness_uncorrelated = third_moments[3][3][3] + skewness_kappa_overlap_uncorrelated;
   double lambda_k_uncorrelated = lognormal_tools::get_delta0(var_kappa_uncorrelated, skewness_uncorrelated);
-  cout << "Test 4\n";
   
   
   FILE *F = fopen(n_of_z_file, "w");

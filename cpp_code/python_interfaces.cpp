@@ -928,6 +928,44 @@ extern "C" void configure_FLASK_for_delta_g_and_CMB_kappa(int l_max, double thet
 
 
 
+extern "C" double return_lognormal_shift_for_individual_FLASK_bin(double theta_in_arcmin, int index_of_galaxy_sample, int sources0_or_lenses1){
+  
+  FlatInhomogeneousUniverseLCDM* pointer_to_universe = global_universes.projected_galaxy_samples[index_of_galaxy_sample]->pointer_to_universe();
+  vector<double> w_values;
+  vector<double> kernel_values;
+  vector<double> lensing_kernel;
+  global_universes.projected_galaxy_samples[index_of_galaxy_sample]->return_LOS_data(&w_values, &kernel_values, &lensing_kernel);
+  
+  int n_time = w_values.size();
+  
+  for(int i = 0; i < n_time; i++){
+    cout << i << "  " << w_values[i] << "  " << kernel_values[i] << "  " << lensing_kernel[i] << '\n';
+  }
+  
+  vector<vector<double> > joint_kernel_values(1, vector<double>(n_time, 0.0));
+  if(sources0_or_lenses1 == 0){
+    joint_kernel_values[0] = lensing_kernel;
+  }
+  else if(sources0_or_lenses1 == 1){
+    joint_kernel_values[0] = kernel_values;
+  }
+  else{
+    error_handling::general_error_message("Argument sources0_or_lenses1 in function return_lognormal_shift_for_individual_FLASK_bin shoud be either 0 or 1.");
+  }
+  
+  vector<vector<double> > second_moments = pointer_to_universe->return_LOS_integrated_2nd_moments(theta_in_arcmin*constants::arcmin, 0.0, 1.0, w_values, joint_kernel_values);
+  vector<vector<vector<double> > > third_moments = pointer_to_universe->return_LOS_integrated_3rd_moments(theta_in_arcmin*constants::arcmin, 0.0, 1.0, w_values, joint_kernel_values);
+    
+  cout << "variance = " << second_moments[0][0] << '\n';
+  cout << "skewness = " << third_moments[0][0][0] << '\n';
+  
+  /***** FLASK configs for sample 1: *****/
+  double lambda = lognormal_tools::get_delta0(second_moments[0][0], third_moments[0][0][0]);
+  
+  return lambda;
+  
+}
+
 
 
 extern "C" void configure_FLASK_for_delta_g_and_CMB_kappa_2_uncorrelated_samples(int l_max, double theta_in_arcmin, double bias_sample_1, double r_sample_1, double bias_sample_2, double r_sample_2, int index_of_galaxy_sample_1, int index_of_galaxy_sample_2){

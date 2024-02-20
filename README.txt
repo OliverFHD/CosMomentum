@@ -2,6 +2,19 @@
 <-----> CosMomentum
 <-----> README version of Dec 15 2019
 
+
+*******************************************
+IF YOU ARE LOOKING FOR CODE TO SIMULATE 
+OVERLAPPING QUBITS / RESULTS FROM
+"Holographic phenomenology via overlapping degrees of freedom" 
+https://arxiv.org/abs/2402.11016
+PLEASE CHANGE TO THIS REPOSITORY:
+
+https://github.com/OliverFHD/GPUniverse
+
+(There was a wrong link in the arXiv submission...)
+*******************************************
+
 <---> As of now, this code can compute
 - the probability distribution function (PDF) of the matter density field,
 - the cumulant generating function (CGF) of the matter density field,

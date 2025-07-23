@@ -1,6 +1,6 @@
 
 <-----> CosMomentum
-<-----> README version of Dec 15 2019
+<-----> README version of July 23 2025
 
 
 *******************************************
@@ -23,13 +23,12 @@ https://github.com/OliverFHD/GPUniverse
 - all of this for both line-of-sight projections of the matter density field as well as the 3D density field
 - all of this for PDFs of lensing convergence
 - statistics of biased & stochastic tracers (e.g. galaxies)
+- joint PDF of galaxy density and lensing convergence
 
-<---> Features that will be added in the near future are
-- density split statistics (cf. Gruen&Friedrich++2018, Friedrich&Gruen++2018)
-- joint PDFs of pairs of cosmic random fields
 
 <---> Installation & running:
-- The notebook "compute_PDF_and_CGF.ipynb" containts examples on how to run CosMomentum.
+- The notebook "compute_1D_PDFs_and_CGFs.ipynb" containts examples on how to run CosMomentum for single-field statistics.
+- The notebook "compute_2D_PDF.ipynb" containts examples on how to run CosMomentum for the joint PDF of galaxy density and lensing convergence.
 - This includes a command that compiles the code.
 - You may have to edit "cpp_code/Makefile" as suitable for your machine.
 
@@ -42,8 +41,7 @@ https://github.com/OliverFHD/GPUniverse
 - Please post issues or bug reports on https://github.com/OliverFHD/CosMomentum .
 
 <---> Contributors
-- the code has been designed by Oliver Friedrich, Daniel Gruen, Anik Halder, Elisabeth Krause, Tom McClintock
-- we'd like to thank Cora Uhlemann for helpful discussions
+- the code has been designed by Oliver Friedrich, Daniel Gruen, Anik Halder, Lina Castiblanco, Cora Uhlemann, Elisabeth Krause, Tom McClintock
 
 <---> Acknowledgement
 - Please feel free to use the code for your science and publications.
